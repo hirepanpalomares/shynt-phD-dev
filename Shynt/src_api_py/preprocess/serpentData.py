@@ -10,9 +10,8 @@ class SerpentOut(object):
         """
             The parameter outSerp is the  name of the res output file given by 
             serpent
-
-            TODO: Use *args and **kwargs for the derpent outfiles
         """
+        
         self.__outFile = outSerp
         self.__filesData = {}
         totalFiles = len(self.__outFile)
