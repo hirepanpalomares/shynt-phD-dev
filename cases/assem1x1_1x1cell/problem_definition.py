@@ -1,5 +1,9 @@
+
 import numpy as np
 import os 
+import sys
+
+import Shynt
 
 
 
@@ -43,7 +47,7 @@ class Input(object):
                 './group_constant_generation/GroupConst5_res.m',
                 './group_constant_generation/GroupConst6_res.m',
             ]
-            self.absolute_path = '/home/mono/Documents/school/chalmers/phd/codes/Shynt/repo/cases/assem1x1_1x1cell/'
+            self.absolute_path = '/home/hirepan/Documents/chalmers/codes/Shynt/repo/cases/assem1x1_1x1cell/'
             self.detector_fuel = [
                 'detectors/fuel1toX_fixed_det0.m',
                 'detectors/fuel2toX_fixed_det0.m',
@@ -89,6 +93,105 @@ class Input(object):
                 'DETrfueltosthm',
                 'DETrfueltonthm'
             ]
+
+
+
+fuel1 = Shynt.materials.Material("fuel1")
+fuel2 = Shynt.materials.Material("fuel2")
+fuel3 = Shynt.materials.Material("fuel3")
+fuel4 = Shynt.materials.Material("fuel4")
+fuel5 = Shynt.materials.Material("fuel5")
+fuel6 = Shynt.materials.Material("fuel6")
+coolant = Shynt.materials.Material("coolant", moder="lwtr 1001")
+
+u235 = Shynt.materials.Isotope("92235.09c")
+u238 = Shynt.materials.Isotope("92238.09c")
+oxygen09 = Shynt.materials.Isotope("8016.09c")
+
+oxygen06 = Shynt.materials.Isotope("8016.06c")
+hydrogen = Shynt.materials.Isotope("1001.06c")
+
+mc_params = Shynt.montecarlo.MontecarloParams(2000, 500, 50)
+libraries = Shynt.libraries.SerpentLibraries(acelib="/home/segonpin/codesother/Serpent/xsdata/jeff311/sss_jeff311u.xsdata", therm="therm lwtr lwj3.11t")
+energy = Shynt.energy.Grid([0, 0.625E-06, 20]) # MeV
+
+
+fuel1.addIsotope(u235, mass_fraction=0.015867)
+fuel1.addIsotope(u238, mass_fraction=0.86563)
+fuel1.addIsotope(oxygen09, mass_fraction=0.1185)
+
+fuel2.addIsotope(u235, mass_fraction=0.018512)
+fuel2.addIsotope(u238, mass_fraction=0.86299)
+fuel2.addIsotope(oxygen09, mass_fraction=0.1185)
+
+fuel3.addIsotope(u235, mass_fraction=0.022919)
+fuel3.addIsotope(u238, mass_fraction=0.85858)
+fuel3.addIsotope(oxygen09, mass_fraction=0.1185)
+
+fuel4.addIsotope(u235, mass_fraction=0.026445)
+fuel4.addIsotope(u238, mass_fraction=0.85505)
+fuel4.addIsotope(oxygen09, mass_fraction=0.1185)
+
+fuel5.addIsotope(u235, mass_fraction=0.029971)
+fuel5.addIsotope(u238, mass_fraction=0.85153)
+fuel5.addIsotope(oxygen09, mass_fraction=0.1185)
+
+fuel6.addIsotope(u235, mass_fraction=0.032615)
+fuel6.addIsotope(u238, mass_fraction=0.84888)
+fuel6.addIsotope(oxygen09, mass_fraction=0.1185)
+
+coolant.addIsotope(oxygen06, atom_fraction=0.33333)
+coolant.addIsotope(hydrogen, atom_fraction=0.66667)
+
+# pin_fuel1 = Shynt.universes.Pin("pin_fuel1", material=fuel1, radius=0.4335, surroundings=coolant)
+# pin_fuel2 = Shynt.universes.Pin("pin_fuel2", material=fuel2, radius=0.4335, surroundings=coolant)
+# pin_fuel3 = Shynt.universes.Pin("pin_fuel3", material=fuel3, radius=0.4335, surroundings=coolant)
+# pin_fuel4 = Shynt.universes.Pin("pin_fuel4", material=fuel4, radius=0.4335, surroundings=coolant)
+# pin_fuel5 = Shynt.universes.Pin("pin_fuel5", material=fuel5, radius=0.4335, surroundings=coolant)
+# pin_fuel6 = Shynt.universes.Pin("pin_fuel6", material=fuel6, radius=0.4335, surroundings=coolant)
+
+
+# lattice =  [
+#     [pin_fuel2, pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel3, pin_fuel2, pin_fuel2],
+#     [pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3, pin_fuel2],
+#     [pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3],
+#     [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
+#     [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
+#     [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
+#     [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
+#     [pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3],
+#     [pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3, pin_fuel2],
+#     [pin_fuel2, pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel3, pin_fuel2, pin_fuel2]
+# ]
+
+# assembly = Shynt.universes.SquareLattice("assembly", 1.2950, lattice)
+
+
+
+cyl1 = Shynt.surfaces.InfiniteCylinder("cyl1", 0, 0, 1.0)
+cyl2 = Shynt.surfaces.InfiniteCylinder("cyl2", 0, 0, 2.5)
+cyl3 = Shynt.surfaces.InfiniteCylinder("cyl3", 0, 0, 4.0)
+cyl4 = Shynt.surfaces.InfiniteCylinder("cyl4", 0, 0, 6.0)
+
+print("----------------------------")
+
+region1 = -cyl1
+region2 = +cyl2 
+
+
+print("----------------------------")
+print(region1)
+print(region2)
+
+
+
+
+
+
+
+
+Shynt.surfaces.reset_surface_counter()
+
 
 
 
