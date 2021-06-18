@@ -1,6 +1,7 @@
 .vscode
-.__pycache__
-.api_py/__pycache__
-.api_py/Preprocess/__pycache__
+
+cases/temp
+
+**/__pycache__/
 
 
