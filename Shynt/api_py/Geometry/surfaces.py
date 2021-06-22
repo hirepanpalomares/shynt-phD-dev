@@ -92,7 +92,6 @@ class InfiniteCylinder(Surface):
         return self._orientation
     
 
-
 class SquareCylinder(Surface):
 
     def __init__(self, name, center_x, center_y, half_width, orientation="z"):
@@ -138,16 +137,6 @@ class HexagonalCylinderY(Surface):
 
     def __init__(self, name, half_width):
         super()._init__(name, type_surf="inf hex_y")
-
-
-class SurfaceSide():
-
-    def __init__(self, surface, side):
-        self.surface = surface
-        self.side = side
-
-        print(surface)
-        print(side)
 
 
 
