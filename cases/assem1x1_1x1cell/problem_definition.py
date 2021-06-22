@@ -96,52 +96,66 @@ class Input(object):
 
 
 
-fuel1 = Shynt.materials.Material("fuel1")
-fuel2 = Shynt.materials.Material("fuel2")
-fuel3 = Shynt.materials.Material("fuel3")
-fuel4 = Shynt.materials.Material("fuel4")
-fuel5 = Shynt.materials.Material("fuel5")
-fuel6 = Shynt.materials.Material("fuel6")
-coolant = Shynt.materials.Material("coolant", moder="lwtr 1001")
 
+
+# Defining isotopes ----------------------------------------------------
 u235 = Shynt.materials.Isotope("92235.09c")
 u238 = Shynt.materials.Isotope("92238.09c")
 oxygen09 = Shynt.materials.Isotope("8016.09c")
 
 oxygen06 = Shynt.materials.Isotope("8016.06c")
 hydrogen = Shynt.materials.Isotope("1001.06c")
+helium06 = Shynt.materials.Isotope("2004.06c")
 
+zyrconium = Shynt.materials.Isotope("40000.06")
+
+# Montecarlo params and libraries --------------------------------------
 mc_params = Shynt.montecarlo.MontecarloParams(2000, 500, 50)
 libraries = Shynt.libraries.SerpentLibraries(acelib="/home/segonpin/codesother/Serpent/xsdata/jeff311/sss_jeff311u.xsdata", therm="therm lwtr lwj3.11t")
 energy = Shynt.energy.Grid([0, 0.625E-06, 20]) # MeV
 
-
+# Defining materials -------------------------------------------------
+fuel1 = Shynt.materials.Material("fuel1")
 fuel1.addIsotope(u235, mass_fraction=0.015867)
 fuel1.addIsotope(u238, mass_fraction=0.86563)
 fuel1.addIsotope(oxygen09, mass_fraction=0.1185)
 
+fuel2 = Shynt.materials.Material("fuel2")
 fuel2.addIsotope(u235, mass_fraction=0.018512)
 fuel2.addIsotope(u238, mass_fraction=0.86299)
 fuel2.addIsotope(oxygen09, mass_fraction=0.1185)
 
+fuel3 = Shynt.materials.Material("fuel3")
 fuel3.addIsotope(u235, mass_fraction=0.022919)
 fuel3.addIsotope(u238, mass_fraction=0.85858)
 fuel3.addIsotope(oxygen09, mass_fraction=0.1185)
 
+fuel4 = Shynt.materials.Material("fuel4")
 fuel4.addIsotope(u235, mass_fraction=0.026445)
 fuel4.addIsotope(u238, mass_fraction=0.85505)
 fuel4.addIsotope(oxygen09, mass_fraction=0.1185)
 
+fuel5 = Shynt.materials.Material("fuel5")
 fuel5.addIsotope(u235, mass_fraction=0.029971)
 fuel5.addIsotope(u238, mass_fraction=0.85153)
 fuel5.addIsotope(oxygen09, mass_fraction=0.1185)
 
+fuel6 = Shynt.materials.Material("fuel6")
 fuel6.addIsotope(u235, mass_fraction=0.032615)
 fuel6.addIsotope(u238, mass_fraction=0.84888)
 fuel6.addIsotope(oxygen09, mass_fraction=0.1185)
 
+coolant = Shynt.materials.Material("coolant", moder="lwtr 1001")
 coolant.addIsotope(oxygen06, atom_fraction=0.33333)
 coolant.addIsotope(hydrogen, atom_fraction=0.66667)
+
+clading = Shynt.materials.Material("clading")
+clading.addIsotope(zyrconium, atom_fraction=1)
+
+mat_helium = Shynt.materials.Material("helium")
+mat_helium.addIsotope(helium06, atom_fraction=1.0)
+
+# -------------------------------------------------------------
 
 # pin_fuel1 = Shynt.universes.Pin("pin_fuel1", material=fuel1, radius=0.4335, surroundings=coolant)
 # pin_fuel2 = Shynt.universes.Pin("pin_fuel2", material=fuel2, radius=0.4335, surroundings=coolant)
@@ -167,22 +181,24 @@ coolant.addIsotope(hydrogen, atom_fraction=0.66667)
 # assembly = Shynt.universes.SquareLattice("assembly", 1.2950, lattice)
 
 
-
+# defining surfaces ---------------------------------------------------
 cyl1 = Shynt.surfaces.InfiniteCylinder("cyl1", 0, 0, 1.0)
 cyl2 = Shynt.surfaces.InfiniteCylinder("cyl2", 0, 0, 2.5)
 cyl3 = Shynt.surfaces.InfiniteCylinder("cyl3", 0, 0, 4.0)
 cyl4 = Shynt.surfaces.InfiniteCylinder("cyl4", 0, 0, 6.0)
+square = Shynt.surfaces.SquareCylinder("sqr1", 0, 0, 4)
 
-print("----------------------------")
+# creating surface sides (regions) ------------------------------------
+fuel_reg = -cyl2
+gap_reg = -cyl3 & +cyl2
+clad_reg = +cyl3 & -cyl4
+moder_reg = +cyl4 & -square 
 
-region1 = -cyl1
-region2 = +cyl2 
-
-
-print("----------------------------")
-print(region1)
-print(region2)
-
+# creating cells
+fuel_c01 = Shynt.cells.Cell("fuel1-pin1", material=fuel1, region=fuel_reg)
+gap_c02 = Shynt.cells.Cell("gap1-pin1", material=mat_helium, region=gap_reg)
+clad_c03 = Shynt.cells.Cell("cladding-pin1", material=clading, region=clad_reg)
+cool_c04 = Shynt.cells.Cell("cool-pin1", material=coolant, region=moder_reg)
 
 
 

@@ -1,3 +1,4 @@
+from Shynt.api_py.Geometry.regions import SurfaceSide
 import os
 
 class Surface:
@@ -13,43 +14,55 @@ class Surface:
             ----------------------------------------------------------------
         """
         
-        self._name = name
-        self._type = type_surface
-        self._id = None
+        self.__name = name
+        self.__type = type_surface
+        self.__id = None
         self.calculateId()
     
     def calculateId(self):
+        """
+            Class method to calculate the consecutive id of the surface
+
+            It generates a file with a single line where the number
+            of created surfaces is updated every time the user calls
+            this class or the child classes of Surfaces
+
+            Parameters
+            ----------------------------------------------------------------
+            No parameters
+            ----------------------------------------------------------------
+        """
         try:
             id = None
             with open("id-counter", "r") as fileCounter:
                 for line in fileCounter:
                     id = int(line.split()[0]) + 1
-                    self._id = id
+                    self.__id = id
                     break
             with open("id-counter", "w") as fileCounter:
                 fileCounter.write(str(id))
             
         except FileNotFoundError:
-            self._id = 0
+            self.__id = 0
             with open("id-counter", "w") as fileCounter:
                 fileCounter.write("0")
     
     
     @property
     def name(self):
-        return self._name
+        return self.__name
     
     @property
     def id(self):
-        return self._id
+        return self.__id
     
     @property
     def surface_type(self):
-        return self._type
+        return self.__type
 
-    @name.setter
+    @id.setter
     def id(self, id):
-        self._id = id
+        self.__id = id
             
     def __neg__(self):
         return SurfaceSide(self, "-")
@@ -62,48 +75,46 @@ class InfiniteCylinder(Surface):
 
     def __init__(self, name, center_x, center_y, radius, orientation="z"):
         super().__init__(name, type_surface="cylinder_%s"%orientation)
-        self._center_x = center_x
-        self._center_y = center_y
-        self._radius = radius
-        self._orientation = orientation
+        self.__center_x = center_x
+        self.__center_y = center_y
+        self.__radius = radius
+        self.__orientation = orientation
     
     def __str__(self):    
-        return """
-        Surface of infinite cylinder:
+        return """infinite cylinder:
             - name: %s
             - id: %s
             - radius: %s
-        """%(self._name, self._id, self._radius)
+        """%(self.name, self.id, self.__radius)
     
     @property
     def center_x(self):
-        return self._center_x
+        return self.__center_x
     
     @property
     def center_y(self):
-        return self._center_y
+        return self.__center_y
     
     @property
     def radius(self):
-        return self._radius
+        return self.__radius
     
     @property
     def orientation(self):
-        return self._orientation
+        return self.__orientation
     
 
 class SquareCylinder(Surface):
 
     def __init__(self, name, center_x, center_y, half_width, orientation="z"):
-        super()._init__(name, type_surf="square cylinder")
+        super().__init__(name, type_surface="square cylinder")
         self._center_x = center_x
         self._center_y = center_y
         self._half_width= half_width
         self._orientation = orientation
     
     def __str__(self):    
-        return """
-        Surface of infinite square cylinder:
+        return """Surface of infinite square cylinder:
             - name: %s
             - center (x,y): (%s,%s)
             - half width: %s
@@ -137,7 +148,6 @@ class HexagonalCylinderY(Surface):
 
     def __init__(self, name, half_width):
         super()._init__(name, type_surf="inf hex_y")
-
 
 
 
