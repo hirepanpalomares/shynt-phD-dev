@@ -157,48 +157,80 @@ mat_helium.addIsotope(helium06, atom_fraction=1.0)
 
 # -------------------------------------------------------------
 
-# pin_fuel1 = Shynt.universes.Pin("pin_fuel1", material=fuel1, radius=0.4335, surroundings=coolant)
-# pin_fuel2 = Shynt.universes.Pin("pin_fuel2", material=fuel2, radius=0.4335, surroundings=coolant)
-# pin_fuel3 = Shynt.universes.Pin("pin_fuel3", material=fuel3, radius=0.4335, surroundings=coolant)
-# pin_fuel4 = Shynt.universes.Pin("pin_fuel4", material=fuel4, radius=0.4335, surroundings=coolant)
-# pin_fuel5 = Shynt.universes.Pin("pin_fuel5", material=fuel5, radius=0.4335, surroundings=coolant)
-# pin_fuel6 = Shynt.universes.Pin("pin_fuel6", material=fuel6, radius=0.4335, surroundings=coolant)
+pin_fuel1 = Shynt.universes.Pin("pin_fuel1", material=fuel1, radius=0.4335, surroundings=coolant)
+pin_fuel2 = Shynt.universes.Pin("pin_fuel2", material=fuel2, radius=0.4335, surroundings=coolant)
+pin_fuel3 = Shynt.universes.Pin("pin_fuel3", material=fuel3, radius=0.4335, surroundings=coolant)
+pin_fuel4 = Shynt.universes.Pin("pin_fuel4", material=fuel4, radius=0.4335, surroundings=coolant)
+pin_fuel5 = Shynt.universes.Pin("pin_fuel5", material=fuel5, radius=0.4335, surroundings=coolant)
+pin_fuel6 = Shynt.universes.Pin("pin_fuel6", material=fuel6, radius=0.4335, surroundings=coolant)
 
 
-# lattice =  [
-#     [pin_fuel2, pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel3, pin_fuel2, pin_fuel2],
-#     [pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3, pin_fuel2],
-#     [pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3],
-#     [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
-#     [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
-#     [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
-#     [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
-#     [pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3],
-#     [pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3, pin_fuel2],
-#     [pin_fuel2, pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel3, pin_fuel2, pin_fuel2]
-# ]
+lattice =  [
+    [pin_fuel2, pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel3, pin_fuel2, pin_fuel2],
+    [pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3, pin_fuel2],
+    [pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3],
+    [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
+    [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
+    [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
+    [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
+    [pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3],
+    [pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3, pin_fuel2],
+    [pin_fuel2, pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel3, pin_fuel2, pin_fuel2]
+]
 
 # assembly = Shynt.universes.SquareLattice("assembly", 1.2950, lattice)
 
 
-# defining surfaces ---------------------------------------------------
-cyl1 = Shynt.surfaces.InfiniteCylinder("cyl1", 0, 0, 1.0)
-cyl2 = Shynt.surfaces.InfiniteCylinder("cyl2", 0, 0, 2.5)
-cyl3 = Shynt.surfaces.InfiniteCylinder("cyl3", 0, 0, 4.0)
-cyl4 = Shynt.surfaces.InfiniteCylinder("cyl4", 0, 0, 6.0)
-square = Shynt.surfaces.SquareCylinder("sqr1", 0, 0, 4)
 
-# creating surface sides (regions) ------------------------------------
-fuel_reg = -cyl2
-gap_reg = -cyl3 & +cyl2
-clad_reg = +cyl3 & -cyl4
-moder_reg = +cyl4 & -square 
 
-# creating cells
-fuel_c01 = Shynt.cells.Cell("fuel1-pin1", material=fuel1, region=fuel_reg)
-gap_c02 = Shynt.cells.Cell("gap1-pin1", material=mat_helium, region=gap_reg)
-clad_c03 = Shynt.cells.Cell("cladding-pin1", material=clading, region=clad_reg)
-cool_c04 = Shynt.cells.Cell("cool-pin1", material=coolant, region=moder_reg)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # defining surfaces ---------------------------------------------------
+# cyl1 = Shynt.surfaces.InfiniteCylinder("cyl1", 0, 0, 1.0)
+# cyl2 = Shynt.surfaces.InfiniteCylinder("cyl2", 0, 0, 2.5)
+# cyl3 = Shynt.surfaces.InfiniteCylinder("cyl3", 0, 0, 4.0)
+# cyl4 = Shynt.surfaces.InfiniteCylinder("cyl4", 0, 0, 6.0)
+# square = Shynt.surfaces.SquareCylinder("sqr1", 0, 0, 4)
+
+# # creating surface sides (regions) ------------------------------------
+# fuel_reg = -cyl2
+# gap_reg = -cyl3 & +cyl2
+# clad_reg = +cyl3 & -cyl4
+# moder_reg = +cyl4 & -square 
+
+# # creating cells
+# fuel_c01 = Shynt.cells.Cell("fuel1-pin1", material=fuel1, region=fuel_reg)
+# gap_c02 = Shynt.cells.Cell("gap1-pin1", material=mat_helium, region=gap_reg)
+# clad_c03 = Shynt.cells.Cell("cladding-pin1", material=clading, region=clad_reg)
+# cool_c04 = Shynt.cells.Cell("cool-pin1", material=coolant, region=moder_reg)
 
 
 

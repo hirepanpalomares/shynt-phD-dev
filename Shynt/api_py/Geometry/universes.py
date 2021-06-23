@@ -1,18 +1,31 @@
 from . import surfaces as surf
 from .cells import Cell
-
+from Shynt.api_py.materials import Material
+from collections import namedtuple
 
 """
 
-    # TODO:  Implement Pin and SquareLattice universes
+    # TODO:  Implement SquareLattice universes
 """
 class Universe(object):
     """
         Universe class
     """
-    def __init__(self, name) :
-        self.name = name
+    def __init__(self, name="", cells=[]) :
+        self.__name = name
+        self.__cells = cells
+    
+    def add_cells(self, *args):
+        for cell in args:
+            self.__cells.append(cell)
+    
+    @property
+    def name(self):
+        return self.__name
 
+    @name.setter
+    def name(self, name):
+        self.__name = name
 
 class Pin(Universe):
 
@@ -20,7 +33,7 @@ class Pin(Universe):
         Pin universe composed by concentric cylinders and
         its respective materials
     """
-    def __init__(self, name, material=None, radius=False, surroundings=False):
+    def __init__(self, name="", material=None, radius=None, surroundings=None):
         """
             Init method of the class
 
@@ -40,12 +53,30 @@ class Pin(Universe):
         super().__init__(name)
         self.__pin_levels = []
         self.__outer_most_surface = None
-        if material and radius:
-            self.add_level(material, radius=radius)
-        if surroundings:
-            self.add_level(material=surroundings)
+        self.__check_init_levels(material, radius, surroundings)
+        
     
-    def add_level(self, material, radius=False):
+    def __check_init_levels(self, mat, radius, surroundings):
+        if isinstance(mat, Material) and (isinstance(radius, float) or isinstance(radius, int)):
+            self.add_level(mat, radius)
+        else:
+            try:
+                assert(isinstance(mat, list) and isinstance(radius, list))
+                if len(mat) != len(radius):
+                    print(f"*** Error while difining either materials or radius for pin '{self.__name}'")
+                    print("material and radius arrays must have the same length")
+                    raise SystemExit
+                for m in range(len(mat)):
+                    self.add_level(mat[m], radius[m])
+                if surroundings:
+                    self.add_level(surroundings)
+            except AssertionError:
+                print(f"*** Error while difining either materials or radius for pin '{self.__name}'")
+                print("material and radius must be introduced in an array")
+                raise SystemExit
+        pass
+    
+    def add_level(self, material, radius=None):
         """
             Adds a concentric pin level
 
@@ -53,17 +84,17 @@ class Pin(Universe):
             ------------------------------------------------------------------------
             material    :   An object of the class Material
 
-            radius      :   A float, radius of the concentric cylinder 
+            radius      :   A float or integer, radius of the concentric cylinder 
                             from the center of the first level, if it is False, 
                             assumes that is the last material of the pin, i.e. 
                             surroundings of the pin
             ------------------------------------------------------------------------
         """
+        Level = namedtuple("Level", ["cell", "radius"])
         if radius:
             corresponding_cyl =  surf.InfiniteCylinder("cyl_%s"%self.name, 0.0, 0.0, radius)
-            surface_limits = []
-            if self.__pin_levels == []:
-                pass
+            surface_limits = None
+            if len(self.__pin_levels) == 0:
                 surface_limits = -corresponding_cyl
             else:
                 surface_limits = +self.__outer_most_surface & -corresponding_cyl
@@ -71,22 +102,24 @@ class Pin(Universe):
             cell = Cell(
                 "cell_%s_%s"%(self.name,len(self.__pin_levels)), 
                 material=material,
-                universe=self.name,
                 region=surface_limits
             )
-            self.__pin_levels.append(cell)
+            level = Level(cell, radius)
+            self.add_cells(cell)
+            self.__pin_levels.append(level)
         else:
+            cell_region = +self.__outer_most_surface if self.__outer_most_surface else None
             cell = Cell(
                 "cell_%s_%s"%(self.name,len(self.__pin_levels)), 
                 material=material,
-                universe=self.name,
-                region=[
-                    # +self.__outer_most_surface if self.__outer_most_surface else None
-                ]
+                region=cell_region
             )
-            self.__pin_levels.append(cell)
+            level = Level(cell, None)
+            self.add_cells(cell)
+            self.__pin_levels.append(level)
 
-    def getPinLevels(self):
+    @property
+    def pin_levels(self):
         """
             Getter method for attribute self.__pin_levels
         """
@@ -103,8 +136,8 @@ class Pin(Universe):
                 + radius:   %s
             """ %(
                     self.__pin_levels.index(level),
-                    level["material"].name, 
-                    level["radius"]
+                    level.cell.material.name, 
+                    level.radius
                 ) for level in self.__pin_levels
         ]
         return """

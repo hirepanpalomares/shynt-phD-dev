@@ -4,7 +4,7 @@ from Shynt.api_py.Geometry.regions import SurfaceSide
 
 class Cell:
 
-    def __init__(self, name, material=None, universe=None, region=None):
+    def __init__(self, name, material=None, region=None):
         """
             Init method of the class
 
@@ -20,8 +20,8 @@ class Cell:
         """
         self.__name = name
         self.__material = self.checkMaterial(material)
-        self.__universe = self.checkRegion(region)
-        self.__region = region
+        self.__region = self.checkRegion(region)
+        self.__universe = None
 
     
     def __str__(self):

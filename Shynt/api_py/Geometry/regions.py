@@ -1,8 +1,5 @@
 
 
-
-
-
 class Region:
     """ Class used to represent the euclidean space generated
     by the intersection of two SurfaceSides.
@@ -65,7 +62,6 @@ class Region:
     def operation(self):
         return self.__operation
     
-
 
 class SurfaceSide():
 
