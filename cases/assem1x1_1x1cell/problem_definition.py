@@ -178,12 +178,53 @@ lattice =  [
     [pin_fuel2, pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel3, pin_fuel2, pin_fuel2]
 ]
 
-# assembly = Shynt.universes.SquareLattice("assembly", 1.2950, lattice)
+assembly = Shynt.universes.SquareLattice("assembly", 1.2950, lattice)
+
+print("-"*20)
+outer_boundary = Shynt.surfaces.InfiniteSquareCylinderZ(0.0, 0.0, 12.2950)
+
+
+# Main problem cell
+model_cell = Shynt.cells.Cell("assembly_problem", region=-outer_boundary, fill_universe=assembly)
+# Make the Global and Local mesh
+global_mesh_points = [
+    [(), (), (), (), (), (), (), (), (), (), ()],
+    [(), (), (), (), (), (), (), (), (), (), ()],
+    [(), (), (), (), (), (), (), (), (), (), ()],
+    [(), (), (), (), (), (), (), (), (), (), ()],
+    [(), (), (), (), (), (), (), (), (), (), ()],
+    [(), (), (), (), (), (), (), (), (), (), ()],
+    [(), (), (), (), (), (), (), (), (), (), ()],
+    [(), (), (), (), (), (), (), (), (), (), ()],
+    [(), (), (), (), (), (), (), (), (), (), ()],
+    [(), (), (), (), (), (), (), (), (), (), ()]
+]
+meshed_model_cell = Shynt.mesh.make_mesh(model_cell, global_mesh="pin_cell", local_mesh="material")
+
+# Outside world
+outside_cell = Shynt.cells.Cell("outside_world", region=+outer_boundary)
+
+# Total Unverse (root)
+model_universe = Shynt.universes.Universe(name="root", cells=[meshed_model_cell, outside_cell])
+
+
+# Generate Serpent detector Files
+detector_inputs =  Shynt.detectors.generate_serpent_files(model_universe)
+
+# Generate probabilities by running serpent detector files
+
+probabilities = []
+# Solve Response Matrix
 
 
 
 
 
+
+
+
+
+# sudo systemctl enable --now code-server@$USER
 
 
 

@@ -5,8 +5,10 @@ from collections import namedtuple
 
 """
 
-    # TODO:  Implement SquareLattice universes
+    # TODO:
 """
+
+
 class Universe(object):
     """
         Universe class
@@ -14,6 +16,9 @@ class Universe(object):
     def __init__(self, name="", cells=[]) :
         self.__name = name
         self.__cells = cells
+        # Following lines changed to cells.py including the getter and setters methods
+        # self.__global_mesh = None
+        # self.__local_mesh = None
     
     def add_cells(self, *args):
         for cell in args:
@@ -26,6 +31,10 @@ class Universe(object):
     @name.setter
     def name(self, name):
         self.__name = name
+
+    @property
+    def cells(self):
+        return self.__cells
 
 class Pin(Universe):
 
@@ -41,17 +50,16 @@ class Pin(Universe):
             ----------------------------------------------------------------
             name        :   A string with the name of the pin universe
 
-            material    :   An object of the class Material corresponding 
-                            to the first cylinder level in case of provided
+            material    :   An object or a list of objects of class Meterial 
+                            corresponding to the cylinder levels of the pincell
+                            in case of provided
             
-            radius      :   An integer corresponding to the radius of the 
-                            first cylinder level in case of provided, if it 
-                            is False, assumes that is the last material of 
-                            the pin, i.e. surroundings of the pin
+            radius      :   An number or a lis of numbers corresponding to the 
+                            radius of the  levels of the fuel pin universe.
             ----------------------------------------------------------------
         """
         super().__init__(name)
-        self.__pin_levels = []
+        self.__pin_levels = [] # These are the cells of the universe Pin 
         self.__outer_most_surface = None
         self.__check_init_levels(material, radius, surroundings)
         
@@ -92,7 +100,7 @@ class Pin(Universe):
         """
         Level = namedtuple("Level", ["cell", "radius"])
         if radius:
-            corresponding_cyl =  surf.InfiniteCylinder("cyl_%s"%self.name, 0.0, 0.0, radius)
+            corresponding_cyl =  surf.InfiniteCylinderX(0.0, 0.0, radius)
             surface_limits = None
             if len(self.__pin_levels) == 0:
                 surface_limits = -corresponding_cyl
@@ -101,7 +109,7 @@ class Pin(Universe):
             self.__outer_most_surface = corresponding_cyl
             cell = Cell(
                 "cell_%s_%s"%(self.name,len(self.__pin_levels)), 
-                material=material,
+                fill_material=material,
                 region=surface_limits
             )
             level = Level(cell, radius)
@@ -111,7 +119,7 @@ class Pin(Universe):
             cell_region = +self.__outer_most_surface if self.__outer_most_surface else None
             cell = Cell(
                 "cell_%s_%s"%(self.name,len(self.__pin_levels)), 
-                material=material,
+                fill_material=material,
                 region=cell_region
             )
             level = Level(cell, None)
@@ -176,9 +184,21 @@ class SquareLattice(Universe):
         self.__pin_types = self.__calculate_different_pins()
         self.__num_pin_types = len(self.__pin_types)
         self.__create_grid_surfaces()
-        
+        self.__create_lattice_surface()
 
     def __create_grid_surfaces(self):
+        """
+            Method to create the surfaces enclosing one
+            pin cell for every pin in the lattice
+        """
+        
+        pass
+
+    def __create_lattice_surface(self):
+        """
+            Method to create the surfaces enclosing the lattice
+            
+        """
         pass
 
     def __check_rows_cols(self):
@@ -198,12 +218,15 @@ class SquareLattice(Universe):
                     types.append(pin.name)
         return types
 
-    def setArray(self, array):
+    @property
+    def array(self):
+        return self.__array
+
+    @array.setter
+    def array(self, array):
         self.__array = array
     
-    def getArray(self):
-        return self.__array
-    
-    def getPitch(self):
+    @property
+    def pitch(self):
         return self.__pitch
 

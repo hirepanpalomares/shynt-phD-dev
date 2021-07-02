@@ -3,7 +3,7 @@ import os
 
 class Surface:
 
-    def __init__(self, name, type_surface):
+    def __init__(self, type_surface,  name=""):
         """
             Init method of the class
 
@@ -71,15 +71,87 @@ class Surface:
         return SurfaceSide(self, "+")
 
 
-class InfiniteCylinder(Surface):
+class PlaneX(Surface):
+    """
+    Class for an inifinite Plane perpendicular to x-axis
 
-    def __init__(self, name, center_x, center_y, radius, orientation="z"):
-        super().__init__(name, type_surface="cylinder_%s"%orientation)
+    Surface equation: S(x) = x - x0
+    """
+
+    def __init__(self, x0, name=""):
+        super().__init__(type_surface="plane_x", name=name)
+        self.__x0 = x0
+        self.__function = lambda x: x - self.__x0
+
+    def eval_point(self, x):
+        return self.__function(x)
+
+    @property
+    def x0(self):
+        return self.__x0
+
+
+class PlaneY(Surface):
+    """
+    Class for an inifinite Plane perpendicular to y-axis
+
+    Surface equation: S(y) = y - y0
+    """
+
+    def __init__(self, y0, name=""):
+        super().__init__(type_surface="plane_y", name=name)
+        self.__y0 = y0
+        self.__function = lambda y: y - self.__y0
+
+    def eval_point(self, y):
+        return self.__function(y)
+
+    @property
+    def y0(self):
+        return self.__y0
+    
+
+class PlaneZ(Surface):
+    """
+    Class for an inifinite Plane perpendicular to z-axis
+
+    Surface equation: S(z) = z - z0
+    """
+
+    def __init__(self, z0, name=""):
+        super().__init__(type_surface="plane_z", name=name)
+        self.__z0 = z0
+        self.__function = lambda z: z - self.__z0
+
+    def eval_point(self, z):
+        return self.__function(z)
+
+    @property
+    def z0(self):
+        return self.__z0
+
+
+class InfiniteCylinderZ(Surface):
+
+    """
+    Class for an Infinite Cylinder parallel to Z-axis
+
+    Surface equation: S(x, y) =  (y - y0)**2 + (x - x0)**2 - r**2
+    """
+
+    def __init__(self, center_x, center_y, radius, name=""):
+        super().__init__(type_surface="cylinder_z", name=name)
         self.__center_x = center_x
         self.__center_y = center_y
         self.__radius = radius
-        self.__orientation = orientation
-    
+        self.__function = lambda x, y: (x - self.__center_x)**2 + (y - self.__center_y)**2 - self.__radius**2
+
+    def eval_point(self, x, y):
+        return self.__function(x, y)
+
+    def is_point(self, x, y):
+        return self.eval_point(x, y) < 0
+
     def __str__(self):    
         return """infinite cylinder:
             - name: %s
@@ -99,54 +171,147 @@ class InfiniteCylinder(Surface):
     def radius(self):
         return self.__radius
     
+
+class InfiniteCylinderY(Surface):
+
+    """
+    Class for an Infinite Cylinder parallel to Y-axis
+
+    Surface equation: S(x, z) =  (x - x0)**2 + (z - z0)**2 - r**2
+    
+    """
+
+    def __init__(self, center_x, center_z, radius, name=""):
+        super().__init__(type_surface="cylinder_y", name=name)
+        self.__center_x = center_x
+        self.__center_z = center_z
+        self.__radius = radius
+        self.__function = lambda x, z: (x - self.__center_x)**2 + (z - self.__center_z)**2 - self.__radius**2
+        
+    def eval_point(self, x, z):
+        return self.__function(x, z)
+
+    def is_point(self, x, z):
+        return self.eval_point(x, z) < 0
+
+    def __str__(self):    
+        return """infinite cylinder:
+            - name: %s
+            - id: %s
+            - radius: %s
+        """%(self.name, self.id, self.__radius)
+    
     @property
-    def orientation(self):
-        return self.__orientation
+    def center_x(self):
+        return self.__center_x
+    
+    @property
+    def center_z(self):
+        return self.__center_z
+    
+    @property
+    def radius(self):
+        return self.__radius
     
 
-class SquareCylinder(Surface):
+class InfiniteCylinderX(Surface):
 
-    def __init__(self, name, center_x, center_y, half_width, orientation="z"):
-        super().__init__(name, type_surface="square cylinder")
-        self._center_x = center_x
-        self._center_y = center_y
-        self._half_width= half_width
-        self._orientation = orientation
+    """
+    Class for an Infinite Cylinder parallel to Z-axis
+
+    Surface equation: S(y, z) =  (y - y0)**2 + (z - z0)**2 - r**2
+    """
+
+    def __init__(self, center_y, center_z, radius, name=""):
+        super().__init__(type_surface="cylinder_x", name=name)
+        self.__center_y = center_y
+        self.__center_z = center_z
+        self.__radius = radius
+        self.__function = lambda z, y: (z - self.__center_z)**2 + (y - self.__center_y)**2 - self.__radius**2
+
+    def eval_point(self, z, y):
+        return self.__function(z, y)
+
+    def is_point(self, z, y):
+        return self.eval_point(z, y) < 0
+
+    def __str__(self):    
+        return """infinite cylinder:
+            - name: %s
+            - id: %s
+            - radius: %s
+        """%(self.name, self.id, self.__radius)
     
+    @property
+    def center_z(self):
+        return self.__center_z
+    
+    @property
+    def center_y(self):
+        return self.__center_y
+    
+    @property
+    def radius(self):
+        return self.__radius
+       
+
+class InfiniteSquareCylinderZ(Surface):
+
+    """
+    Class for an infinite Squere Cylinder parallel to z-axis
+
+    It is composed by 2 x-planes and 2 y-planes
+
+    """
+    def __init__(self, center_x, center_y, half_width, name=""):
+        super().__init__(type_surface="infinite square", name=name)
+        self.__center_x = center_x
+        self.__center_y = center_y
+        self.__half_width = half_width
+        self.__surf_left, self.__surf_right, self.__surf_bottom, self.__surf_top, = self.__generate_surfaces()
+        
+    def __generate_surfaces(self):
+        surfaces = [
+            PlaneX(self.__center_x - self.__half_width),
+            PlaneX(self.__center_x + self.__half_width),
+            PlaneY(self.__center_y - self.__half_width),
+            PlaneY(self.__center_y + self.__half_width)
+        ]
+        return surfaces
+
+    def is_point(self, x, y):
+        return x > self.__surf_left.x0 and x < self.__surf_right.x0 and y > self.__surf_bottom.y0 and y < self.__surf_top.x0
+
     def __str__(self):    
         return """Surface of infinite square cylinder:
             - name: %s
             - center (x,y): (%s,%s)
             - half width: %s
             - width: %s
-        """%(self._name, self._center_x, self._center_y, self._half_width, 2*self._half_width)
+        """%(self.name, self.__center_x, self.__center_y, self.__half_width, 2*self.__half_width)
 
     @property
     def center_x(self):
-        return self._center_x
+        return self.__center_x
     
     @property
     def center_y(self):
-        return self._center_y
+        return self.__center_y
     
     @property
     def half_width(self):
-        return self._half_width
+        return self.__half_width
     
-    @property
-    def orientation(self):
-        return self._orientation
-
 
 class HexagonalCylinderX(Surface):
 
-    def __init__(self, name, half_width):
+    def __init__(self, half_width, name=""):
         super()._init__(name, type_surf="inf hex_x")
 
 
 class HexagonalCylinderY(Surface):
 
-    def __init__(self, name, half_width):
+    def __init__(self, half_width, name=""):
         super()._init__(name, type_surf="inf hex_y")
 
 
