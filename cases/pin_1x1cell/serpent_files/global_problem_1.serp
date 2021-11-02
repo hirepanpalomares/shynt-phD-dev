@@ -1,0 +1,87 @@
+set title "pin_problem"
+
+mat fuel1 -10.424 
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c -0.1185
+
+
+mat coolant -0.44376 moder lwtr 1001
+8016.06c 0.33333
+1001.06c 0.66667
+
+
+
+
+surf 2 sqc 0.0 0.0 0.6475
+surf 1 cyl 0.0 0.0 0.4335
+
+
+set bc 2
+
+
+cell 3 0 fill pin_fuel1 -2
+cell 1 pin_fuel1 fuel1  -1
+cell 2 pin_fuel1 coolant  1 -2
+cell 5 0 outside 2
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+therm lwtr lwj3.11t
+
+set pop 2000 500 50
+
+set seed 1474468046
+
+
+ene 2groups_grid 1 0 6.25e-07 20 
+
+
+% ----- Surface for detectors
+surf 6 py 0.6475
+surf 4 px 0.6475
+surf 5 py -0.6475
+surf 3 px -0.6475
+
+
+% ----- Detectors ------
+det total_rate_1  de 2groups_grid dr -1 fuel1 dc 1 dfl 1 1 
+det cell_1_to_cell_2  de 2groups_grid dr -1 coolant dc 1 dfl 1 2  dfl 1 0 
+det cell_1_to_surf_6 ds 6 1 de 2groups_grid  dc 1 dfl 1 2  dfl 1 0 
+det cell_1_to_surf_4 ds 4 1 de 2groups_grid  dc 1 dfl 1 2  dfl 1 0 
+det cell_1_to_surf_5 ds 5 -1 de 2groups_grid  dc 1 dfl 1 2  dfl 1 0 
+det cell_1_to_surf_3 ds 3 -1 de 2groups_grid   dfl 1 2  dfl 1 0 
+det total_rate_2  de 2groups_grid dr -1 coolant dc 2 dfl 2 1 
+det cell_2_to_cell_1  de 2groups_grid dr -1 fuel1 dc 1 dfl 2 2  dfl 2 0 
+det cell_2_to_surf_6 ds 6 1 de 2groups_grid  dc 2 dfl 2 2  dfl 2 0 
+det cell_2_to_surf_4 ds 4 1 de 2groups_grid  dc 2 dfl 2 2  dfl 2 0 
+det cell_2_to_surf_5 ds 5 -1 de 2groups_grid  dc 2 dfl 2 2  dfl 2 0 
+det cell_2_to_surf_3 ds 3 -1 de 2groups_grid   dfl 2 2  dfl 2 0 
+det surf_count_6 ds 6 -1 de 2groups_grid   dfl 3 1 
+det surf_6_to_cell_1  de 2groups_grid dr -1 fuel1 dc 1 dfl 3 2  dfl 3 0 
+det surf_6_to_cell_2  de 2groups_grid dr -1 coolant dc 2 dfl 3 2  dfl 3 0 
+det surf_6_to_surf_6 ds 6 1 de 2groups_grid   dfl 3 2  dfl 3 0 
+det surf_6_to_surf_4 ds 4 1 de 2groups_grid   dfl 3 2  dfl 3 0 
+det surf_6_to_surf_5 ds 5 1 de 2groups_grid   dfl 3 2  dfl 3 0 
+det surf_6_to_surf_3 ds 3 1 de 2groups_grid   dfl 3 2  dfl 3 0 
+det surf_count_4 ds 4 -1 de 2groups_grid   dfl 4 1 
+det surf_4_to_cell_1  de 2groups_grid dr -1 fuel1 dc 1 dfl 4 2  dfl 4 0 
+det surf_4_to_cell_2  de 2groups_grid dr -1 coolant dc 2 dfl 4 2  dfl 4 0 
+det surf_4_to_surf_6 ds 6 1 de 2groups_grid   dfl 4 2  dfl 4 0 
+det surf_4_to_surf_4 ds 4 1 de 2groups_grid   dfl 4 2  dfl 4 0 
+det surf_4_to_surf_5 ds 5 1 de 2groups_grid   dfl 4 2  dfl 4 0 
+det surf_4_to_surf_3 ds 3 1 de 2groups_grid   dfl 4 2  dfl 4 0 
+det surf_count_5 ds 5 1 de 2groups_grid   dfl 5 1 
+det surf_5_to_cell_1  de 2groups_grid dr -1 fuel1 dc 1 dfl 5 2  dfl 5 0 
+det surf_5_to_cell_2  de 2groups_grid dr -1 coolant dc 2 dfl 5 2  dfl 5 0 
+det surf_5_to_surf_6 ds 6 -1 de 2groups_grid   dfl 5 2  dfl 5 0 
+det surf_5_to_surf_4 ds 4 -1 de 2groups_grid   dfl 5 2  dfl 5 0 
+det surf_5_to_surf_5 ds 5 -1 de 2groups_grid   dfl 5 2  dfl 5 0 
+det surf_5_to_surf_3 ds 3 -1 de 2groups_grid   dfl 5 2  dfl 5 0 
+det surf_count_3 ds 3 1 de 2groups_grid   dfl 6 1 
+det surf_3_to_cell_1  de 2groups_grid dr -1 fuel1 dc 1 dfl 6 2  dfl 6 0 
+det surf_3_to_cell_2  de 2groups_grid dr -1 coolant dc 2 dfl 6 2  dfl 6 0 
+det surf_3_to_surf_6 ds 6 -1 de 2groups_grid   dfl 6 2  dfl 6 0 
+det surf_3_to_surf_4 ds 4 -1 de 2groups_grid   dfl 6 2  dfl 6 0 
+det surf_3_to_surf_5 ds 5 -1 de 2groups_grid   dfl 6 2  dfl 6 0 
+det surf_3_to_surf_3 ds 3 -1 de 2groups_grid   dfl 6 2  dfl 6 0 

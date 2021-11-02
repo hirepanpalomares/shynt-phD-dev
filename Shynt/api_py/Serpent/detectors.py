@@ -1,18 +1,163 @@
+class Detector():
 
-
-
-from Shynt.api_py.Serpent.input_generator import input_generator
-
-
-def generate_serpent_files(model):
     """
-    Parameters
-    -------------
-    model   :   Model already meshed of type <class Universe> with the attributes
-                <class Universe>.global_mesh and <class Universe>.local_mesh already 
-                defined
-    """
-    model_cell, outside_cell = model.cells # Here it is assumed that model_cell is already meshed
-    files = input_generator(model_cell)
-    return files
+        Class for a single detector
 
+        Parameters:
+        -------------------------------------------------------------------
+        - name  :   Name for the detector in serpent card
+        - type  :   Type of detector regarding the probability that 
+                    we  want to calculate.
+        -------------------------------------------------------------------
+    """
+    def __init__(self, name, type_):
+        self.name = name
+        self.type = type_
+        self.surface = None
+        self.energy_bins = None
+        self.response = None
+        self.flag = None
+        self.cell = None
+
+
+    @property
+    def surface_det(self):class Detector():
+
+    """
+        Class for a single detector
+
+        Parameters:
+        -------------------------------------------------------------------
+        - name  :   Name for the detector in serpent card
+        - type  :   Type of detector regarding the probability that 
+                    we  want to calculate.
+        -------------------------------------------------------------------
+    """
+    def __init__(self, name, type_):
+        self.name = name
+        self.type = type_
+        self.surface = None
+        self.energy_bins = None
+        self.response = None
+        self.flag = None
+        self.cell = None
+
+
+    @property
+    def surface_det(self):
+        pass
+    
+    @property
+    def energy_bins(self):
+        pass
+
+    @property
+    def response(self):
+        pass
+
+    @property
+    def flag(self):
+        pass
+    
+    @property
+    def cell(self):
+        pass
+
+    @property.setter
+    def surface_det(self):
+        pass
+    
+    @property.setter
+    def energy_bins(self):
+        pass
+
+    @property.setter
+    def response(self):
+        pass
+
+    @property.setter
+    def flag(self):
+        pass
+    
+    @property.setter
+    def cell(self):
+        pass
+
+
+class DetectorTotalRate():
+
+    def __init__(self) -> None:
+        pass
+
+class DetectorTotalRate():
+
+    def __init__(self) -> None:
+        pass
+
+class DetectorTotalRate():
+
+    def __init__(self) -> None:
+        pass
+
+class DetectorTotalRate():
+
+    def __init__(self) -> None:
+        pass
+        pass
+    
+    @property
+    def energy_bins(self):
+        pass
+
+    @property
+    def response(self):
+        pass
+
+    @property
+    def flag(self):
+        pass
+    
+    @property
+    def cell(self):
+        pass
+
+    @property.setter
+    def surface_det(self):
+        pass
+    
+    @property.setter
+    def energy_bins(self):
+        pass
+
+    @property.setter
+    def response(self):
+        pass
+
+    @property.setter
+    def flag(self):
+        pass
+    
+    @property.setter
+    def cell(self):
+        pass
+
+
+class DetectorTotalRate():
+
+    def __init__(self) -> None:
+        pass
+
+class DetectorTotalRate():
+
+    def __init__(self) -> None:
+        pass
+
+class DetectorTotalRate():
+
+    def __init__(self) -> None:
+        pass
+
+class DetectorTotalRate():
+
+    def __init__(self) -> None:
+        pass

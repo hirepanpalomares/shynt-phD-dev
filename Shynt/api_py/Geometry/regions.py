@@ -15,16 +15,10 @@ class Region:
     operation   :   Atribute of the root of the binary tree, is the
                     boolean operation involving the 2 childs
     -----------------
-    # TODO: -------------------------------------------------------
-    # TODO:     Implement the case when the two childs are already
-    # TODO:     region instances
-    # TODO: -------------------------------------------------------
-    # TODO:     Implement A or B ----> Boolean union  __or__
-    # TODO: -------------------------------------------------------
-    # TODO:     Implement A xor B ----> Boolean opposite to or __xor__
-    # TODO:     (Might not be used in reactor physics)
-    # TODO: -------------------------------------------------------
-    # TODO:     Implement A - B ----> Boolean negation
+    #TODO:     Implement the case when the two childs are already region instances
+    #TODO:     Implement A or B ----> Boolean union  __or__
+    #TODO:     Implement A xor B ----> Boolean opposite to or __xor__ (Might not be used in reactor physics)
+    #TODO:     Implement A - B ----> Boolean negation
 
 
     """
@@ -32,11 +26,17 @@ class Region:
         self.__child1 = child1
         self.__child2 = child2
         self.__operation = operation
+        """
+            Checar los child?? yes/no
+        """
     
 
 
     def __str__(self):
-        return "Region class"
+        print_statement = "Region between two surfaces or two regions \n"
+        print_statement += f"{self.__child1}\n"
+        print_statement += f"{self.__child2}\n"
+        return print_statement
 
     def __and__(self, other):
         """Class method to add to create the intersection of two Regions
@@ -46,10 +46,56 @@ class Region:
         self    :   Region type
         other   :   Region type
         ----------
-        # TODO: Implement when the two instances are already regions
+        
         """
+        return Region(self, other, operation="and")
+
+    def __neg__(self):
         pass
     
+    def __pos__(self):
+        pass
+
+    def invert(self):
+        """
+            Method to invert the region
+        """
+        surface_sides = self.destructure_region()
+        new_surface_sides = []
+        for ss in surface_sides:
+            side = ss.side
+            new_side = "-"
+            if side == "-":
+                new_side = "+"
+            new_surface_sides.append(SurfaceSide(ss.surface, new_side))
+        
+        inverted = new_surface_sides[0]
+        for ss in range(1, len(new_surface_sides)):
+            inverted &= new_surface_sides[ss]
+        
+        return inverted
+        
+
+    def destructure_region(self, surfaces_sides=[]):
+        """
+            Recursive function to destructurate a region in its surfaces sides
+
+            returns:
+                Array(<SurfaceSide class>)
+            #TODO Complete this function such that it is a method of the class
+        """
+        if isinstance(self, SurfaceSide):
+            # Base case
+            if self not in surfaces_sides:
+                surfaces_sides.append(self)
+            return surfaces_sides
+        elif isinstance(self, Region):
+            surfaces_sides = destructure_region(self.child1, surfaces_sides)
+            surfaces_sides =  destructure_region(self.child2, surfaces_sides)
+        
+            return surfaces_sides
+
+
     @property
     def child1(self):
         return self.__child1
@@ -63,7 +109,7 @@ class Region:
         return self.__operation
     
 
-class SurfaceSide():
+class SurfaceSide(Region):
 
     def __init__(self, surface, side):
         self.surface = surface
@@ -77,7 +123,7 @@ class SurfaceSide():
         """Class overloading operator __and__
 
         This overwrites the parent class method so it performs the
-        sum of two SurfaceSide classes.
+        boolean addition between two SurfaceSide classes.
 
         It returns an instance of the Region Class by merging the euclidean
         space between the two instances 'self' and 'other'
@@ -103,3 +149,20 @@ class SurfaceSide():
         return return_string
 
 
+def destructure_region(region, surfaces_sides=[]):
+    """
+    Recursive function to destructurate a region in its surfaces sides
+
+    returns:
+        Array(<SurfaceSide class>)
+    """
+    if isinstance(region, SurfaceSide):
+        # Base case
+        if region not in surfaces_sides:
+            surfaces_sides.append(region)
+        return surfaces_sides
+    elif isinstance(region, Region):
+        surfaces_sides = destructure_region(region.child1, surfaces_sides)
+        surfaces_sides =  destructure_region(region.child2, surfaces_sides)
+    
+        return surfaces_sides

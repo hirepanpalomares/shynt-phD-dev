@@ -1,10 +1,14 @@
 class MontecarloParams:
 
-    def __init__(self, histories, active, unactive):
+
+    def __init__(self, histories, active, unactive, seed=""):
         self.__histories = histories
         self.__active_cycles = active
         self.__unactive_cycles = unactive
-    
+        self.__seed = seed
+        self.serpent_syntax = f"set pop {histories} {active} {unactive}\n\nset seed {self.__seed}\n"
+        
+
     def setHistories(self, value):
         self.__histories = value
     
@@ -23,3 +27,8 @@ class MontecarloParams:
     def getUnactiveCycles(self):
         return self.__unactive_cycles
     
+
+class BoundaryConditions:
+
+    def __init__(self):
+        pass

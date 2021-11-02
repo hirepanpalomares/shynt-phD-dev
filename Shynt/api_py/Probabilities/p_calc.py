@@ -1,5 +1,4 @@
 import numpy as np
-from . import dector_reader
 
 
 """
@@ -135,16 +134,159 @@ from . import dector_reader
     ])
 """
 
-def calculate(detector_fuel, detector_moder, detector_surf, absolute_path, path, detector_names, pin_number):
-    detectors_data = {}
-    for det in detector_fuel:
-        detectors_data[det] = dector_reader.read_file(detector_names ,det, absolute_path)
-    for det in detector_moder:
-        detectors_data[det] = dector_reader.read_file(detector_names ,det, absolute_path)
-    for det in detector_surf:
-        detectors_data[det] = dector_reader.read_file(detector_names ,det, absolute_path)
-            
+        
+def get_total_rate_counts(coarse_node_scores, detector_relation):
+    total_rate = {} # Total interactions in a region
+    for region, det in detector_relation["total_rate"].items():
+        det_name = det.name
+        scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
+        total_rate[region] = scores
+    
+    return total_rate
 
+def get_surf_counts(coarse_node_scores, detector_relation):
+    surf_count = {} # Neutrons that enter the cell through a surface
+    for surf, det in detector_relation["surf_count"].items():
+        det_name = det.name
+        scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
+        surf_count[surf] = scores
+    
+    return surf_count
+
+def get_surf_to_surf_counts(coarse_node_scores, detector_relation):
+    surf_to_surf_count = {} # Neutrons that enter a surface and exit through another surface
+    for surf, det_group in detector_relation["surf_to_surf"].items():
+        surf_to_surf_count[surf] = {} 
+        
+        for surf_out, det in det_group.items():
+            det_name = det.name
+
+            scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
+            surf_to_surf_count[surf][surf_out] = scores 
+    
+    return surf_to_surf_count
+
+def get_surf_to_region_counds(coarse_node_scores, detector_relation):
+    surf_to_region_count = {}
+    for surf, det_group in detector_relation["surf_to_region"].items():
+        surf_to_region_count[surf] = {} 
+        
+        for reg, det in det_group.items():
+            det_name = det.name
+
+            scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
+            surf_to_region_count[surf][reg] = scores 
+    
+    return surf_to_region_count
+
+def get_region_to_region_counts(coarse_node_scores, detector_relation):
+    region_to_region_count = {}
+    for region, det_group in detector_relation["region_to_region"].items():
+        region_to_region_count[region] = {} 
+        
+        for region_p, det in det_group.items():
+            det_name = det.name
+
+            scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
+            region_to_region_count[region][region_p] = scores 
+    
+    return region_to_region_count
+
+def get_region_to_surf_counts(coarse_node_scores, detector_relation):
+    region_to_surf_count = {}
+    for region, det_group in detector_relation["region_to_surf"].items():
+        region_to_surf_count[region] = {} 
+        
+        for surf, det in det_group.items():
+            det_name = det.name
+
+            scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
+            region_to_surf_count[region][surf] = scores 
+    return region_to_surf_count
+    
+
+
+
+def calculate_probabilities(coarse_node_scores, detector_relation):
+    """
+    # TODO: The number of detectors can be reduced (see bellow)
+
+    The probability for a neutron to enter the cell through a given surface
+    and go out through the same surface without interacting is CERO
+
+    ------------------------------------------------------------------------
+    
+    # TODO cell to surf counts are cero why? 
+    
+    detector_relation.keys() - Relation of detectors by type of counters
+    coarse_node_scores.keys() - scores of the detectors by name
+    """
     
     
+    # return 1
+    total_rate = get_total_rate_counts(coarse_node_scores, detector_relation)
+    surf_total = get_surf_counts(coarse_node_scores, detector_relation)
+    surf_to_surf = get_surf_to_surf_counts(coarse_node_scores, detector_relation)
+    surf_to_reg = get_surf_to_region_counds(coarse_node_scores, detector_relation)
+    reg_to_reg = get_region_to_region_counts(coarse_node_scores, detector_relation)
+    reg_to_surf = get_region_to_surf_counts(coarse_node_scores, detector_relation)
+
+    print(total_rate)
+    # print(surf_total)
+    # print(surf_to_surf)
+    print(surf_to_reg)
+    print(reg_to_reg)
+    # print(reg_to_surf)
+
+    # total_neutrons = {}
+
+    """
+        a:  surface
+        i:  region
+        j:  region
+        b:  surface
+
+    """
+    P_a_j = {}
+    P_i_j = {}
+    P_b_a = {}
+    P_i_a = {}
+    regions = total_rate.keys()
+    surfaces = surf_total.keys()
+    for reg_i in regions:
+        energy_groups = len(total_rate[reg_i])
+        neutrons_in_region = [0] * energy_groups
+
+        # Adding region to region neutrons
+        for reg_j in regions:
+            if reg_j != reg_i: # Check condition
+                for g in range(energy_groups):
+                    neutrons_in_region[g] += reg_to_reg[reg_i][reg_j][g]
+        print(neutrons_in_region)
+
+        # Adding region to surface neutrons
+        for surf_a in surfaces:
+            for g in range(energy_groups):
+                neutrons_in_region[g] += reg_to_surf[reg_i][surf_a][g]
+        
+        print(neutrons_in_region)
+
+        # Adding region_i to region_i 
+        total_rate_neutrons = total_rate[reg_i]
+        print(total_rate_neutrons)
+        for reg_j in regions:
+            if reg_j != reg_i: 
+               for g in range(energy_groups):
+                   total_rate_neutrons[g] -= reg_to_reg[reg_j][reg_i][g]
+        print(total_rate_neutrons)
+
+        for surf_a in surfaces:
+            for g in range(energy_groups):
+                total_rate_neutrons[g] -= surf_to_reg[surf_a][reg_i][g]
+        print(total_rate_neutrons)
+        break
+    
+       
+    # print(coarse_node_scores)
+        
 

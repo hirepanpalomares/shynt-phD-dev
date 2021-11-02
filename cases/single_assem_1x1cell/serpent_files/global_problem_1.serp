@@ -1,0 +1,40 @@
+set title ""
+
+pin pin_fuel1
+fuel1 4.335000E-01 
+clading 4.400000E-01 
+coolant
+
+surf 51 sqc 0.6475 1.9425 0.6475
+
+cell  0 fill pin_fuel1  -51
+
+
+cell _outside 0 outside  -51
+
+
+mat fuel1 -10.424 
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c -0.1185
+
+
+mat clading -7.424 
+40000.06 1
+
+
+mat coolant -0.6 moder lwtr 1001
+8016.06c 0.33333
+1001.06c 0.66667
+
+
+set acelib /home/segonpin/codesother/Serpent/xsdata/jeff311/sss_jeff311u.xsdata 
+therm lwtr lwj3.11t
+
+set pop 2000 500 50
+
+
+ene  1 0 6.25e-07 20 
+
+
+%Surface for detectors
