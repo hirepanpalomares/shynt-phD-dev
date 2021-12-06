@@ -19,8 +19,8 @@ WORKING_DIRECTORY         (idx, [1: 89])  = '/home/hirepan/Documents/chalmers/Pr
 HOSTNAME                  (idx, [1:  4])  = 'thor' ;
 CPU_TYPE                  (idx, [1: 40])  = 'Intel(R) Core(TM) i9-10900 CPU @ 2.80GHz' ;
 CPU_MHZ                   (idx, 1)        = 236.0 ;
-START_DATE                (idx, [1: 24])  = 'Wed Oct 20 11:02:46 2021' ;
-COMPLETE_DATE             (idx, [1: 24])  = 'Wed Oct 20 11:03:18 2021' ;
+START_DATE                (idx, [1: 24])  = 'Wed Nov  3 12:28:23 2021' ;
+COMPLETE_DATE             (idx, [1: 24])  = 'Wed Nov  3 12:28:49 2021' ;
 
 % Run parameters:
 
@@ -52,10 +52,10 @@ MG_MAJORANT_MODE          (idx, 1)        = 0 ;
 % Parallelization:
 
 MPI_TASKS                 (idx, 1)        = 1 ;
-OMP_THREADS               (idx, 1)        = 10 ;
+OMP_THREADS               (idx, 1)        = 18 ;
 MPI_REPRODUCIBILITY       (idx, 1)        = 0 ;
 OMP_REPRODUCIBILITY       (idx, 1)        = 1 ;
-OMP_HISTORY_PROFILE       (idx, [1:  10]) = [  1.00347E+00  1.00308E+00  1.00182E+00  9.91209E-01  1.00321E+00  9.90337E-01  1.00712E+00  1.00557E+00  9.97530E-01  9.96658E-01  ];
+OMP_HISTORY_PROFILE       (idx, [1:  18]) = [  1.04561E+00  9.57108E-01  9.70187E-01  9.74079E-01  9.69305E-01  9.73670E-01  9.62716E-01  9.72803E-01  1.17687E+00  1.12581E+00  1.08728E+00  9.53119E-01  9.70743E-01  9.71201E-01  9.70596E-01  9.74667E-01  9.69566E-01  9.74667E-01  ];
 SHARE_BUF_ARRAY           (idx, 1)        = 0 ;
 SHARE_RES2_ARRAY          (idx, 1)        = 1 ;
 OMP_SHARED_QUEUE_LIM      (idx, 1)        = 0 ;
@@ -70,7 +70,7 @@ BRA_DATA_FILE_PATH        (idx, [1:  3])  = 'N/A' ;
 
 % Collision and reaction sampling (neutrons/photons):
 
-MIN_MACROXS               (idx, [1:   4]) = [  5.00000E-02 9.3E-10  0.00000E+00 0.0E+00 ];
+MIN_MACROXS               (idx, [1:   4]) = [  5.00000E-02 4.1E-09  0.00000E+00 0.0E+00 ];
 DT_THRESH                 (idx, [1:  2])  = [  9.00000E-01  9.00000E-01 ];
 ST_FRAC                   (idx, [1:   4]) = [  3.41775E-03 0.00298  0.00000E+00 0.0E+00 ];
 DT_FRAC                   (idx, [1:   4]) = [  9.96582E-01 1.0E-05  0.00000E+00 0.0E+00 ];
@@ -95,29 +95,29 @@ SIMULATION_COMPLETED      (idx, 1)        = 1 ;
 
 % Running times:
 
-TOT_CPU_TIME              (idx, 1)        =  5.13323E+00 ;
-RUNNING_TIME              (idx, 1)        =  5.24600E-01 ;
-INIT_TIME                 (idx, [1:  2])  = [  1.22500E-02  1.22500E-02 ];
-PROCESS_TIME              (idx, [1:  2])  = [  8.33352E-05  8.33352E-05 ];
-TRANSPORT_CYCLE_TIME      (idx, [1:  3])  = [  5.12267E-01  5.12267E-01  0.00000E+00 ];
+TOT_CPU_TIME              (idx, 1)        =  7.52578E+00 ;
+RUNNING_TIME              (idx, 1)        =  4.29000E-01 ;
+INIT_TIME                 (idx, [1:  2])  = [  1.13000E-02  1.13000E-02 ];
+PROCESS_TIME              (idx, [1:  2])  = [  1.00001E-04  1.00001E-04 ];
+TRANSPORT_CYCLE_TIME      (idx, [1:  3])  = [  4.17533E-01  4.17533E-01  0.00000E+00 ];
 MPI_OVERHEAD_TIME         (idx, [1:  2])  = [  0.00000E+00  0.00000E+00 ];
-ESTIMATED_RUNNING_TIME    (idx, [1:  2])  = [  5.24583E-01  0.00000E+00 ];
-CPU_USAGE                 (idx, 1)        = 9.78503 ;
-TRANSPORT_CPU_USAGE       (idx, [1:   2]) = [  9.99934E+00 0.00121 ];
-OMP_PARALLEL_FRAC         (idx, 1)        =  9.66292E-01 ;
+ESTIMATED_RUNNING_TIME    (idx, [1:  2])  = [  4.28917E-01  0.00000E+00 ];
+CPU_USAGE                 (idx, 1)        = 17.54262 ;
+TRANSPORT_CPU_USAGE       (idx, [1:   2]) = [  1.79926E+01 0.00160 ];
+OMP_PARALLEL_FRAC         (idx, 1)        =  9.57032E-01 ;
 
 % Memory usage:
 
 AVAIL_MEM                 (idx, 1)        = 64032.54 ;
-ALLOC_MEMSIZE             (idx, 1)        = 256.68;
-MEMSIZE                   (idx, 1)        = 133.22;
-XS_MEMSIZE                (idx, 1)        = 58.00;
+ALLOC_MEMSIZE             (idx, 1)        = 390.10;
+MEMSIZE                   (idx, 1)        = 203.18;
+XS_MEMSIZE                (idx, 1)        = 74.10;
 MAT_MEMSIZE               (idx, 1)        = 6.90;
-RES_MEMSIZE               (idx, 1)        = 1.28;
+RES_MEMSIZE               (idx, 1)        = 1.58;
 IFC_MEMSIZE               (idx, 1)        = 0.00;
-MISC_MEMSIZE              (idx, 1)        = 67.04;
+MISC_MEMSIZE              (idx, 1)        = 120.60;
 UNKNOWN_MEMSIZE           (idx, 1)        = 0.00;
-UNUSED_MEMSIZE            (idx, 1)        = 123.46;
+UNUSED_MEMSIZE            (idx, 1)        = 186.92;
 
 % Geometry parameters:
 
@@ -311,9 +311,9 @@ ADJ_NAUCHI_LAMBDA         (idx, [1:  18]) = [  5.05781E-01 0.02889  1.24667E-02 
 ADJ_IFP_GEN_TIME          (idx, [1:   6]) = [  2.94274E-05 0.00541  2.94098E-05 0.00541  2.14490E-05 0.05988 ];
 ADJ_IFP_LIFETIME          (idx, [1:   6]) = [  3.37758E-05 0.00520  3.37563E-05 0.00520  2.46418E-05 0.05981 ];
 ADJ_IFP_IMP_BETA_EFF      (idx, [1:  18]) = [  7.44097E-03 0.05344  1.78472E-04 0.30367  1.09518E-03 0.14892  6.93910E-04 0.18202  1.52729E-03 0.11883  2.14108E-03 0.09493  9.12361E-04 0.16335  6.76780E-04 0.15656  2.15901E-04 0.26021 ];
-ADJ_IFP_IMP_LAMBDA        (idx, [1:  18]) = [  4.89211E-01 0.06842  1.24667E-02 3.8E-09  2.82917E-02 0.0E+00  4.25244E-02 0.0E+00  1.33042E-01 3.5E-09  2.92467E-01 4.7E-09  6.66488E-01 5.0E-09  1.63478E+00 0.0E+00  3.55460E+00 4.7E-09 ];
+ADJ_IFP_IMP_LAMBDA        (idx, [1:  18]) = [  4.89211E-01 0.06842  1.24667E-02 5.4E-09  2.82917E-02 0.0E+00  4.25244E-02 0.0E+00  1.33042E-01 3.2E-09  2.92467E-01 5.0E-09  6.66488E-01 4.6E-09  1.63478E+00 0.0E+00  3.55460E+00 4.7E-09 ];
 ADJ_IFP_ANA_BETA_EFF      (idx, [1:  18]) = [  7.55814E-03 0.05233  2.07544E-04 0.29104  1.10055E-03 0.14495  7.06106E-04 0.17786  1.54405E-03 0.11457  2.14921E-03 0.09413  9.26293E-04 0.16200  7.09754E-04 0.15343  2.14630E-04 0.24715 ];
-ADJ_IFP_ANA_LAMBDA        (idx, [1:  18]) = [  4.87253E-01 0.06843  1.24667E-02 3.8E-09  2.82917E-02 0.0E+00  4.25244E-02 0.0E+00  1.33042E-01 3.2E-09  2.92467E-01 4.8E-09  6.66488E-01 4.6E-09  1.63478E+00 0.0E+00  3.55460E+00 2.7E-09 ];
+ADJ_IFP_ANA_LAMBDA        (idx, [1:  18]) = [  4.87253E-01 0.06843  1.24667E-02 2.7E-09  2.82917E-02 0.0E+00  4.25244E-02 0.0E+00  1.33042E-01 3.2E-09  2.92467E-01 4.8E-09  6.66488E-01 4.2E-09  1.63478E+00 0.0E+00  3.55460E+00 2.7E-09 ];
 ADJ_IFP_ROSSI_ALPHA       (idx, [1:   2]) = [ -2.57622E+02 0.05401 ];
 
 % Adjoint weighted time constants using perturbation technique:

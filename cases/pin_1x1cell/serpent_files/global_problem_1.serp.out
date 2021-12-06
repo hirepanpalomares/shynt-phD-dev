@@ -65,7 +65,7 @@
 
  Nuclide    1 / 6 : 1001.06c -- hydrogen (H-1)
 
- Pointers                     : 29873 1099
+ Pointers                     : 29531 1099
  Primary type                 : Transport
  Nuclide ZAI                  : 10010
  Library ID                   : 06c
@@ -114,7 +114,7 @@
 
  Nuclide    2 / 6 : 1001.06s -- hydrogen (H-1)
 
- Pointers                     : 30485 1099
+ Pointers                     : 30143 1099
  Primary type                 : Transport
  Nuclide ZAI                  : 10010
  Library ID                   : 06s
@@ -164,7 +164,7 @@
 
  Nuclide    3 / 6 : 8016.09c -- oxygen 16 (O-16)
 
- Pointers                     : 19479 5515
+ Pointers                     : 19137 5515
  Primary type                 : Transport
  Nuclide ZAI                  : 80160
  Library ID                   : 09c
@@ -279,7 +279,7 @@
 
  Nuclide    4 / 6 : 8016.06c -- oxygen 16 (O-16)
 
- Pointers                     : 24676 5469
+ Pointers                     : 24334 5469
  Primary type                 : Transport
  Nuclide ZAI                  : 80160
  Library ID                   : 06c
@@ -394,7 +394,7 @@
 
  Nuclide    5 / 6 : 92235.09c -- uranium 235 (U-235)
 
- Pointers                     : 12584 105979
+ Pointers                     : 12242 105979
  Primary type                 : Transport
  Nuclide ZAI                  : 922350
  Library ID                   : 09c
@@ -483,7 +483,7 @@
 
  Nuclide    6 / 6 : 92238.09c -- uranium 238 (U-238)
 
- Pointers                     : 15815 106807
+ Pointers                     : 15473 106807
  Primary type                 : Transport
  Nuclide ZAI                  : 922380
  Library ID                   : 09c

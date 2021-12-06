@@ -1,0 +1,194 @@
+% Single fuel cell
+
+set title "Single+fuel+cell"
+
+% Set seed to get same results
+
+set seed 1474468046
+
+% Moderator region:
+
+surf 1 sqc 0.0 0.0 0.6475
+
+% Fuel region:
+
+surf 2 cyl 0.0 0.0 4.33500E-01
+
+% Cell definitions:
+
+cell  1 0 fuel2		-2	%Simple fuel pin, no cladding or gap
+cell  2 0 cool 	 	 2 -1	%Coolant in cell
+cell 99 0 outside 	 1	%Outside world
+
+% Fuel materials:
+
+mat fuel1   -10.424 rgb 0 255 0
+ 92235.09c   -0.015867
+ 92238.09c   -0.86563
+  8016.09c   -0.1185
+
+mat fuel2   -10.424
+ 92235.09c   -0.018512
+ 92238.09c   -0.86299
+  8016.09c   -0.1185
+
+mat fuel3   -10.424
+ 92235.09c   -0.022919
+ 92238.09c   -0.85858
+  8016.09c   -0.1185
+
+mat fuel4   -10.424
+ 92235.09c   -0.026445
+ 92238.09c   -0.85505
+  8016.09c   -0.1185
+
+mat fuel5   -10.424
+ 92235.09c   -0.029971
+ 92238.09c   -0.85153
+  8016.09c   -0.1185
+
+mat fuel6   -10.424
+ 92235.09c   -0.032615
+ 92238.09c   -0.84888
+  8016.09c   -0.1185
+
+% Coolant (40% void fraction):
+
+mat cool     -0.443760  moder lwtr 1001 rgb 0 255 255
+ 1001.06c     0.66667
+ 8016.06c     0.33333
+
+% Thermal scattering data for light water:
+
+therm lwtr lwj3.11t
+
+% Cross section data library file path:
+
+set acelib "/home/segonpin/codesother/Serpent/xsdata/jeff311/sss_jeff311u.xsdata"
+
+
+% Reflective boundary condition:
+
+set bc 2   %changed from reflective to periodic boundary condition
+
+% Neutron population and criticality cycles:
+
+set pop 2000 500 50
+
+% Geometry and mesh plots:
+
+plot 3 500 500
+%mesh 3 500 500
+
+% Set energy grids
+ene 2gthm	1 0		0.625E-6
+ene 2gfast	1 0.625E-6 	20
+
+% Boundary surfaces for detectors:
+surf W px -0.6475			%West
+surf E px  0.6475			%East
+surf S py -0.6475			%South
+surf N py  0.6475			%North
+
+
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  INCOMING NEUTRONS  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% --- Detectors for surface currents, fast
+det jinwestfast      ds W 1   de 2gfast dfl 10 1
+det jineastfast      ds E -1  de 2gfast dfl 11 1
+det jinsouthfast     ds S 1   de 2gfast dfl 12 1
+det jinnorthfast     ds N -1  de 2gfast dfl 13 1
+% --- Detectors for surface current, thermal
+det jinwestthm      ds W 1   de 2gthm dfl 14 1
+det jineastthm      ds E -1  de 2gthm dfl 15 1
+det jinsouththm     ds S 1   de 2gthm dfl 16 1
+det jinnorththm     ds N -1  de 2gthm dfl 17 1
+  
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  SURF TO MOD  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+det westmodfast  dc 2 de 2gfast dr -1 cool dfl 10 2 dfl 10 0
+det eastmodfast  dc 2 de 2gfast dr -1 cool dfl 11 2 dfl 11 0
+det southmodfast dc 2 de 2gfast dr -1 cool dfl 12 2 dfl 12 0
+det northmodfast dc 2 de 2gfast dr -1 cool dfl 13 2 dfl 13 0
+% --- Surface to moderator, thermal
+det westmodthm dc 2 de 2gthm dr -1 cool dfl 14 2 dfl 14 0
+det eastmodthm dc 2 de 2gthm dr -1 cool dfl 15 2 dfl 15 0
+det southmodthm dc 2 de 2gthm dr -1 cool dfl 16 2 dfl 16 0
+det northmodthm dc 2 de 2gthm dr -1 cool dfl 17 2 dfl 17 0
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  SURF TO FUEL  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% --- Calculate contribution from surfaces to fuel,fast USEFUL
+det westfuelfast dc 1 de 2gfast dr -1 fuel2 dfl 10 2 dfl 10 0
+det eastfuelfast dc 1 de 2gfast dr -1 fuel2 dfl 11 2 dfl 11 0
+det southfuelfast dc 1 de 2gfast dr -1 fuel2 dfl 12 2 dfl 12 0
+det northfuelfast dc 1 de 2gfast dr -1 fuel2 dfl 13 2 dfl 13 0
+% --- Calculate contribution from surfaces to fuel,thermal
+det westfuelthm dc 1 de 2gthm dr -1 fuel2 dfl 14 2 dfl 14 0
+det eastfuelthm dc 1 de 2gthm dr -1 fuel2 dfl 15 2 dfl 15 0
+det southfuelthm dc 1 de 2gthm dr -1 fuel2 dfl 16 2 dfl 16 0
+det northfuelthm dc 1 de 2gthm dr -1 fuel2 dfl 17 2 dfl 17 0
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  SURF TO SURF  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% ----------- WEST TO X
+det westeastfast  ds E 1  de 2gfast dfl 10 2 dfl 10 0
+det westsouthfast ds S -1 de 2gfast dfl 10 2 dfl 10 0
+det westnorthfast ds N 1  de 2gfast dfl 10 2 dfl 10 0
+% -------------------------------------------------------------------
+det westeastthm  ds E 1  de 2gthm dfl 14 2 dfl 14 0
+det westsouththm ds S -1 de 2gthm dfl 14 2 dfl 14 0
+det westnorththm ds N 1  de 2gthm dfl 14 2 dfl 14 0
+
+
+% ----------- EAST TO X
+det eastwestfast  ds W -1 de 2gfast dfl 11 2 dfl 11 0
+det eastsouthfast ds S -1 de 2gfast dfl 11 2 dfl 11 0
+det eastnorthfast ds N 1  de 2gfast dfl 11 2 dfl 11 0
+% -------------------------------------------------------------------
+det eastwestthm  ds W -1 de 2gthm dfl 15 2 dfl 15 0
+det eastsouththm ds S -1 de 2gthm dfl 15 2 dfl 15 0
+det eastnorththm ds N 1  de 2gthm dfl 15 2 dfl 15 0
+
+
+% ----------- SOUTH TO X
+det southwestfast  ds W -1 de 2gfast dfl 12 2 dfl 12 0
+det southeastfast  ds E 1  de 2gfast dfl 12 2 dfl 12 0
+det southnorthfast ds N 1  de 2gfast dfl 12 2 dfl 12 0
+% -------------------------------------------------------------------
+det southwestthm  ds W -1 de 2gthm dfl 16 2 dfl 16 0
+det southeastthm  ds E 1  de 2gthm dfl 16 2 dfl 16 0
+det southnorththm ds N 1  de 2gthm dfl 16 2 dfl 16 0
+
+
+% ----------- NORTH TO X
+det northwestfast  ds W -1 de 2gfast dfl 13 2 dfl 13 0
+det northeastfast  ds E  1 de 2gfast dfl 13 2 dfl 13 0
+det northsouthfast ds S -1 de 2gfast dfl 13 2 dfl 13 0
+% -------------------------------------------------------------------
+det northwestthm  ds W -1 de 2gthm dfl 17 2 dfl 17 0
+det northeastthm  ds E  1 de 2gthm dfl 17 2 dfl 17 0
+det northsouththm ds S -1 de 2gthm dfl 17 2 dfl 17 0
+
+

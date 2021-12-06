@@ -272,10 +272,17 @@ class SerpentInputFile():
         self.__file.write("\n\n")
 
     def write_energy_grid(self):
-        self.__file.write(self.energy_grid.serpent_syntax())
+        self.__file.write(self.energy_grid.serpent_syntax_by_bins())
         self.__file.write("\n\n")
 
     def write_detectors(self):
+        """
+            TODO Write a method to differentiate between cells if it's fuel or something else
+            Right now is hard coded:
+                - fuel1
+                - coolant
+        """
+
         self.__file.write("% ----- Surface for detectors\n")
 
         # Surfaces for detectors -----------------------------------------------
@@ -283,11 +290,17 @@ class SerpentInputFile():
         surface_ids = []
         surface_direction = {}
         closing_surf = self.cell.region.surface 
+        # TODO Code this for every closing surf in general
         if isinstance(closing_surf, InfiniteSquareCylinderZ):
             surf_1 = closing_surf.surf_top      # cell in - side 
             surf_2 = closing_surf.surf_right    # cell in - side
             surf_3 = closing_surf.surf_bottom   # cell in + side
             surf_4 = closing_surf.surf_left     # cell in + side
+            
+            print(f"Top    surface: {surf_1.id}")
+            print(f"Right  surface: {surf_2.id}")
+            print(f"Bottom surface: {surf_3.id}")
+            print(f"Left   surface: {surf_4.id}")
 
             # surf T --> outward current = +1 --> inward current = -1
             # surf R --> outward current = +1 --> inward current = -1
@@ -310,12 +323,22 @@ class SerpentInputFile():
                 surf_3.id: {"inward": "1", "outward": "-1"},
                 surf_4.id: {"inward": "1", "outward": "-1"},
             }
-
+        
+        # Adding surface from pin 
+        universe = self.cell.content
+        universe_cells = universe.cells
+        for cell in universe_cells:
+            if cell.content.name == "fuel1":
+                surf = cell.region.surface
+                surface_for_detectors += surf.serpent_syntax
+                surface_ids.append(surf.id)
+                surface_direction[surf.id] = {"inward": "-1", "outward": "1"}
+        
         
         self.__file.write(surface_for_detectors)
         
         cell_ids_relation = {c.id: c for c in self.local_nodes}
-        # TODO: Checar como hacerle para poner la direccion de la surface en el detector
+        
         detectors_relation = {
             "total_rate": {},
             "surf_count": {},
@@ -340,28 +363,30 @@ class SerpentInputFile():
             detectors_relation["total_rate"][i] = det
             # Region to region neutrons ---------------------------------------------
             for c in cell_ids_relation.keys():
-                name = f"cell_{i}_to_cell_{c}"
-                det = Detector(name, "region_to_region")
-                det.cell_to_cell = (i, c)
-                det.set_cell(c)
-                det.set_energy_bins(self.energy_grid.name)
-                det.set_response("-1", cell_ids_relation[c].content.name)
                 if c == i:
-                    det.set_flag(flag_counter, "2")
+                    continue
                 else:
+                    name = f"cell_{i}_to_cell_{c}"
+                    det = Detector(name, "region_to_region")
+                    det.cell_to_cell = (i, c)
+                    det.set_cell(c)
+                    det.set_energy_bins(self.energy_grid.name)
+                    det.set_response("-1", cell_ids_relation[c].content.name)
                     det.set_flag(flag_counter, "2")
                     det.set_flag(flag_counter, "0")
                     detectors.append(det)
-                if i in detectors_relation["region_to_region"]:
-                    detectors_relation["region_to_region"][i][c] = det
-                else:
-                    detectors_relation["region_to_region"][i] = {
-                        c: det
-                    }
+                    if i in detectors_relation["region_to_region"]:
+                        detectors_relation["region_to_region"][i][c] = det
+                    else:
+                        detectors_relation["region_to_region"][i] = {
+                            c: det
+                        }
+                # if c == i:
+                #     det.set_flag(flag_counter, "2")
+                # else:
             # Region to surface neutrons --------------------------------------------
             for s in surface_ids:
                 name = f"cell_{i}_to_surf_{s}"
-                det.set_cell(i)
                 det = Detector(name, "region_to_surf")
                 det.cell_to_surf = (i, s)
                 det.set_surface_det(s, surface_direction[s]["outward"])
@@ -430,3 +455,14 @@ class SerpentInputFile():
             print(f"*** Error *** flag number for serpent detectors reached {flag_counter}, must be between 1 - 64")
             print("This happens because Serpent's limit is 64, and internally could happen for excess of regions or\nsurfaces in the local problem")
             raise SystemExit
+
+    def __helper_fuel_detectors(self):
+        pass
+
+    def __helper_coolant_detectors(self):
+        pass
+
+    def __helper_surface_detectors(self):
+        pass
+
+    

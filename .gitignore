@@ -2,6 +2,8 @@
 
 cases/temp
 
+**/serpent_files/
+
 **/__pycache__/
 **/id-counter
 

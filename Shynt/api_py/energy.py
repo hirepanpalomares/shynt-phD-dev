@@ -1,15 +1,24 @@
 class Grid:
 
 
-
     def __init__(self, grid, name=""):
         self.__grid = grid
+        self.__groups = len(grid) - 1
         self.__name = name
+        self.__bins = self.grid_bins()
+        
 
-    
+    def grid_bins(self):
+        bins = {}
+        for g in range(self.__groups):
+            bin_name = f"{self.__name}_{g}"
+            bin_ = (self.__grid[g], self.__grid[g+1])
+            bins[bin_name] = bin_
+        return bins
+
     def serpent_syntax(self):
         """
-            The number 1 is for bin boundaries syntax in serpent
+            
         """
         syntax = f"ene {self.__name} 1 "
 
@@ -19,12 +28,27 @@ class Grid:
         
         return syntax
     
+    def serpent_syntax_by_bins(self):
+        """
+            
+        """
+        syntax = ""
+        for b_name, grid in self.__bins.items():
+            syntax += f"ene {b_name} 1 {grid[0]} {grid[1]}\n"
+
+        
+        return syntax
+
     def getGrid(self):
         return self.__grid
     
     def getEnergyGroups(self):
-        return len(self.__grid) - 1
+        return self.__groups
     
     @property
     def name(self):
         return self.__name
+
+    @property
+    def energy_groups(self):
+        return self.__groups

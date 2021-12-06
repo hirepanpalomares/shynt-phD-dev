@@ -105,7 +105,8 @@ def input_generator(global_cells, local_cells, model):
 
     """
 
-    input_file_location = "/".join(sys.argv[0].split("/")[:-1]) + "/"    
+    input_file_location = "/" + "/".join(sys.argv[0].split("/")[:-1]) + "/"    
+
     serpent_dir = os.getcwd() + input_file_location + "serpent_files"
     # print("*"*60)
     # print(os.getcwd())
