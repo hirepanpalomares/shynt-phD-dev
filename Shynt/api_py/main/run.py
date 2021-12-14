@@ -38,10 +38,8 @@ def run(root):
     ------------------------------------------------------------------------------------------
     
     """
-    Shynt.surfaces.reset_surface_counter()
-    Shynt.cells.reset_cell_counter()
+    
 
-    return 0
     for id_, inp in inputs.items():
         command = f"sss2.32 {inp.name} -omp 10"
         # os.system(command)
@@ -57,6 +55,7 @@ def run(root):
     
     """
     
+    
     coarse_node_scores = {}
     detector_relation = {}
     for id_, inp in inputs.items(): 
@@ -65,7 +64,11 @@ def run(root):
         coarse_node_scores[id_] = data_detector
         detector_relation[id_] = inp.detectors_relation
         
-
+    # print(detector_relation[1].keys())
+    # print()
+    # print(detector_relation[1]["fuel"].keys())
+    
+    
     """
     ------------------------------------------------------------------------------------------
     ------------------------------------------------------------------------------------------
@@ -79,7 +82,7 @@ def run(root):
     
     probabilities = {}
     for id_ in inputs:
-        prob_id = calculate_probabilities(coarse_node_scores[id_], detector_relation[id_], root.energy_grid.energy_groups)
+        prob_id = calculate_probabilities(coarse_node_scores[id_], detector_relation[id_], root.energy_grid.energy_groups, id_)
         probabilities[id_] = prob_id
 
     """

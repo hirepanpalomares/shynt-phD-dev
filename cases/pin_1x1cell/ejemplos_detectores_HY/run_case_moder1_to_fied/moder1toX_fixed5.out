@@ -65,7 +65,7 @@
 
  Nuclide    1 / 6 : 1001.06c -- hydrogen (H-1)
 
- Pointers                     : 36545 1099
+ Pointers                     : 22705 1099
  Primary type                 : Transport
  Nuclide ZAI                  : 10010
  Library ID                   : 06c
@@ -114,7 +114,7 @@
 
  Nuclide    2 / 6 : 1001.06s -- hydrogen (H-1)
 
- Pointers                     : 37157 1099
+ Pointers                     : 28514 1099
  Primary type                 : Transport
  Nuclide ZAI                  : 10010
  Library ID                   : 06s
@@ -164,7 +164,7 @@
 
  Nuclide    3 / 6 : 8016.09c -- oxygen 16 (O-16)
 
- Pointers                     : 26151 5515
+ Pointers                     : 17508 5515
  Primary type                 : Transport
  Nuclide ZAI                  : 80160
  Library ID                   : 09c
@@ -279,7 +279,7 @@
 
  Nuclide    4 / 6 : 8016.06c -- oxygen 16 (O-16)
 
- Pointers                     : 31348 5469
+ Pointers                     : 23084 5469
  Primary type                 : Transport
  Nuclide ZAI                  : 80160
  Library ID                   : 06c
@@ -394,7 +394,7 @@
 
  Nuclide    5 / 6 : 92235.09c -- uranium 235 (U-235)
 
- Pointers                     : 19256 105979
+ Pointers                     : 10613 105979
  Primary type                 : Transport
  Nuclide ZAI                  : 922350
  Library ID                   : 09c
@@ -483,7 +483,7 @@
 
  Nuclide    6 / 6 : 92238.09c -- uranium 238 (U-238)
 
- Pointers                     : 22487 106807
+ Pointers                     : 13844 106807
  Primary type                 : Transport
  Nuclide ZAI                  : 922380
  Library ID                   : 09c
@@ -607,7 +607,7 @@ Isotopic composition (non-zero densities):
        sum                    6.97572E-02  1.00000E+00  1.00000E+00
 -------------------------------------------------------------------
 
-Material "coolant":
+Material "cool":
 
  - Material is not burnable
  - Material is included in majorant
@@ -627,7 +627,7 @@ Isotopic composition (non-zero densities):
 -------------------------------------------------------------------
  Nuclide    a. weight   temp      a. dens      a. frac      m. frac
 -------------------------------------------------------------------
-  8016.06c   15.99492  600.0  1.48376E-02  3.33330E-01  8.88083E-01 
   1001.06s    1.00783  600.0  2.96757E-02  6.66670E-01  1.11917E-01 S
+  8016.06c   15.99492  600.0  1.48376E-02  3.33330E-01  8.88083E-01 
        sum                    4.45133E-02  1.00000E+00  1.00000E+00
 -------------------------------------------------------------------

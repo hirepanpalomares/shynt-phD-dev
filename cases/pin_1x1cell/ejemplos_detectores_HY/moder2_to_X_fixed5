@@ -110,8 +110,8 @@ det modtotthm dc 2 de 2gthm dr -1 cool dfl 2 1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-det modtt dc 2 de 2gthm dr -1 cool dfl 2 2 dfl 2 0 dfl 2 1
 det modft dc 2 de 2gthm dr -1 cool dfl 1 2 dfl 1 0 dfl 2 1
+det modtt dc 2 de 2gthm dr -1 cool dfl 2 2 dfl 2 0 dfl 2 1
 
 det modff dc 2 de 2gfast dr -1 cool dfl 1 2 dfl 1 0 dfl 1 1
 det modtf dc 2 de 2gfast dr -1 cool dfl 2 2 dfl 2 0 dfl 1 1
@@ -141,25 +141,25 @@ det rmodelafastthmf dc 1 dr -1 fuel2 de 2gthm dfl 1 2 dfl 1 0
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 det rmodelafastfastw ds W -1 de 2gfast dfl 1 2 dfl 1 0
+det rmodelafastthmw  ds W -1 de 2gthm  dfl 1 2 dfl 1 0
 det rmodelathmfastw  ds W -1 de 2gfast dfl 2 2 dfl 2 0
+det rmodelathmthmw   ds W -1 de 2gthm  dfl 2 2 dfl 2 0
 
 det rmodelafastfaste ds E  1 de 2gfast dfl 1 2 dfl 1 0
+det rmodelafastthme  ds E  1 de 2gthm  dfl 1 2 dfl 1 0
 det rmodelathmfaste  ds E  1 de 2gfast dfl 2 2 dfl 2 0
+det rmodelathmthme   ds E  1 de 2gthm  dfl 2 2 dfl 2 0
 
 det rmodelafastfasts ds S -1 de 2gfast dfl 1 2 dfl 1 0
+det rmodelafastthms  ds S -1 de 2gthm  dfl 1 2 dfl 1 0
 det rmodelathmfasts  ds S -1 de 2gfast dfl 2 2 dfl 2 0
+det rmodelathmthms   ds S -1 de 2gthm  dfl 2 2 dfl 2 0
 
 det rmodelafastfastn ds N  1 de 2gfast dfl 1 2 dfl 1 0
+det rmodelafastthmn  ds N  1 de 2gthm  dfl 1 2 dfl 1 0
 det rmodelathmfastn  ds N  1 de 2gfast dfl 2 2 dfl 2 0
+det rmodelathmthmn   ds N  1 de 2gthm  dfl 2 2 dfl 2 0
 
-det rmodelathmthmw  ds W -1 de 2gthm dfl 2 2 dfl 2 0
-det rmodelafastthmw ds W -1 de 2gthm dfl 1 2 dfl 1 0
 
-det rmodelathmthme  ds E  1 de 2gthm dfl 2 2 dfl 2 0
-det rmodelafastthme ds E  1 de 2gthm dfl 1 2 dfl 1 0
 
-det rmodelathmthms  ds S -1 de 2gthm dfl 2 2 dfl 2 0
-det rmodelafastthms ds S -1 de 2gthm dfl 1 2 dfl 1 0
 
-det rmodelathmthmn  ds N  1 de 2gthm dfl 2 2 dfl 2 0
-det rmodelafastthmn ds N  1 de 2gthm dfl 1 2 dfl 1 0

@@ -1,5 +1,5 @@
 import numpy as np
-
+from . import compare
 
 """
     fuel_to_x_prob = np.array([
@@ -134,143 +134,254 @@ import numpy as np
     ])
 """
 
+"""
+    # def get_total_rate_counts(coarse_node_scores, detector_relation):
+    #     total_rate = {} # Total interactions in a region
+    #     for region, det in detector_relation["total_rate"].items():
+    #         det_name = det.name
+    #         scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
+    #         scores = scores[::-1] # switches ther energy group order to g=1=fast and g=n=thermal
+    #         total_rate[region] = np.abs(np.array(scores))
         
-def get_total_rate_counts(coarse_node_scores, detector_relation):
-    total_rate = {} # Total interactions in a region
-    for region, det in detector_relation["total_rate"].items():
-        det_name = det.name
-        scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
-        scores = scores[::-1] # switches ther energy group order to g=1=fast and g=n=thermal
-        total_rate[region] = np.abs(np.array(scores))
-    
-    return total_rate
+    #     return total_rate
 
-def get_surf_counts(coarse_node_scores, detector_relation):
-    surf_count = {} # Neutrons that enter the cell through a surface
-    for surf, det in detector_relation["surf_count"].items():
-        det_name = det.name
-        scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
-        scores = scores[::-1] # switches ther energy group order to g=1=fast and g=n=thermal
-        surf_count[surf] = np.abs(np.array(scores))
-    
-    return surf_count
-
-def get_surf_to_surf_counts(coarse_node_scores, detector_relation):
-    surf_to_surf_count = {} # Neutrons that enter a surface and exit through another surface
-    for surf, det_group in detector_relation["surf_to_surf"].items():
-        surf_to_surf_count[surf] = {} 
+    # def get_surf_counts(coarse_node_scores, detector_relation):
+    #     surf_count = {} # Neutrons that enter the cell through a surface
+    #     for surf, det in detector_relation["surf_count"].items():
+    #         det_name = det.name
+    #         scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
+    #         scores = scores[::-1] # switches ther energy group order to g=1=fast and g=n=thermal
+    #         surf_count[surf] = np.abs(np.array(scores))
         
-        for surf_out, det in det_group.items():
-            det_name = det.name
+    #     return surf_count
 
-            scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
-            scores = scores[::-1] # switches ther energy group order to g=1=fast and g=n=thermal
-            surf_to_surf_count[surf][surf_out] = np.abs(np.array(scores))
-    
-    return surf_to_surf_count
+    # def get_surf_to_surf_counts(coarse_node_scores, detector_relation):
+    #     surf_to_surf_count = {} # Neutrons that enter a surface and exit through another surface
+    #     for surf, det_group in detector_relation["surf_to_surf"].items():
+    #         surf_to_surf_count[surf] = {} 
+            
+    #         for surf_out, det in det_group.items():
+    #             det_name = det.name
 
-def get_surf_to_region_counds(coarse_node_scores, detector_relation):
-    surf_to_region_count = {}
-    for surf, det_group in detector_relation["surf_to_region"].items():
-        surf_to_region_count[surf] = {} 
+    #             scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
+    #             scores = scores[::-1] # switches ther energy group order to g=1=fast and g=n=thermal
+    #             surf_to_surf_count[surf][surf_out] = np.abs(np.array(scores))
         
-        for reg, det in det_group.items():
-            det_name = det.name
+    #     return surf_to_surf_count
 
-            scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
-            scores = scores[::-1] # switches ther energy group order to g=1=fast and g=n=thermal
-            surf_to_region_count[surf][reg] = np.abs(np.array(scores))
-    
-    return surf_to_region_count
+    # def get_surf_to_region_counds(coarse_node_scores, detector_relation):
+    #     surf_to_region_count = {}
+    #     for surf, det_group in detector_relation["surf_to_region"].items():
+    #         surf_to_region_count[surf] = {} 
+            
+    #         for reg, det in det_group.items():
+    #             det_name = det.name
 
-def get_region_to_region_counts(coarse_node_scores, detector_relation):
-    region_to_region_count = {}
-    for region, det_group in detector_relation["region_to_region"].items():
-        region_to_region_count[region] = {} 
+    #             scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
+    #             scores = scores[::-1] # switches ther energy group order to g=1=fast and g=n=thermal
+    #             surf_to_region_count[surf][reg] = np.abs(np.array(scores))
         
-        for region_p, det in det_group.items():
-            det_name = det.name
+    #     return surf_to_region_count
 
-            scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
-            scores = scores[::-1] # switches ther energy group order to g=1=fast and g=n=thermal
-            region_to_region_count[region][region_p] = np.abs(np.array(scores))
-    
-    return region_to_region_count
+    # def get_region_to_region_counts(coarse_node_scores, detector_relation):
+    #     region_to_region_count = {}
+    #     for region, det_group in detector_relation["region_to_region"].items():
+    #         region_to_region_count[region] = {} 
+            
+    #         for region_p, det in det_group.items():
+    #             det_name = det.name
 
-def get_region_to_surf_counts(coarse_node_scores, detector_relation):
-    region_to_surf_count = {}
-    for region, det_group in detector_relation["region_to_surf"].items():
-        region_to_surf_count[region] = {} 
+    #             scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
+    #             scores = scores[::-1] # switches ther energy group order to g=1=fast and g=n=thermal
+    #             region_to_region_count[region][region_p] = np.abs(np.array(scores))
         
-        for surf, det in det_group.items():
-            det_name = det.name
+    #     return region_to_region_count
 
-            scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
-            scores = scores[::-1] # switches ther energy group order to g=1=fast and g=n=thermal
-            region_to_surf_count[region][surf] = np.abs(np.array(scores))
-    return region_to_surf_count
-    
-def calculate_neutrons_emitted_from_region(total_rate, surf_total, reg_to_reg, reg_to_surf, surf_to_reg):
-    regions = total_rate.keys()
-    surfaces = surf_total.keys()
+    # def get_region_to_surf_counts(coarse_node_scores, detector_relation):
+    #     region_to_surf_count = {}
+    #     for region, det_group in detector_relation["region_to_surf"].items():
+    #         region_to_surf_count[region] = {} 
+            
+    #         for surf, det in det_group.items():
+    #             det_name = det.name
 
-    neutrons_emitted_from_region = {}
-    neutrons_same_to_same = {}
-    for reg_i in regions:
-        energy_groups = len(total_rate[reg_i])
-        neutrons_in_region = [0] * energy_groups
+    #             scores = [g[0] for g in coarse_node_scores[det_name]["neutrons"]]
+    #             scores = scores[::-1] # switches ther energy group order to g=1=fast and g=n=thermal
+    #             region_to_surf_count[region][surf] = np.abs(np.array(scores))
+    #     return region_to_surf_count
+        
+    # def calculate_neutrons_emitted_from_region(total_rate, surf_total, reg_to_reg, reg_to_surf, surf_to_reg):
+    #     regions = total_rate.keys()
+    #     surfaces = surf_total.keys()
 
-        # Adding region to region neutrons for i != j
-        for reg_j in regions:
-            if reg_j != reg_i: #  (Condition checked already, it is OK!!!)
-                neutrons_in_region += reg_to_reg[reg_i][reg_j]
+    #     neutrons_emitted_from_region = {}
+    #     neutrons_same_to_same = {}
+    #     for reg_i in regions:
+    #         energy_groups = len(total_rate[reg_i])
+    #         neutrons_in_region = [0] * energy_groups
 
-        # Adding region to surface neutrons
-        for surf_a in surfaces:
-            neutrons_in_region += reg_to_surf[reg_i][surf_a]
+    #         # Adding region to region neutrons for i != j
+    #         for reg_j in regions:
+    #             if reg_j != reg_i: #  (Condition checked already, it is OK!!!)
+    #                 neutrons_in_region += reg_to_reg[reg_i][reg_j]
 
-        # Adding region_i to region_i 
-        neutrons_same_to_same[reg_i] = total_rate[reg_i]
-        for reg_j in regions:
-            if reg_j != reg_i: 
-                neutrons_same_to_same[reg_i] -= reg_to_reg[reg_j][reg_i]
+    #         # Adding region to surface neutrons
+    #         for surf_a in surfaces:
+    #             neutrons_in_region += reg_to_surf[reg_i][surf_a]
 
-        for surf_a in surfaces:
-            neutrons_same_to_same[reg_i] -= surf_to_reg[surf_a][reg_i]
-        neutrons_in_region += neutrons_same_to_same[reg_i]
+    #         # Adding region_i to region_i 
+    #         neutrons_same_to_same[reg_i] = total_rate[reg_i]
+    #         for reg_j in regions:
+    #             if reg_j != reg_i: 
+    #                 neutrons_same_to_same[reg_i] -= reg_to_reg[reg_j][reg_i]
 
-        neutrons_emitted_from_region[reg_i] = neutrons_in_region
-    return neutrons_emitted_from_region, neutrons_same_to_same
+    #         for surf_a in surfaces:
+    #             neutrons_same_to_same[reg_i] -= surf_to_reg[surf_a][reg_i]
+    #         neutrons_in_region += neutrons_same_to_same[reg_i]
 
-def calculate_probabilities(coarse_node_scores, detector_relation, energy_groups):
+    #         neutrons_emitted_from_region[reg_i] = neutrons_in_region
+    #     return neutrons_emitted_from_region, neutrons_same_to_same
+"""
+
+
+def get_moderator_counts(scores, det_relation, energy):
     """
-    # TODO: The number of detectors can be reduced (see bellow)
-
-    The probability for a neutron to enter the cell through a given surface
-    and go out through the same surface without interacting is CERO
-
-    ------------------------------------------------------------------------
-    
-    # TODO cell to surf counts are cero why? 
-    
-    # TODO Check that the detectors surf_to_reg type, reg_to_reg type, reg_to_surf type are calculated in serpent as expected
-    detector_relation.keys() - Relation of detectors by type of counters
-    coarse_node_scores.keys() - scores of the detectors by name
+        Method to extract the following rates:
+            - mod --> mod
+            - mod --> fuel
+            - mod --> surface
     """
-    # print(coarse_node_scores.keys())
-    # print(detector_relation["region_to_region"])
-    # return 1
+    moderator_counts = {
+        "fuel": np.zeros(energy),
+        "coolant": np.zeros(energy),
+        "surface": {s: np.zeros(energy) for s in det_relation["surface"].keys()}
+    }
+    # scores:
+    # 'total_rate_fuel_g0': {'neutrons': [(1.75715, 0.00086)], 'energy': [(0.0, 6.25e-07)]} 
+    print()
+    for g in range(energy):
+        for gp in range(energy):
+
+            det_name_fuel = det_relation["fuel"][g][gp].name
+            det_name_coolant = det_relation["coolant"][g][gp].name
+            print(det_name_fuel)
+
+            switching_index = energy - 1 - gp # To get array fast ---> thermal
+            moderator_counts["fuel"][switching_index] += abs(scores[det_name_fuel]["neutrons"][0][0])
+            #print(gp, det_name_fuel, abs(scores[det_name_fuel]["neutrons"][0][0]))
+            moderator_counts["coolant"][switching_index] += abs(scores[det_name_coolant]["neutrons"][0][0])
+            for s in det_relation["surface"].keys():
+                det_name_surface = det_relation["surface"][s][g][gp].name
+                moderator_counts["surface"][s][switching_index] += abs(scores[det_name_surface]["neutrons"][0][0])
+
+
+    # for g in range(energy):
+    #     det_name_total = det_relation["total"][g].name
+    #     moderator_counts["coolant"][g] = abs(scores[det_name_total]["neutrons"][0][0])
+    #     moderator_counts["fuel"][g] -= moderator_counts
+    #     for gp in range(energy):
+    #         det_name_coolant = det_relation["coolant"][g][gp].name
+            
     
-    total_rate = get_total_rate_counts(coarse_node_scores, detector_relation)
-    surf_total = get_surf_counts(coarse_node_scores, detector_relation)
-    surf_to_surf = get_surf_to_surf_counts(coarse_node_scores, detector_relation)
-    surf_to_reg = get_surf_to_region_counds(coarse_node_scores, detector_relation)
-    reg_to_reg = get_region_to_region_counts(coarse_node_scores, detector_relation)
-    reg_to_surf = get_region_to_surf_counts(coarse_node_scores, detector_relation)
 
-    # The energy structure of the scores above are is ordered from the fastest --> thermal
+    
+    return moderator_counts
 
-    print("-"*100)
+def get_fuel_counts(scores, det_relation, energy):
+    """
+        Method to extract the following rates:
+            - fuel --> fuel
+            - fuel --> coolant
+            - fuel --> surface
+    """
+    fuel_counts = {
+        "fuel": np.zeros(energy),
+        "coolant": np.zeros(energy),
+        "surface": {s: np.zeros(energy) for s in det_relation["surface"].keys()}
+    }
+    # scores:
+    # 'total_rate_fuel_g0': {'neutrons': [(1.75715, 0.00086)], 'energy': [(0.0, 6.25e-07)]} 
+
+    for g in range(energy):
+        det_name_total = det_relation["total"][g].name
+        det_name_surf_coolant_incoming = det_relation["surface&coolant"][g].name
+        det_name_coolant = det_relation["coolant"][g].name
+
+        switching_index = energy - 1 - g # To get array fast ---> thermal
+        fuel_counts["coolant"][switching_index] = abs(scores[det_name_coolant]["neutrons"][0][0])
+        for s in det_relation["surface"].keys():
+            det_name_surface = det_relation["surface"][s][g].name
+            fuel_counts["surface"][s][switching_index] = abs(scores[det_name_surface]["neutrons"][0][0])
+        
+        fuel_counts["fuel"][switching_index] = abs(scores[det_name_total]["neutrons"][0][0]) - abs(scores[det_name_surf_coolant_incoming]["neutrons"][0][0])
+    return fuel_counts
+
+def get_surface_counts(scores, det_relation, energy):
+    """
+        Method to extract the following rates:
+            - surface --> fuel
+            - surface --> coolant
+            - surface --> surface
+
+    """
+
+    # Preparing surface_counts
+    surface_counts = {    }
+    for s in det_relation.keys():
+        surface_counts[s] = {
+            "fuel": np.zeros(energy),
+            "coolant": np.zeros(energy),
+            "surface": {  }
+        }
+        for sp in det_relation.keys():
+            surface_counts[s]["surface"][sp] = np.zeros(energy)
+    
+
+    for g in range(energy):
+        for s in det_relation.keys():
+            det_name_fuel = det_relation[s]["fuel"][g].name
+            # print(det_name_fuel)
+            det_name_coolant = det_relation[s]["coolant"][g].name
+
+            switching_index = energy - 1 - g  # To get array fast ---> thermal
+            surface_counts[s]["fuel"][switching_index] = abs(scores[det_name_fuel]["neutrons"][0][0])
+            surface_counts[s]["coolant"][switching_index] = abs(scores[det_name_coolant]["neutrons"][0][0])
+
+            for sp in det_relation.keys():
+                det_name_surface = det_relation[s][sp][g].name
+                surface_counts[s]["surface"][sp][switching_index] = abs(scores[det_name_surface]["neutrons"][0][0])
+
+                
+    return surface_counts
+
+
+
+
+def calculate_probabilities(coarse_node_scores, detector_relation, energy_groups, id_):
+    """
+        # TODO: The number of detectors can be reduced (see bellow)
+
+        The probability for a neutron to enter the cell through a given surface
+        and go out through the same surface without interacting is CERO
+
+        ------------------------------------------------------------------------
+        
+        
+        # TODO Check that the detectors surf_to_reg type, reg_to_reg type, reg_to_surf type are calculated in serpent as expected
+        detector_relation.keys() - Relation of detectors by type of counters
+        coarse_node_scores.keys() - scores of the detectors by name
+    """
+    
+    
+    # The energy structure of these scores are ordered from the fastest --> thermal ----------------------
+    
+    # total_rate = get_total_rate_counts(coarse_node_scores, detector_relation)
+    # surf_total = get_surf_counts(coarse_node_scores, detector_relation)
+    # surf_to_surf = get_surf_to_surf_counts(coarse_node_scores, detector_relation)
+    # surf_to_reg = get_surf_to_region_counds(coarse_node_scores, detector_relation)
+    # reg_to_reg = get_region_to_region_counts(coarse_node_scores, detector_relation)
+    # reg_to_surf = get_region_to_surf_counts(coarse_node_scores, detector_relation)
+
     # print("Detector counts\n")
     # print(f"Total rate:\n{total_rate}\n")
     # print(f"Neutrons crossing the surface:\n{surf_total}\n")
@@ -278,6 +389,24 @@ def calculate_probabilities(coarse_node_scores, detector_relation, energy_groups
     # print(f"Surface to region:\n{surf_to_reg}\n")
     # print(f"Region to region:\n{reg_to_reg}\n")
     # print(f"Region to surface:\n{reg_to_surf}\n")
+
+    # ----------------------------------------------------------------------------------------------------
+
+   
+    # The energy structure of these scores are ordered from thermal --> fast  ----------------------------
+
+    fuel_neutrons = get_fuel_counts(coarse_node_scores, detector_relation["fuel"], energy_groups)
+    coolant_neutrons = get_moderator_counts(coarse_node_scores, detector_relation["coolant"], energy_groups)
+    surface_neutrons = get_surface_counts(coarse_node_scores, detector_relation["surfaces"], energy_groups)
+
+    # print(fuel_neutrons)
+    # print(coolant_neutrons)
+    # print(surface_neutrons)
+    # ----------------------------------------------------------------------------------------------------
+
+
+
+    print("-"*100)
 
     # total_neutrons = {}
 
@@ -294,63 +423,165 @@ def calculate_probabilities(coarse_node_scores, detector_relation, energy_groups
     prob_i_a = {}
     
     
-    neutrons_emitted_from_region, same_to_same = calculate_neutrons_emitted_from_region(total_rate, surf_total, reg_to_reg, reg_to_surf, surf_to_reg)
+    # Probabilities from fuel: ----------------------------------------------------------------------------
 
-    neutrons_entering_through_surface = surf_total
-    regions = list(total_rate.keys())
-    surfaces = list(surf_total.keys())
-    for region_i in regions:
-        prob_i_j[region_i] = {}
-        prob_i_a[region_i] = {}
-        for region_j in regions:
-            if region_j == region_i:
-                reg_to_reg[region_i][region_j] = same_to_same[region_i] # something
-            prob_i_j[region_i][region_j] = reg_to_reg[region_i][region_j] / neutrons_emitted_from_region[region_i]
-        for surf_a in surfaces:
-            prob_i_a[region_i][surf_a] = reg_to_surf[region_i][surf_a] / neutrons_emitted_from_region[region_i]
+    emmited_from_fuel = fuel_neutrons["fuel"] + fuel_neutrons["coolant"]
     
-    for surf_a in surfaces:
-        prob_a_j[surf_a] = {}
-        prob_a_b[surf_a] = {}
-        for region_j in regions:
-            prob_a_j[surf_a][region_j] = surf_to_reg[surf_a][region_j] / neutrons_entering_through_surface[surf_a]
-        for surf_b in surfaces:
-            prob_a_b[surf_a][surf_b] = surf_to_surf[surf_a][surf_b] / neutrons_entering_through_surface[surf_a]
+    for s in detector_relation["surfaces"].keys():
+        emmited_from_fuel += fuel_neutrons["surface"][s]
+    print("Probabilities from the fuel to: \n")
     
-    print("-"*100)
-    print("Probabilities\n")
-    # print(prob_a_b).
-    print(prob_i_j)
+    p_fuel = {
+        "fuel": None,
+        "coolant": None,
+        "surfaces": {
+            3: None,
+            4: None,
+            5: None,
+            6: None
+        }
+    }
+    p_fuel["fuel"] = fuel_neutrons["fuel"]/emmited_from_fuel
+    p_fuel["coolant"] = fuel_neutrons["coolant"]/emmited_from_fuel
+    for s in detector_relation["surfaces"].keys():
+        p_fuel["surfaces"][s] = fuel_neutrons["surface"][s]/emmited_from_fuel
+    
+    diff_fuel = compare.compare_fuel(p_fuel)
+    print(p_fuel)
+    print()
+    print("Percentage difference: ")
+    print(diff_fuel)
+    # surfaces = [3, 4, 5, 6]
+    # for g in range(energy_groups):
+    #     a = [p_fuel["fuel"][g], p_fuel["coolant"][g]]
+    #     for sp in surfaces:
+    #         a.append(p_fuel[sp][g])
+        # print(a)
+        # print()
     print("-"*100)
 
 
-    print("-"*100)
-    print("Matrix of probabilities\n")
-    print(surfaces)
-    print(regions)
-    region_to_x = np.zeros((len(regions), energy_groups, len(regions) + len(surfaces)))
-    for r_i in range(len(regions)):
-        r_i_region = regions[r_i]
-        for g in range(energy_groups):
-            for r_j in range(len(regions)):
-                r_j_region = regions[r_j]
-                region_to_x[r_i][g][r_j] = prob_i_j[r_i_region][r_j_region][g]
-            for s_a in range(len(surfaces)):
-                s_a_surf = surfaces[s_a]
-                region_to_x[r_i][g][s_a + len(regions)] = prob_i_a[r_i_region][s_a_surf][g]
-    print(region_to_x)
+    # ----------------------------------------------------------------------------------------------------
 
-    surface_to_x = np.zeros((energy_groups, len(surfaces),len(regions) + len(surfaces)))
-    for g in range(energy_groups):
-        for s_a in range(len(surfaces)):
-            s_a_surf = surfaces[s_a]
-            for r_j in range(len(regions)):
-                r_j_region = regions[r_j]
-                surface_to_x[g][s_a][r_j] = prob_a_j[surf_a][r_j_region][g]
-            for s_b in range(len(surfaces)):
-                s_b_surf = surfaces[s_b]
-                surface_to_x[g][s_a][s_b + len(regions)] = prob_a_b[s_a_surf][s_b_surf][g]
-    print(surface_to_x)     
+    # Probabilities from coolant: ------------------------------------------------------------------------
+
+    emmited_from_coolant = coolant_neutrons["fuel"] + coolant_neutrons["coolant"]
+    for s in detector_relation["surfaces"].keys():
+        emmited_from_coolant += coolant_neutrons["surface"][s]
+    
+    
+    print("Probabilities from the coolant to: \n")
+    
+    p_coolant = {
+        "fuel": None,
+        "coolant": None,
+        "surfaces": {
+            3: None,
+            4: None,
+            5: None,
+            6: None
+        }
+    }
+
+    p_coolant["fuel"] = coolant_neutrons["fuel"]/emmited_from_coolant
+    p_coolant["coolant"] = coolant_neutrons["coolant"]/emmited_from_coolant
+    for s in detector_relation["surfaces"].keys():
+        p_coolant["surfaces"][s] = coolant_neutrons["surface"][s]/emmited_from_coolant
+    
+    diff_coolant = compare.compare_coolant(p_coolant)
+    print(p_coolant)
+    print()
+    print("Percentage difference: ")
+
+    print(diff_coolant)
+    # surfaces = [3, 4, 5, 6]
+    # for g in range(energy_groups):
+    #     a = [p_coolant["fuel"][g], p_coolant["coolant"][g]]
+    #     for sp in surfaces:
+    #         a.append(p_coolant[sp][g])
+        #print(a)
+        #print()
+    print("-"*100)
+    # ----------------------------------------------------------------------------------------------------
+
+    # Probabilities from surfaces ------------------------------------------------------------------------
+    emmited_from_surfaces = {
+        s: np.zeros(energy_groups) for s in detector_relation["surfaces"].keys()
+    }
+    for s in detector_relation["surfaces"].keys():
+        # print(s)
+        emmited_from_surfaces[s] = surface_neutrons[s]["fuel"] + surface_neutrons[s]["coolant"]
+        for sp in detector_relation["surfaces"].keys():
+            emmited_from_surfaces[s] += surface_neutrons[s]["surface"][sp]
+    # print(emmited_from_surfaces)
+    
+    
+    #print("Probabilities from the surfaces to: \n")
+    
+    p_surfaces = {
+        s: {
+            "fuel": None,
+            "coolant": None,
+            "surfaces": {}
+        } for s in detector_relation["surfaces"].keys() 
+    }
+    # print(p_surfaces)
+    for s in detector_relation["surfaces"].keys():
+        p_surfaces[s]["fuel"] = surface_neutrons[s]["fuel"]/emmited_from_surfaces[s]
+        p_surfaces[s]["coolant"] = surface_neutrons[s]["coolant"]/emmited_from_surfaces[s]
+        for sp in detector_relation["surfaces"].keys():
+            p_surfaces[s]["surfaces"][sp] = surface_neutrons[s]["surface"][sp]/emmited_from_surfaces[s]
+    
+    
+    diff_surfaces = compare.compare_surfaces(p_surfaces)
+    print(p_surfaces)
+    print()
+    print("Percentage difference: ")
+
+    print(diff_surfaces)
+    
+    # surfaces = [3, 4, 5, 6]
+    # for g in range(energy_groups):
+    #     for s in surfaces:
+    #         a = [p_surfaces[s]["fuel"][g], p_surfaces[s]["coolant"][g]]
+    #         for sp in surfaces:
+    #             a.append(p_surfaces[s][sp][g])
+            # print(a)
+        # print()
+
+    # for key, value in p_surfaces.items():
+    #     print(key, value)
+    print("-"*100)
+    
+    # ----------------------------------------------------------------------------------------------------
+
+
     # print(coarse_node_scores)
         
 
+# det total_rate_coolant_g0  de 2groups_grid_0 dr -1 coolant dc 2 dfl 5 1 
+# det total_rate_coolant_g1  de 2groups_grid_1 dr -1 coolant dc 2 dfl 6 1 
+# det coolant_coolant_g0_to_g0  de 2groups_grid_0 dr -1 coolant dc 2 dfl 5 2  dfl 5 0  dfl 5 1 
+# det coolant_fuel_g0_to_g0  de 2groups_grid_0 dr -1 fuel1 dc 1 dfl 5 2  dfl 5 0  dfl 5 1 
+# det coolant_surface6_g0_to_g0 ds 6 1 de 2groups_grid_0   dfl 5 2  dfl 5 0 
+# det coolant_surface4_g0_to_g0 ds 4 1 de 2groups_grid_0   dfl 5 2  dfl 5 0 
+# det coolant_surface5_g0_to_g0 ds 5 -1 de 2groups_grid_0   dfl 5 2  dfl 5 0 
+# det coolant_surface3_g0_to_g0 ds 3 -1 de 2groups_grid_0   dfl 5 2  dfl 5 0 
+# det coolant_coolant_g0_to_g1  de 2groups_grid_1 dr -1 coolant dc 2 dfl 5 2  dfl 5 0  dfl 6 1 
+# det coolant_fuel_g0_to_g1  de 2groups_grid_1 dr -1 fuel1 dc 1 dfl 5 2  dfl 5 0  dfl 6 1 
+# det coolant_surface6_g0_to_g1 ds 6 1 de 2groups_grid_1   dfl 5 2  dfl 5 0 
+# det coolant_surface4_g0_to_g1 ds 4 1 de 2groups_grid_1   dfl 5 2  dfl 5 0 
+# det coolant_surface5_g0_to_g1 ds 5 -1 de 2groups_grid_1   dfl 5 2  dfl 5 0 
+# det coolant_surface3_g0_to_g1 ds 3 -1 de 2groups_grid_1   dfl 5 2  dfl 5 0 
+# det coolant_coolant_g1_to_g0  de 2groups_grid_0 dr -1 coolant dc 2 dfl 6 2  dfl 6 0  dfl 5 1 
+# det coolant_fuel_g1_to_g0  de 2groups_grid_0 dr -1 fuel1 dc 1 dfl 6 2  dfl 6 0  dfl 5 1 
+# det coolant_surface6_g1_to_g0 ds 6 1 de 2groups_grid_0   dfl 6 2  dfl 6 0 
+# det coolant_surface4_g1_to_g0 ds 4 1 de 2groups_grid_0   dfl 6 2  dfl 6 0 
+# det coolant_surface5_g1_to_g0 ds 5 -1 de 2groups_grid_0   dfl 6 2  dfl 6 0 
+# det coolant_surface3_g1_to_g0 ds 3 -1 de 2groups_grid_0   dfl 6 2  dfl 6 0 
+# det coolant_coolant_g1_to_g1  de 2groups_grid_1 dr -1 coolant dc 2 dfl 6 2  dfl 6 0  dfl 6 1 
+# det coolant_fuel_g1_to_g1  de 2groups_grid_1 dr -1 fuel1 dc 1 dfl 6 2  dfl 6 0  dfl 6 1 
+# det coolant_surface6_g1_to_g1 ds 6 1 de 2groups_grid_1   dfl 6 2  dfl 6 0 
+# det coolant_surface4_g1_to_g1 ds 4 1 de 2groups_grid_1   dfl 6 2  dfl 6 0 
+# det coolant_surface5_g1_to_g1 ds 5 -1 de 2groups_grid_1   dfl 6 2  dfl 6 0 
+# det coolant_surface3_g1_to_g1 ds 3 -1 de 2groups_grid_1   dfl 6 2  dfl 6 0 
