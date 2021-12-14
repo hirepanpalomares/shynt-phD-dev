@@ -18,10 +18,14 @@ def run(root):
     """
 
     inputs, coarse_nodes, fine_nodes, equality_bins =  Shynt.generator.generate_serpent_files(root)
-    # print("-"*100)
+    print(inputs)
+    print("-"*100)
     # print(fine_nodes[1][0].id)
     # print(fine_nodes[1][0])
 
+    Shynt.surfaces.reset_surface_counter()
+    Shynt.cells.reset_cell_counter()
+    return 0
     
     # print(inputs)
     # print(global_p)
@@ -131,6 +135,4 @@ def run(root):
     ------------------------------------------------------------------------------------------
     ------------------------------------------------------------------------------------------
     """
-    Shynt.surfaces.reset_surface_counter()
-    Shynt.cells.reset_cell_counter()
 

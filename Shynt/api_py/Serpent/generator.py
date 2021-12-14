@@ -28,6 +28,7 @@ def generate_serpent_files(model):
     print("\n")
     
     cells_to_files = {bin_[0] : global_cells[bin_[0]] for bin_ in different_node_bins}
+    print(cells_to_files)
     
     files = input_generator(cells_to_files, local_cells, model)
     return files, global_cells, local_cells, different_node_bins
@@ -117,18 +118,47 @@ def input_generator(global_cells, local_cells, model):
     except AssertionError:
         os.mkdir(serpent_dir)
 
+
     files = {}
     for id_, global_cell in global_cells.items():
-        name_file = serpent_dir + f"/global_problem_{id_}.serp"
-        files[id_] = SerpentInputFile(
-            global_cell, 
-            id_, 
-            local_cells[id_], 
-            name_file,model.libraries, 
-            model.energy_grid, 
-            model.mcparams
+        # Loop for every global_cell
+        files[id_] = []
+        global_cell_dir = f"{serpent_dir}/global_cell_type{id_}"
+        try:
+            assert(os.path.isdir(global_cell_dir))
+        except AssertionError:
+            os.mkdir(global_cell_dir)
+        
+        for local_cell in local_cells[id_]:
+            # Loop for local cells (a different file for every material or, in this case, each local cell to write the detectors)
+            material = local_cell.content.name
+            name_file = f"{global_cell_dir}/det_local_problem_{material}.serp"
+            files[id_].append(
+                SerpentInputFile(
+                    global_cell, 
+                    id_, 
+                    local_cells[id_], 
+                    name_file,
+                    model.libraries, 
+                    model.energy_grid, 
+                    model.mcparams,
+                    type_detectors="local_cell",
+                    specific_cell=material                )
+            )
+        # Additional file for the surfaces
+        name_surfaces_file = f"{global_cell_dir}/det_local_problem_surfaces.serp"
+        files[id_].append(
+            SerpentInputFile(
+                global_cell, 
+                id_, 
+                local_cells[id_], 
+                name_surfaces_file,
+                model.libraries, 
+                model.energy_grid, 
+                model.mcparams,
+                type_detectors="surfaces"
+            )
         )
-
     return files
 
 

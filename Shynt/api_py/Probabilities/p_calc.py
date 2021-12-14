@@ -366,8 +366,6 @@ def calculate_probabilities(coarse_node_scores, detector_relation, energy_groups
 
         ------------------------------------------------------------------------
         
-        
-        # TODO Check that the detectors surf_to_reg type, reg_to_reg type, reg_to_surf type are calculated in serpent as expected
         detector_relation.keys() - Relation of detectors by type of counters
         coarse_node_scores.keys() - scores of the detectors by name
     """

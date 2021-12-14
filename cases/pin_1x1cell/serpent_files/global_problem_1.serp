@@ -63,39 +63,33 @@ det fuel_to_coolant_g1  de 2groups_grid_1 dr -1 coolant dc 2 dfl 4 2  dfl 4 0
 det fuel_to_surface-6_g1 ds 6 1 de 2groups_grid_1   dfl 4 2  dfl 4 0 
 det fuel_to_surface-4_g1 ds 4 1 de 2groups_grid_1   dfl 4 2  dfl 4 0 
 det fuel_to_surface-5_g1 ds 5 -1 de 2groups_grid_1   dfl 4 2  dfl 4 0 
-det fuel_to_surface-3_g1 ds 3 -1 de 2groups_grid_1   dfl 4 2  dfl 4 0
-
-
-
-det coolant_coolant_g0_to_g0  de 2groups_grid_0 dr -1 coolant dc 2 dfl 5 2  dfl 5 0  dfl 5 1 
-det coolant_coolant_g1_to_g1  de 2groups_grid_1 dr -1 coolant dc 2 dfl 6 2  dfl 6 0  dfl 6 1 
-det coolant_coolant_g0_to_g1  de 2groups_grid_1 dr -1 coolant dc 2 dfl 5 2  dfl 5 0  dfl 6 1 
-det coolant_coolant_g1_to_g0  de 2groups_grid_0 dr -1 coolant dc 2 dfl 6 2  dfl 6 0  dfl 5 1 
-
-det total_rate_coolant_g1  de 2groups_grid_1 dr -1 coolant dc 2 dfl 6 1 
+det fuel_to_surface-3_g1 ds 3 -1 de 2groups_grid_1   dfl 4 2  dfl 4 0 
 det total_rate_coolant_g0  de 2groups_grid_0 dr -1 coolant dc 2 dfl 5 1 
-
+det total_rate_coolant_g1  de 2groups_grid_1 dr -1 coolant dc 2 dfl 6 1 
+det coolant_coolant_g0_to_g0  de 2groups_grid_0 dr -1 coolant dc 2 dfl 5 2  dfl 5 0  dfl 5 1 
 det coolant_fuel_g0_to_g0  de 2groups_grid_0 dr -1 fuel1 dc 1 dfl 5 2  dfl 5 0  dfl 5 1 
 det coolant_surface6_g0_to_g0 ds 6 1 de 2groups_grid_0   dfl 5 2  dfl 5 0 
 det coolant_surface4_g0_to_g0 ds 4 1 de 2groups_grid_0   dfl 5 2  dfl 5 0 
 det coolant_surface5_g0_to_g0 ds 5 -1 de 2groups_grid_0   dfl 5 2  dfl 5 0 
 det coolant_surface3_g0_to_g0 ds 3 -1 de 2groups_grid_0   dfl 5 2  dfl 5 0 
+det coolant_coolant_g0_to_g1  de 2groups_grid_1 dr -1 coolant dc 2 dfl 5 2  dfl 5 0  dfl 6 1 
 det coolant_fuel_g0_to_g1  de 2groups_grid_1 dr -1 fuel1 dc 1 dfl 5 2  dfl 5 0  dfl 6 1 
 det coolant_surface6_g0_to_g1 ds 6 1 de 2groups_grid_1   dfl 5 2  dfl 5 0 
 det coolant_surface4_g0_to_g1 ds 4 1 de 2groups_grid_1   dfl 5 2  dfl 5 0 
 det coolant_surface5_g0_to_g1 ds 5 -1 de 2groups_grid_1   dfl 5 2  dfl 5 0 
 det coolant_surface3_g0_to_g1 ds 3 -1 de 2groups_grid_1   dfl 5 2  dfl 5 0 
+det coolant_coolant_g1_to_g0  de 2groups_grid_0 dr -1 coolant dc 2 dfl 6 2  dfl 6 0  dfl 5 1 
 det coolant_fuel_g1_to_g0  de 2groups_grid_0 dr -1 fuel1 dc 1 dfl 6 2  dfl 6 0  dfl 5 1 
 det coolant_surface6_g1_to_g0 ds 6 1 de 2groups_grid_0   dfl 6 2  dfl 6 0 
 det coolant_surface4_g1_to_g0 ds 4 1 de 2groups_grid_0   dfl 6 2  dfl 6 0 
 det coolant_surface5_g1_to_g0 ds 5 -1 de 2groups_grid_0   dfl 6 2  dfl 6 0 
 det coolant_surface3_g1_to_g0 ds 3 -1 de 2groups_grid_0   dfl 6 2  dfl 6 0 
+det coolant_coolant_g1_to_g1  de 2groups_grid_1 dr -1 coolant dc 2 dfl 6 2  dfl 6 0  dfl 6 1 
 det coolant_fuel_g1_to_g1  de 2groups_grid_1 dr -1 fuel1 dc 1 dfl 6 2  dfl 6 0  dfl 6 1 
 det coolant_surface6_g1_to_g1 ds 6 1 de 2groups_grid_1   dfl 6 2  dfl 6 0 
 det coolant_surface4_g1_to_g1 ds 4 1 de 2groups_grid_1   dfl 6 2  dfl 6 0 
 det coolant_surface5_g1_to_g1 ds 5 -1 de 2groups_grid_1   dfl 6 2  dfl 6 0 
 det coolant_surface3_g1_to_g1 ds 3 -1 de 2groups_grid_1   dfl 6 2  dfl 6 0 
-
 det surface_6_jin_g0 ds 6 -1 de 2groups_grid_0   dfl 7 1 
 det surface_4_jin_g0 ds 4 -1 de 2groups_grid_0   dfl 8 1 
 det surface_5_jin_g0 ds 5 1 de 2groups_grid_0   dfl 9 1 

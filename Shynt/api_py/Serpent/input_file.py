@@ -154,7 +154,7 @@ class SerpentInputFile():
     """
     
 
-    def __init__(self, cell, id_global, local_nodes, name, libraries, energy, params) -> None:
+    def __init__(self, cell, id_global, local_nodes, name, libraries, energy, params, type_detectors=None, specific_cell=None):
         self.cell = cell
         self.name = name
         self.libraries = libraries
@@ -162,6 +162,8 @@ class SerpentInputFile():
         self.mcparams = params
         self.global_id = id_global # is del global node 
         self.local_nodes = local_nodes
+        self.type_detectors = type_detectors
+        self.specific_cell = specific_cell
         
         self.detector_flags = []
         self.surfaces_ids = []
@@ -287,6 +289,7 @@ class SerpentInputFile():
             Right now is hard coded:
                 - fuel1
                 - coolant
+            Because the kind of detectors depend on if its (coolant, any other material) or (fuel)
         """
 
         #  getting surfaces for detectors -----------------------------------------
@@ -294,48 +297,12 @@ class SerpentInputFile():
         surface_for_detectors = self.__get_surface_for_detectors()        
         self.__file.write(surface_for_detectors)
         cell_ids_relation = {c.id: c for c in self.local_nodes}
-        # print(cell_ids_relation)
-        # print(material_cell_ids_relation)
-
+        
         # Preparing detectors relation and flag counter ------------------------
-        groups = self.energy_grid.energy_groups
-        detectors_relation = {
-            "fuel": {
-                "total": {g: None for g in range(groups)},
-                "incoming": {g: None for g in range(groups)},
-                "outcoming": {g: None for g in range(groups)},
-                "surface&coolant": {g: None for g in range(groups)},
-                "coolant": {g: None for g in range(groups)},
-                "surface" : {
-                    s: {g: {} for g in range(groups)} for s in self.closing_surface_ids
-                }
-            },
-            "coolant": {
-                "total": {g: None for g in range(groups)},
-                "fuel": {g: {} for g in range(groups)},
-                "coolant": {g: {} for g in range(groups)},
-                "surface": {
-                    s: {g: {} for g in range(groups)} for s in self.closing_surface_ids
-                },
-            },
-            "surfaces": {
-                
-            },
-        }
-        for s in self.closing_surface_ids:
-            detectors_relation["surfaces"][s] = {
-                "incoming": {g: None for g in range(groups)},
-                "fuel": {g: None for g in range(groups)},
-                "coolant": {g: None for g in range(groups)},
-            } 
-            for sp in self.closing_surface_ids:
-                detectors_relation["surfaces"][s][sp] = {g: None for g in range(groups)}
-
+        detectors_relation = {}
         detectors = []
         flag_counter = 1
-
-        energy_groups = self.energy_grid.energy_groups
-
+        groups = self.energy_grid.energy_groups
         # getting fuel cell inside the pin -------------------------------------
         fuel_cell_id = self.material_cell_ids_relation["fuel"]
         fuel_cell = cell_ids_relation[fuel_cell_id]
@@ -343,33 +310,70 @@ class SerpentInputFile():
         # getting coolant cell inside the pin ----------------------------------
         coolant_cell_id = self.material_cell_ids_relation["coolant"]
         coolant_cell = cell_ids_relation[coolant_cell_id]
-        
-        # Fuel detectors -------------------------------------------------------
-        detectors, detectors_relation, flag_counter = self.__helper_fuel_detectors(
-            fuel_cell, 
-            coolant_cell, 
-            detectors, 
-            detectors_relation,
-            flag_counter
-        )
+        if self.type_detectors == "local_cell":
+            if self.specific_cell == "fuel1":
+                detectors_relation = {
+                    "fuel": {
+                        "total": {g: None for g in range(groups)},
+                        "incoming": {g: None for g in range(groups)},
+                        "outcoming": {g: None for g in range(groups)},
+                        "surface&coolant": {g: None for g in range(groups)},
+                        "coolant": {g: None for g in range(groups)},
+                        "surface" : {
+                            s: {g: {} for g in range(groups)} for s in self.closing_surface_ids
+                        }
+                    }
+                }
+                
+                # Fuel detectors -------------------------------------------------------
+                detectors, detectors_relation, flag_counter = self.__helper_fuel_detectors(
+                    fuel_cell, 
+                    coolant_cell, 
+                    detectors, 
+                    detectors_relation,
+                    flag_counter
+                )
 
-        # Coolant detectors ----------------------------------------------------
-        detectors, detectors_relation, flag_counter = self.__helper_coolant_detectors(
-            fuel_cell, 
-            coolant_cell, 
-            detectors, 
-            detectors_relation, 
-            flag_counter
-        )
+            if self.specific_cell == "coolant":
+                detectors_relation = {
+                    "coolant": {
+                        "total": {g: None for g in range(groups)},
+                        "fuel": {g: {} for g in range(groups)},
+                        "coolant": {g: {} for g in range(groups)},
+                        "surface": {
+                            s: {g: {} for g in range(groups)} for s in self.closing_surface_ids
+                        },
+                    }
+                }
+                # Coolant detectors ----------------------------------------------------
+                detectors, detectors_relation, flag_counter = self.__helper_coolant_detectors(
+                    fuel_cell, 
+                    coolant_cell, 
+                    detectors, 
+                    detectors_relation, 
+                    flag_counter
+                )
+        elif self.type_detectors == "surfaces":
+            detectors_relation = {
+                "surfaces": { }
+            }
+            for s in self.closing_surface_ids:
+                detectors_relation["surfaces"][s] = {
+                    "incoming": {g: None for g in range(groups)},
+                    "fuel": {g: None for g in range(groups)},
+                    "coolant": {g: None for g in range(groups)},
+                } 
+                for sp in self.closing_surface_ids:
+                    detectors_relation["surfaces"][s][sp] = {g: None for g in range(groups)}
 
-        # Surface detectors ----------------------------------------------------
-        detectors, detectors_relation, flag_counter = self.__helper_surface_detectors(
-            fuel_cell, 
-            coolant_cell, 
-            detectors, 
-            detectors_relation, 
-            flag_counter
-        )
+            # Surface detectors ----------------------------------------------------
+            detectors, detectors_relation, flag_counter = self.__helper_surface_detectors(
+                fuel_cell, 
+                coolant_cell, 
+                detectors, 
+                detectors_relation, 
+                flag_counter
+            )
 
         # Writing detectors in the serpent file --------------------------------
         self.__file.write("\n\n% ----- Detectors ------\n")
@@ -426,7 +430,6 @@ class SerpentInputFile():
             }
         
         # Adding surfaces from inside the pin cell
-        # TODO Add a method to check if the surface is already in the file to not repeat it
         self.material_cell_ids_relation = {"fuel": 2, "coolant": 3}
         universe = self.cell.content
         universe_cells = universe.cells
@@ -441,7 +444,6 @@ class SerpentInputFile():
                 self.material_cell_ids_relation["coolant"] = cell.id
         return surface_for_detectors
         
-
     def __helper_fuel_detectors(self, fuel_cell, coolant_cell, detectors, detectors_relation, flag_counter):
         energy_bins = self.energy_grid.bins_names_relation
         flag_relation = { }
