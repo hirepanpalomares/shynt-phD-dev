@@ -1,5 +1,7 @@
-from Shynt.api_py.Geometry.regions import SurfaceSide
 import os
+import numpy as np
+
+from Shynt.api_py.Geometry.regions import SurfaceSide
 
 class Surface:
 
@@ -162,7 +164,9 @@ class InfiniteCylinderZ(Surface):
     def eval_point(self, x, y):
         return self.__function(x, y)
 
-    def is_point(self, x, y):
+    def is_point(self, point):
+        x = point[0]
+        y = point[1]
         return self.eval_point(x, y) < 0
 
     def __str__(self):    
@@ -172,6 +176,15 @@ class InfiniteCylinderZ(Surface):
             - radius: %s
         """%(self.name, self.id, self.__radius)
     
+    def evaluate_enclosed_volume(self):
+        return np.pi * self.__radius * self.__radius
+    
+    def evaluate_surface_area(self):
+        return {
+            self.id: 2 * np.pi * self.__radius
+        }
+        
+
     @property
     def center(self):
         return (self.__center_x, self.__center_y)
@@ -180,6 +193,20 @@ class InfiniteCylinderZ(Surface):
     def radius(self):
         return self.__radius
     
+    @property
+    def vertex_points(self):
+        """
+            The vertex points for the circle are set to be
+            4, every 90 degrees on the surface line
+        """
+        points = [
+            (self.__center_x, self.__center_y + self.__radius),
+            (self.__center_x + self.__radius, self.__center_y),
+            (self.__center_x, self.__center_y - self.__radius),
+            (self.__center_x - self.__radius, self.__center_y),
+        ]
+
+        return points
 
 class InfiniteCylinderY(Surface):
 
@@ -283,21 +310,42 @@ class InfiniteSquareCylinderZ(Surface):
         self.__center_y = center_y
         self.__half_width = half_width
         self.__surf_left, self.__surf_right, self.__surf_bottom, self.__surf_top = self.__generate_surfaces()
-        self.boundary
         self.serpent_syntax = f"surf {self.id} sqc {center_x} {center_y} {half_width}\n"
 
         
     def __generate_surfaces(self):
         surfaces = [
-            PlaneX(self.__center_x - self.__half_width, self.boundary),
-            PlaneX(self.__center_x + self.__half_width, self.boundary),
-            PlaneY(self.__center_y - self.__half_width, self.boundary),
-            PlaneY(self.__center_y + self.__half_width, self.boundary)
+            PlaneX(self.__center_x - self.__half_width, boundary=self.boundary),
+            PlaneX(self.__center_x + self.__half_width, boundary=self.boundary),
+            PlaneY(self.__center_y - self.__half_width, boundary=self.boundary),
+            PlaneY(self.__center_y + self.__half_width, boundary=self.boundary)
         ]
         return surfaces
 
-    def eval_point(self, x, y):
-        return x > self.__surf_left.x0 and x < self.__surf_right.x0 and y > self.__surf_bottom.y0 and y < self.__surf_top.x0
+    def is_point(self, point):
+        x = point[0]
+        y = point[1]
+        return x > self.__surf_left.x0 and x < self.__surf_right.x0 and y > self.__surf_bottom.y0 and y < self.__surf_top.y0
+
+    def evaluate_enclosed_volume(self):
+        return self.__half_width * self.__half_width * 4
+    
+    def evaluate_surface_area(self):
+        side_length = 2 * self.__half_width
+        return {
+            self.__surf_left.id: side_length,
+            self.__surf_right.id: side_length,
+            self.__surf_top.id: side_length,
+            self.__surf_bottom.id: side_length
+        }
+
+    def getSurface_relation(self):
+        return {
+            self.__surf_left.id: self.__surf_left,
+            self.__surf_right.id: self.__surf_right,
+            self.__surf_top.id: self.__surf_top,
+            self.__surf_bottom.id:self.__surf_bottom
+        }
 
     def __str__(self):    
         return """Surface of infinite square cylinder in z-axis:
@@ -336,6 +384,17 @@ class InfiniteSquareCylinderZ(Surface):
     def half_width(self):
         return self.__half_width
     
+    @property
+    def vertex_points(self):
+        points = [
+            (self.__center_x + self.__half_width, self.__center_y + self.__half_width),
+            (self.__center_x + self.__half_width, self.__center_y - self.__half_width),
+            (self.__center_x - self.__half_width, self.__center_y - self.__half_width),
+            (self.__center_x - self.__half_width, self.__center_y + self.__half_width),
+        ]
+
+        return points
+
 
 class HexagonalCylinderX(Surface):
 

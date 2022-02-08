@@ -1,6 +1,7 @@
 from Shynt.api_py.Serpent.input_file import SerpentInputFile
 import os
 import sys
+from pathlib import Path
 
 def generate_serpent_files(model):
     """
@@ -14,8 +15,8 @@ def generate_serpent_files(model):
     # print(model_cell)
     #print(outside_cell)
 
-    global_cells = model_cell.global_mesh
-    local_cells = model_cell.local_mesh
+    global_cells = model_cell.global_mesh.coarse_nodes
+    local_cells = model_cell.local_mesh.fine_nodes
 
     different_node_bins = different_global_nodes(global_cells, local_cells)
 
@@ -30,8 +31,8 @@ def generate_serpent_files(model):
     cells_to_files = {bin_[0] : global_cells[bin_[0]] for bin_ in different_node_bins}
     print(cells_to_files)
     
-    files = input_generator(cells_to_files, local_cells, model)
-    return files, global_cells, local_cells, different_node_bins
+    det_files, xs_files = input_generator(cells_to_files, local_cells, model)
+    return det_files, xs_files, global_cells, local_cells, different_node_bins
 
 
 def is_pin_in_array(pin, arr, global_nodes, local_nodes):
@@ -106,9 +107,12 @@ def input_generator(global_cells, local_cells, model):
 
     """
 
-    input_file_location = "/" + "/".join(sys.argv[0].split("/")[:-1]) + "/"    
+    
+    input_file_argument = sys.argv[0]
+    input_file_absolute = str(Path(input_file_argument).absolute())
+    input_file_dir = "/".join(input_file_absolute.split("/")[:-1]) + "/"
 
-    serpent_dir = os.getcwd() + input_file_location + "serpent_files"
+    serpent_dir = input_file_dir + "serpent_files"
     # print("*"*60)
     # print(os.getcwd())
     # print("*"*60)
@@ -119,10 +123,11 @@ def input_generator(global_cells, local_cells, model):
         os.mkdir(serpent_dir)
 
 
-    files = {}
+    det_files = {}
+    xs_files = {}
     for id_, global_cell in global_cells.items():
         # Loop for every global_cell
-        files[id_] = []
+        det_files[id_] = []
         global_cell_dir = f"{serpent_dir}/global_cell_type{id_}"
         try:
             assert(os.path.isdir(global_cell_dir))
@@ -133,21 +138,22 @@ def input_generator(global_cells, local_cells, model):
             # Loop for local cells (a different file for every material or, in this case, each local cell to write the detectors)
             material = local_cell.content.name
             name_file = f"{global_cell_dir}/det_local_problem_{material}.serp"
-            files[id_].append(
-                SerpentInputFile(
-                    global_cell, 
-                    id_, 
-                    local_cells[id_], 
-                    name_file,
-                    model.libraries, 
-                    model.energy_grid, 
-                    model.mcparams,
-                    type_detectors="local_cell",
-                    specific_cell=material                )
+            serpent_input = SerpentInputFile(
+                global_cell, 
+                id_, 
+                local_cells[id_], 
+                name_file,
+                model.libraries, 
+                model.energy_grid, 
+                model.mcparams,
+                type_detectors="local_cell",
+                specific=material                
             )
+            det_files[id_].append(serpent_input)
+
         # Additional file for the surfaces
         name_surfaces_file = f"{global_cell_dir}/det_local_problem_surfaces.serp"
-        files[id_].append(
+        det_files[id_].append(
             SerpentInputFile(
                 global_cell, 
                 id_, 
@@ -156,10 +162,23 @@ def input_generator(global_cells, local_cells, model):
                 model.libraries, 
                 model.energy_grid, 
                 model.mcparams,
-                type_detectors="surfaces"
+                type_detectors="surfaces",
+                specific="surfaces"
             )
         )
-    return files
+        # Additional file for cross section generation
+        name_file = f"{global_cell_dir}/XS_generation.serp"
+        xs_files[id_] = SerpentInputFile(
+            global_cell, 
+            id_, 
+            local_cells[id_], 
+            name_file,
+            model.libraries, 
+            model.energy_grid, 
+            model.mcparams,
+            type_detectors="xs_generation",
+        )
+    return det_files, xs_files
 
 
 

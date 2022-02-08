@@ -147,6 +147,13 @@ class SurfaceSide(Region):
         %s
         """%(self.side, self.surface)
         return return_string
+    
+    def encloses(self, other):
+        others_vertex = other.surface.vertex_points
+        for point in others_vertex:
+            if not self.surface.is_point(point):
+                return False
+        return True
 
 
 def destructure_region(region, surfaces_sides=[]):

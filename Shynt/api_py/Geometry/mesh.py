@@ -1,3 +1,4 @@
+from Shynt.api_py.Geometry.surfaces import Surface
 from Shynt.api_py.materials import Material
 from Shynt.api_py.Geometry.cells import Cell
 from Shynt.api_py.Geometry.universes import Pin, SquareLattice, Universe
@@ -20,17 +21,25 @@ class GlobalMesh(StructuredMesh):
     def __init__(self, cell, mesh):
         super().__init__()
         self.__cell = cell
-        self.__mesh = mesh
-        self.coarse_nodes = self.__create_nodes()
+        self.__mesh_type = mesh
+        self.coarse_nodes = {}
+        self.surface_area_relation = {}
+        self.surface_relation = {}
+        self.__create_nodes()
     
     def __create_nodes(self):
         nodes = None
-        if isinstance(self.__mesh, list):
-            return self.__mesh_by_points(self.__mesh)
-        elif isinstance(self.__mesh, str):
-            if self.__mesh == "pin_cell":
-                nodes = self.__pin_cell_mesh()
-        return nodes
+        surface_area_relation = {}
+        surface_relation = {}
+        if isinstance(self.__mesh_type, list):
+            return self.__mesh_type_by_points(self.__mesh_type)
+        elif isinstance(self.__mesh_type, str):
+            if self.__mesh_type == "pin_cell":
+                nodes, surface_area_relation, surface_relation = self.__pin_cell_mesh()
+        
+        self.coarse_nodes = nodes
+        self.surface_area_relation = surface_area_relation
+        self.surface_relation = surface_relation
     
     def __mesh_by_points(self, points):
         pass
@@ -41,7 +50,10 @@ class GlobalMesh(StructuredMesh):
         # the universe is the Lattice
         #print(self.__cell)
         coarse_nodes = {}
+        surfaces_area = {}
+        surface_relation = {}
         node_counter = 1
+        surface_counter = 1
         universe = self.__cell.content
         if isinstance(universe, SquareLattice):
             for y in range(universe.ny):
@@ -50,13 +62,17 @@ class GlobalMesh(StructuredMesh):
                     node_counter += 1
         elif isinstance(universe, Pin):
             coarse_nodes[node_counter] = self.__cell
+            self.__cell.calculate_surface_area_relation()
+            surfaces_area[node_counter] = self.__cell.surface_area_relation
+            surface_relation[node_counter] = self.__cell.getSurface_relation()
+
         else:
             print("*** Error Trying to build coarse mesh no Lattice nor Pin universe provided *** ")
             raise SystemExit
-        return coarse_nodes
+        return coarse_nodes, surfaces_area, surface_relation
 
     def __str__(self):
-        return self.type
+        return self.__mesh_type
 
 
 class LocalMesh(StructuredMesh):
@@ -145,7 +161,9 @@ def make_mesh(cell, global_mesh_type="", local_mesh_type=""):
     # print(local_mesh.fine_nodes)
     
 
-    cell.global_mesh = global_mesh.coarse_nodes
-    cell.local_mesh = local_mesh.fine_nodes
+    cell.global_mesh = global_mesh
+    # print(global_mesh.surface_relation)
+    # print(cell.surface_relation)
+    cell.local_mesh = local_mesh
 
     return cell

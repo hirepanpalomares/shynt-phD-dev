@@ -118,7 +118,8 @@ class Pin(Universe):
                     print("material and radius must be introduced in an array")
                     raise SystemExit
         else:
-            print("--- Warning --- Do not forget to declare the levels for the pin")
+            pass
+            # print("--- Warning --- Do not forget to declare the levels for the pin")
         
     def add_surroundings(self, material):
         self.add_level(material)        

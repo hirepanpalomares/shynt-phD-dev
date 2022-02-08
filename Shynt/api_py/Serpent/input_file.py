@@ -7,6 +7,8 @@ from Shynt.api_py.materials import Material
 
 import os
 import sys
+# import pdb
+# pdb.set_trace()
 
 class Detector():
 
@@ -150,11 +152,11 @@ class SerpentInputFile():
                                     a given cell and then first interact in another given cell
 
         ------------------------
-
+        
     """
     
 
-    def __init__(self, cell, id_global, local_nodes, name, libraries, energy, params, type_detectors=None, specific_cell=None):
+    def __init__(self, cell, id_global, local_nodes, name, libraries, energy, params, type_detectors=None, specific=None):
         self.cell = cell
         self.name = name
         self.libraries = libraries
@@ -163,10 +165,15 @@ class SerpentInputFile():
         self.global_id = id_global # is del global node 
         self.local_nodes = local_nodes
         self.type_detectors = type_detectors
-        self.specific_cell = specific_cell
-        
+        # --------------------------------------------------------------------------------------------------
+        self.specific = specific
+        # I think the variable specific was declared in the mean time to difference the detectors from
+        #fuel, coolant and surfaces.
+        # --------------------------------------------------------------------------------------------------
+
         self.detector_flags = []
         self.surfaces_ids = []
+        self.surfaces = []
         self.surface_for_detectors = None
         self.closing_surface_ids = None
         self.surface_direction = None
@@ -177,12 +184,21 @@ class SerpentInputFile():
         with open(name, "w") as self.__file:
             self.__write_title()
             self.__write_material()
-            self.__write_geometry()
-            self.__write_outside_cell()
             self.__write_libraries()
+            self.__file.write("\n\nset bc 2\n\n")
+
             self.__write_mc_params()
-            self.__write_energy_grid()
-            self.__write_detectors()
+            if self.type_detectors == "xs_generation":
+                self.__write_energy_grid()
+                self.__write_geometry()
+
+            elif self.type_detectors is not None:
+                self.__write_geometry()
+                self.__write_outside_cell()
+                self.__write_energy_grid(syntax="by_bin")
+                self.__write_detectors()
+                pass
+            
 
     
     def __write_title(self):
@@ -195,15 +211,17 @@ class SerpentInputFile():
         
         # Write surfaces
         surfaces_in_cell = self.__surface_searcher(self.cell)
+        print(surfaces_in_cell)
+        print(self.surfaces_ids)
         self.__file.write("\n\n")
         for surf in surfaces_in_cell:
             self.__file.write(surf)
-        self.__file.write("\n\nset bc 2\n\n")
         
         # Write cell
-        cell_syntax = self.cell.serpent_syntax()
-        
-        
+        if self.type_detectors == "xs_generation":
+            cell_syntax = self.cell.serpent_syntax_gcu()
+        elif self.type_detectors is not None:
+            cell_syntax = self.cell.serpent_syntax()
         self.__file.write(cell_syntax)
 
     def __write_outside_cell(self):
@@ -230,6 +248,7 @@ class SerpentInputFile():
         pass
 
     def __surface_searcher(self, cell, surfaces=[]):
+        
         """
             This is a recursive function
         """
@@ -237,8 +256,9 @@ class SerpentInputFile():
         region = cell.region
         # print(cell)
         # raise SystemExit
-        surfaces = self.__surfaces_from_region_instance(region)
-        
+        from_region = self.__surfaces_from_region_instance(region)
+        surfaces = from_region
+
         if isinstance(cell.content, Material):
             # base case
             return surfaces
@@ -253,9 +273,10 @@ class SerpentInputFile():
         if isinstance(reg, SurfaceSide):
             # base case
             surf = reg.surface
-            if surf.serpent_syntax not in surfaces:
-                surfaces.append(surf.serpent_syntax)
+            if surf.id not in self.surfaces_ids:
                 self.surfaces_ids.append(surf.id)
+                if surf.serpent_syntax not in surfaces:
+                    surfaces.append(surf.serpent_syntax)
             return surfaces
         elif isinstance(reg, Region):
             reg1 = reg.child1
@@ -279,8 +300,12 @@ class SerpentInputFile():
         self.__file.write(self.mcparams.serpent_syntax)
         self.__file.write("\n\n")
 
-    def __write_energy_grid(self):
-        self.__file.write(self.energy_grid.serpent_syntax_by_bins())
+    def __write_energy_grid(self, syntax="complete"):
+        self.__file.write("\n\n")
+        if syntax == "by_bin":
+            self.__file.write(self.energy_grid.serpent_syntax_by_bins())
+        elif syntax == "complete":
+            self.__file.write(self.energy_grid.serpent_syntax())
         self.__file.write("\n\n")
 
     def __write_detectors(self):
@@ -303,6 +328,7 @@ class SerpentInputFile():
         detectors = []
         flag_counter = 1
         groups = self.energy_grid.energy_groups
+
         # getting fuel cell inside the pin -------------------------------------
         fuel_cell_id = self.material_cell_ids_relation["fuel"]
         fuel_cell = cell_ids_relation[fuel_cell_id]
@@ -310,8 +336,10 @@ class SerpentInputFile():
         # getting coolant cell inside the pin ----------------------------------
         coolant_cell_id = self.material_cell_ids_relation["coolant"]
         coolant_cell = cell_ids_relation[coolant_cell_id]
+
+        # getting detectors
         if self.type_detectors == "local_cell":
-            if self.specific_cell == "fuel1":
+            if self.specific == "fuel1":
                 detectors_relation = {
                     "fuel": {
                         "total": {g: None for g in range(groups)},
@@ -334,7 +362,7 @@ class SerpentInputFile():
                     flag_counter
                 )
 
-            if self.specific_cell == "coolant":
+            if self.specific == "coolant":
                 detectors_relation = {
                     "coolant": {
                         "total": {g: None for g in range(groups)},
@@ -353,7 +381,7 @@ class SerpentInputFile():
                     detectors_relation, 
                     flag_counter
                 )
-        elif self.type_detectors == "surfaces":
+        elif self.specific == "surfaces":
             detectors_relation = {
                 "surfaces": { }
             }
@@ -389,6 +417,9 @@ class SerpentInputFile():
             print(f"*** Error *** flag number for serpent detectors reached {flag_counter}, must be between 1 - 64")
             print("This happens because Serpent's limit is 64, and internally could happen for excess of regions or\nsurfaces in the local problem")
             raise SystemExit
+
+    def __write_gcu(self):
+        self.__file.write("set gcu")
 
     def __get_surface_for_detectors(self):
         surface_for_detectors = ""
@@ -433,6 +464,7 @@ class SerpentInputFile():
         self.material_cell_ids_relation = {"fuel": 2, "coolant": 3}
         universe = self.cell.content
         universe_cells = universe.cells
+        # print(self.surfaces_ids)
         for cell in universe_cells:
             if cell.content.name == "fuel1":
                 surf = cell.region.surface
@@ -520,6 +552,7 @@ class SerpentInputFile():
         energy_bins = self.energy_grid.bins_names_relation
         flag_relation = { }
 
+        total_rate_detectors = {}
         # Total reaction rate for each energy_bin
         for g in range(self.energy_grid.energy_groups):
             name = f"total_rate_coolant_g{g}"
@@ -529,12 +562,14 @@ class SerpentInputFile():
             det.set_energy_bins(energy_bins[g])
             det.set_flag(flag_counter, "1")
             flag_relation[f"coolant_total_rate_g{g}"] = flag_counter
-            detectors.append(det)
-            detectors_relation["coolant"]["total"][g] = det
+            # detectors.append(det)
+            # detectors_relation["coolant"]["total"][g] = det
+            total_rate_detectors[g] = det
             flag_counter += 1
             
         # Coolant to coolant, fuel and surf
         for g in range(self.energy_grid.energy_groups):
+
             for gp in range(self.energy_grid.energy_groups):
                 # COOLANT ----> COOLANT
                 name = f"coolant_coolant_g{g}_to_g{gp}"
@@ -548,6 +583,12 @@ class SerpentInputFile():
                 detectors.append(det)
                 detectors_relation["coolant"]["coolant"][g][gp] = det
 
+        for g in range(self.energy_grid.energy_groups):
+            detectors.append(total_rate_detectors[g])
+            detectors_relation["coolant"]["total"][g] = total_rate_detectors[g]
+
+        for g in range(self.energy_grid.energy_groups):
+            for gp in range(self.energy_grid.energy_groups):
                 # COOLANT -----> FUEL
                 name = f"coolant_fuel_g{g}_to_g{gp}"
                 det = Detector(name)
@@ -556,10 +597,11 @@ class SerpentInputFile():
                 det.set_energy_bins(energy_bins[gp])
                 det.set_flag(flag_relation[f"coolant_total_rate_g{g}"], "2")
                 det.set_flag(flag_relation[f"coolant_total_rate_g{g}"], "0")
-                det.set_flag(flag_relation[f"coolant_total_rate_g{gp}"], "1")
                 detectors.append(det)
                 detectors_relation["coolant"]["fuel"][g][gp] = det
 
+        for g in range(self.energy_grid.energy_groups):
+            for gp in range(self.energy_grid.energy_groups):
                 # COOLANT -----> SURFACES
                 for s in self.closing_surface_ids:
                     name = f"coolant_surface{s}_g{g}_to_g{gp}"
@@ -570,6 +612,7 @@ class SerpentInputFile():
                     det.set_flag(flag_relation[f"coolant_total_rate_g{g}"], "0")
                     detectors.append(det)
                     detectors_relation["coolant"]["surface"][s][g][gp] = det
+
 
         return detectors, detectors_relation, flag_counter
 
@@ -631,4 +674,3 @@ class SerpentInputFile():
 
         return detectors, detectors_relation, flag_counter
 
-    
