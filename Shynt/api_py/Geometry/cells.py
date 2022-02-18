@@ -33,7 +33,7 @@ class Cell:
         
         self.__global_mesh = None
         self.__local_mesh = None
-        self.__surf_area_relation = None
+        
 
         self.__id = self.calculateId()
         self.__volume = None
@@ -168,7 +168,7 @@ class Cell:
         univ_4gcu = "".join(self.__universe_name_for_gcu)
         self.__gcu_universes.append(univ_4gcu)
         simple_cell.gcuName = univ_4gcu
-        print(univ_4gcu)
+        # print(univ_4gcu)
         self.__universe_name_for_gcu[1] = str(int(self.__universe_name_for_gcu[1]) + 1)
 
         syntax += f"\ncell {gcu_id} {univ_4gcu} {simple_cell.__content.name}"
@@ -193,7 +193,7 @@ class Cell:
                 This will be practically always the case
             """
             uni = self.__content
-            print(uni.name)
+            # print(uni.name)
             for cell in uni.cells:
                 syntax += self.serpent_syntax_cell_with_material_gcu(cell)
             

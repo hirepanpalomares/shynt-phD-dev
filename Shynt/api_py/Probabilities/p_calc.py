@@ -16,14 +16,15 @@ def get_moderator_counts(scores, det_relation, energy):
     }
     # scores:
     # 'total_rate_fuel_g0': {'neutrons': [(1.75715, 0.00086)], 'energy': [(0.0, 6.25e-07)]} 
-    print()
+    
     for g in range(energy):
         for gp in range(energy):
-
             det_name_fuel = det_relation["fuel"][g][gp].name
             det_name_coolant = det_relation["coolant"][g][gp].name
+            
 
             switching_index = energy - 1 - gp # To get array fast ---> thermal
+            
             moderator_counts["fuel"][switching_index] += abs(scores[det_name_fuel]["neutrons"][0][0])
             #print(gp, det_name_fuel, abs(scores[det_name_fuel]["neutrons"][0][0]))
             moderator_counts["coolant"][switching_index] += abs(scores[det_name_coolant]["neutrons"][0][0])

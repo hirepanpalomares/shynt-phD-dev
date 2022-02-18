@@ -20,19 +20,19 @@ def generate_serpent_files(model):
 
     different_node_bins = different_global_nodes(global_cells, local_cells)
 
-    print("\nGlobal cells: ")
-    print(global_cells)
-    print("\nLocal cells:")
-    print(local_cells)
-    print("\n Nodes grouped:")
-    print(different_node_bins)
-    print("\n")
+    print("\nGlobal cells... ")
+    # print(global_cells)
+    print("\nLocal cells...")
+    # print(local_cells)
+    print("\nNodes grouped...")
+    # print(different_node_bins)
+    # print("\n")
     
     cells_to_files = {bin_[0] : global_cells[bin_[0]] for bin_ in different_node_bins}
-    print(cells_to_files)
+    # print(cells_to_files)
     
     det_files, xs_files = input_generator(cells_to_files, local_cells, model)
-    return det_files, xs_files, global_cells, local_cells, different_node_bins
+    return det_files, xs_files, different_node_bins
 
 
 def is_pin_in_array(pin, arr, global_nodes, local_nodes):
@@ -136,7 +136,8 @@ def input_generator(global_cells, local_cells, model):
         
         for local_cell in local_cells[id_]:
             # Loop for local cells (a different file for every material or, in this case, each local cell to write the detectors)
-            material = local_cell.content.name
+            cell = local_cell.cell
+            material = cell.content.name
             name_file = f"{global_cell_dir}/det_local_problem_{material}.serp"
             serpent_input = SerpentInputFile(
                 global_cell, 

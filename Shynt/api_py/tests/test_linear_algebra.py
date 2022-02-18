@@ -6,7 +6,7 @@ import numpy as np
 class TestJointCellVolume(unittest.TestCase):
 
     def test_matrix(self):
-        print("\n\n")
+        # print("\n\n")
         
         a = np.array([
             [2,5],
@@ -24,8 +24,8 @@ class TestJointCellVolume(unittest.TestCase):
 
         vector = np.array([2,2])
         inv = np.linalg.inv(a)
-        print(a[0]*vector)
-        print("\n\n")
+        # print(a[0]*vector)
+        # print("\n\n")
         assert 1 == 1
 
 

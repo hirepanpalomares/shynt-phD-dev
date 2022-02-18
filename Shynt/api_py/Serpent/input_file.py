@@ -156,8 +156,8 @@ class SerpentInputFile():
     """
     
 
-    def __init__(self, cell, id_global, local_nodes, name, libraries, energy, params, type_detectors=None, specific=None):
-        self.cell = cell
+    def __init__(self, coarse_node, id_global, local_nodes, name, libraries, energy, params, type_detectors=None, specific=None):
+        self.cell = coarse_node.cell
         self.name = name
         self.libraries = libraries
         self.energy_grid = energy
@@ -211,8 +211,7 @@ class SerpentInputFile():
         
         # Write surfaces
         surfaces_in_cell = self.__surface_searcher(self.cell)
-        print(surfaces_in_cell)
-        print(self.surfaces_ids)
+        
         self.__file.write("\n\n")
         for surf in surfaces_in_cell:
             self.__file.write(surf)
@@ -321,7 +320,7 @@ class SerpentInputFile():
         self.__file.write("% ----- Surface for detectors\n")
         surface_for_detectors = self.__get_surface_for_detectors()        
         self.__file.write(surface_for_detectors)
-        cell_ids_relation = {c.id: c for c in self.local_nodes}
+        cell_ids_relation = {c.cell.id: c.cell for c in self.local_nodes}
         
         # Preparing detectors relation and flag counter ------------------------
         detectors_relation = {}
@@ -433,10 +432,10 @@ class SerpentInputFile():
             surf_3 = closing_surf.surf_bottom   # cell in + side
             surf_4 = closing_surf.surf_left     # cell in + side
             
-            print(f"Top    surface: {surf_1.id}")
-            print(f"Right  surface: {surf_2.id}")
-            print(f"Bottom surface: {surf_3.id}")
-            print(f"Left   surface: {surf_4.id}")
+            # print(f"Top    surface: {surf_1.id}")
+            # print(f"Right  surface: {surf_2.id}")
+            # print(f"Bottom surface: {surf_3.id}")
+            # print(f"Left   surface: {surf_4.id}")
 
             # surf T --> outward current = +1 --> inward current = -1
             # surf R --> outward current = +1 --> inward current = -1
