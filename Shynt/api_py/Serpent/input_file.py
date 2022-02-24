@@ -156,7 +156,18 @@ class SerpentInputFile():
     """
     
 
-    def __init__(self, coarse_node, id_global, local_nodes, name, libraries, energy, params, type_detectors=None, specific=None):
+    def __init__(self, 
+        coarse_node, 
+        id_global, 
+        local_nodes, 
+        name, 
+        libraries, 
+        energy, 
+        params, 
+        type_detectors=None, 
+        local_cell_id=None, 
+        specific=None
+    ):
         self.cell = coarse_node.cell
         self.name = name
         self.libraries = libraries
@@ -166,9 +177,8 @@ class SerpentInputFile():
         self.local_nodes = local_nodes
         self.type_detectors = type_detectors
         # --------------------------------------------------------------------------------------------------
+        self.local_cell_id = local_cell_id # This variable is for 
         self.specific = specific
-        # I think the variable specific was declared in the mean time to difference the detectors from
-        #fuel, coolant and surfaces.
         # --------------------------------------------------------------------------------------------------
 
         self.detector_flags = []
@@ -178,6 +188,7 @@ class SerpentInputFile():
         self.closing_surface_ids = None
         self.surface_direction = None
         self.material_cell_ids_relation = None
+        self.isFuel_relation = {}
         self.detectors = []
         self.detectors_relation = {}
         
@@ -197,9 +208,6 @@ class SerpentInputFile():
                 self.__write_outside_cell()
                 self.__write_energy_grid(syntax="by_bin")
                 self.__write_detectors()
-                pass
-            
-
     
     def __write_title(self):
         self.__file.write(f"set title \"{self.cell.name}\"\n\n")
@@ -323,7 +331,10 @@ class SerpentInputFile():
         cell_ids_relation = {c.cell.id: c.cell for c in self.local_nodes}
         
         # Preparing detectors relation and flag counter ------------------------
-        detectors_relation = {}
+        detectors_relation = {
+            "regions": {},
+            "surfaces": {}
+        }
         detectors = []
         flag_counter = 1
         groups = self.energy_grid.energy_groups
@@ -336,19 +347,24 @@ class SerpentInputFile():
         coolant_cell_id = self.material_cell_ids_relation["coolant"]
         coolant_cell = cell_ids_relation[coolant_cell_id]
 
+        # print(self.material_cell_ids_relation)
+        # print(self.isFuel_relation)
+
         # getting detectors
         if self.type_detectors == "local_cell":
-            if self.specific == "fuel1":
-                detectors_relation = {
-                    "fuel": {
-                        "total": {g: None for g in range(groups)},
-                        "incoming": {g: None for g in range(groups)},
-                        "outcoming": {g: None for g in range(groups)},
-                        "surface&coolant": {g: None for g in range(groups)},
-                        "coolant": {g: None for g in range(groups)},
-                        "surface" : {
-                            s: {g: {} for g in range(groups)} for s in self.closing_surface_ids
-                        }
+            isFuel = self.isFuel_relation[self.local_cell_id][1]
+            
+            if isFuel: # Is fuel
+                detectors_relation["fuel"] = {
+                  
+                    "total": {g: None for g in range(groups)},
+                    "incoming": {g: None for g in range(groups)},
+                    "outcoming": {g: None for g in range(groups)},
+                    "surface&coolant": {g: None for g in range(groups)},
+                    "coolant": {g: None for g in range(groups)},
+                    "surface" : {
+                        s: {g: {} for g in range(groups)} for s in self.closing_surface_ids
+                    
                     }
                 }
                 
@@ -361,16 +377,14 @@ class SerpentInputFile():
                     flag_counter
                 )
 
-            if self.specific == "coolant":
-                detectors_relation = {
-                    "coolant": {
-                        "total": {g: None for g in range(groups)},
-                        "fuel": {g: {} for g in range(groups)},
-                        "coolant": {g: {} for g in range(groups)},
-                        "surface": {
-                            s: {g: {} for g in range(groups)} for s in self.closing_surface_ids
-                        },
-                    }
+            else: # Is not Fuel
+                detectors_relation["coolant"] = {
+                    "total": {g: None for g in range(groups)},
+                    "fuel": {g: {} for g in range(groups)},
+                    "coolant": {g: {} for g in range(groups)},
+                    "surface": {
+                        s: {g: {} for g in range(groups)} for s in self.closing_surface_ids
+                    },
                 }
                 # Coolant detectors ----------------------------------------------------
                 detectors, detectors_relation, flag_counter = self.__helper_coolant_detectors(
@@ -380,7 +394,7 @@ class SerpentInputFile():
                     detectors_relation, 
                     flag_counter
                 )
-        elif self.specific == "surfaces":
+        elif self.type_detectors == "surfaces":
             detectors_relation = {
                 "surfaces": { }
             }
@@ -417,6 +431,9 @@ class SerpentInputFile():
             print("This happens because Serpent's limit is 64, and internally could happen for excess of regions or\nsurfaces in the local problem")
             raise SystemExit
 
+        
+        
+
     def __write_gcu(self):
         self.__file.write("set gcu")
 
@@ -425,6 +442,7 @@ class SerpentInputFile():
         self.closing_surface_ids = []
         self.surface_direction = {}
         closing_surf = self.cell.region.surface 
+
         # TODO Code this for every closing surf in general
         if isinstance(closing_surf, InfiniteSquareCylinderZ):
             surf_1 = closing_surf.surf_top      # cell in - side 
@@ -460,19 +478,24 @@ class SerpentInputFile():
             }
         
         # Adding surfaces from inside the pin cell
-        self.material_cell_ids_relation = {"fuel": 2, "coolant": 3}
+        self.material_cell_ids_relation = {}
         universe = self.cell.content
         universe_cells = universe.cells
         # print(self.surfaces_ids)
         for cell in universe_cells:
-            if cell.content.name == "fuel1":
-                surf = cell.region.surface
-                if surf.id not in self.surfaces_ids:
-                    surface_for_detectors += surf.serpent_syntax
-                self.surface_direction[surf.id] = {"inward": "-1", "outward": "1"}
-                self.material_cell_ids_relation["fuel"] = cell.id
-            if cell.content.name == "coolant":
-                self.material_cell_ids_relation["coolant"] = cell.id
+            if isinstance(cell.content, Material):
+                if cell.content.isFuel():
+                    surf = cell.region.surface
+                    if surf.id not in self.surfaces_ids:
+                        surface_for_detectors += surf.serpent_syntax
+                    self.surface_direction[surf.id] = {"inward": "-1", "outward": "1"}
+                    # self.material_cell_ids_relation[cell.content.name] = cell.id
+                    self.material_cell_ids_relation["fuel"] = cell.id
+                    self.isFuel_relation[cell.id] = (cell.content.name, True)
+                else:
+                    # self.material_cell_ids_relation[cell.content.name] = cell.id
+                    self.material_cell_ids_relation["coolant"] = cell.id
+                    self.isFuel_relation[cell.id] = (cell.content.name, False)
         return surface_for_detectors
         
     def __helper_fuel_detectors(self, fuel_cell, coolant_cell, detectors, detectors_relation, flag_counter):

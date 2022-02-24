@@ -3,6 +3,8 @@ import os
 import sys
 from pathlib import Path
 
+
+
 def generate_serpent_files(model):
     """
     Parameters
@@ -125,6 +127,7 @@ def input_generator(global_cells, local_cells, model):
 
     det_files = {}
     xs_files = {}
+    
     for id_, global_cell in global_cells.items():
         # Loop for every global_cell
         det_files[id_] = []
@@ -148,7 +151,9 @@ def input_generator(global_cells, local_cells, model):
                 model.energy_grid, 
                 model.mcparams,
                 type_detectors="local_cell",
-                specific=material                
+                local_cell_id=local_cell.cell.id,
+                specific=material
+
             )
             det_files[id_].append(serpent_input)
 

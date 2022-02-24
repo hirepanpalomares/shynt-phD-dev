@@ -1,17 +1,12 @@
 import os
-from platform import node
+from collections import namedtuple
 import numpy as np
 
 import Shynt
 from Shynt.api_py.Probabilities.p_calc import calculate_probabilities
 from Shynt.api_py.Serpent.detector_output import read_detector_file
 
-from Shynt.api_py.ResponseMatrix.build_matrix import getInitializedPhi_byNode
-from Shynt.api_py.ResponseMatrix.build_matrix import getM_matrix
-from Shynt.api_py.ResponseMatrix.build_matrix import getMatrixS_byGlobalNode
-from Shynt.api_py.ResponseMatrix.build_matrix import getMatrixT_byGlobalNode
-from Shynt.api_py.ResponseMatrix.build_matrix import getMatrixU_byGlobalNode
-from Shynt.api_py.ResponseMatrix.build_matrix import getResponseMatrix_system
+
 
 from Shynt.api_py.ResponseMatrix.iterations import solveKeff
 
@@ -22,6 +17,9 @@ rc['serpentVersion'] = '2.1.32'
 
 
 def run(root):
+    Shynt.surfaces.reset_surface_counter()
+    Shynt.cells.reset_cell_counter()
+
     model_cell, outside_cell = root.cells # Here it is assumed that model_cell is already meshed
     # Generate local problems files, and file for cross section generation
     det_inputs, xs_inputs, equality_bins =  Shynt.generator.generate_serpent_files(root)
@@ -58,7 +56,7 @@ def run(root):
             data_detector = read_detector_file(det_file_name) # This is data of the detectors
             coarse_node_scores[id_][file_.specific] = data_detector
             detector_relation[id_][file_.specific] = file_.detectors_relation
-        
+    
     
     
     """
@@ -92,23 +90,22 @@ def run(root):
             }    
         
     
-    # Calculate probabilities for each node of the coarse mesh
+    # Calculate probabilities for each node of the coarse mesh -------------------
     probabilities = {}
     try: 
         for id_ in det_inputs:
-            prob_id = calculate_probabilities(coarse_node_scores[id_], detector_relation[id_], energy_g, id_)
+            prob_id = calculate_probabilities(
+                coarse_node_scores[id_], 
+                detector_relation[id_], 
+                energy_g, id_
+            )
             probabilities[id_] = prob_id
     except KeyError:
         Shynt.surfaces.reset_surface_counter()
         Shynt.cells.reset_cell_counter()
     
-    Shynt.surfaces.reset_surface_counter()
-    Shynt.cells.reset_cell_counter()
 
     
-    # Guessing of phi and k
-    phi_guess = getInitializedPhi_byNode(coarse_nodes, energy_g)
-    keff = 1
 
 
     # print(xs[1])
@@ -128,24 +125,70 @@ def run(root):
     # print()
     # print(probabilities[1]["coolant"])
 
-    # Build matrixes
-    matrixS_byNode = getMatrixS_byGlobalNode(coarse_nodes, energy_g, xs, probabilities) # ready
-    matrixT_byNode = getMatrixT_byGlobalNode(coarse_nodes, energy_g, xs, probabilities) # ready
-    matrixU_byNode = getMatrixU_byGlobalNode(coarse_nodes, energy_g, probabilities) # ready
-    matrixR_system, node_order = getResponseMatrix_system(coarse_nodes, energy_g, probabilities) # ready
-    matrixM_system = getM_matrix(coarse_nodes, energy_g) # ready 
 
-    matrixes = {
-        "S": matrixS_byNode,
-        "T": matrixT_byNode,
-        "U": matrixU_byNode,
-        "R": matrixR_system,
-        "M": matrixM_system
-    }
+    Shynt.surfaces.reset_surface_counter()
+    Shynt.cells.reset_cell_counter()
+    
+    # Ordering nodes, regions and surfaces --------------------------------------
+    coarse_node_array = list(coarse_nodes.keys())
+    all_regions = []
+    region_coarse_rel = {}
+    coarse_region_rel = {}
+    coarse_surf_rel = {}
+    regions_vol = {}
+    all_surfaces = []
+    for n_id in coarse_node_array:
+        regions = coarse_nodes[n_id].fine_nodes_ids
+        surfaces = coarse_nodes[n_id].surface_ids
+        vols = coarse_nodes[n_id].fine_nodes_volume
+        regions_vol.update(vols)
+        all_regions += regions
+        all_surfaces += surfaces
+        coarse_region_rel[n_id] = regions
+        for r in regions:
+            region_coarse_rel[r] = n_id
+        for s in surfaces:
+            coarse_surf_rel[s] = n_id
+
+    # print(coarse_node_array)
+    # print(all_regions)
+    # print(region_coarse_rel)
+    # print(coarse_surf_rel)
+    # print(regions_vol)
+    # print(all_surfaces)
+
+    MeshInfo = namedtuple(
+        "MeshInfo", 
+        [
+            "coarse_order", 
+            "all_regions_order", 
+            "all_regions_vol", 
+            "all_surfaces_order",
+            "region_coarse_rel",
+            "coarse_region_rel",
+            "coarse_surface_rel"
+        ]
+    )
+    mesh_info = MeshInfo(
+        coarse_node_array,
+        all_regions,
+        regions_vol,
+        all_surfaces,
+        region_coarse_rel,
+        coarse_region_rel,
+        coarse_surf_rel
+    )
 
 
-    # Solve response matrix
-    solution = solveKeff(keff, phi_guess, coarse_nodes, fine_nodes, energy_g, xs, matrixes, node_order, probabilities)
+    # Solve response matrix ----------------------------------------------------
+    solution = solveKeff(
+        coarse_nodes, 
+        fine_nodes, 
+        energy_g, 
+        xs, 
+        probabilities, 
+        mesh_info
+    )
     
     
     #    Post processing data

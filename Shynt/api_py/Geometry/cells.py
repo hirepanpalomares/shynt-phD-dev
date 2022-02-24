@@ -265,6 +265,7 @@ class Cell:
             syntax += cell.serpent_syntax()
         return syntax
         
+  
     def __str__(self):
         print_statement = ""
         print_statement += "Cell: %s:\n"%self.__name
