@@ -1,27 +1,13 @@
 import numpy as np
 
 
-def getInitializedPhi_byNode(coarse_nodes, energy_g):
+def getInitializedPhi_system_byGroup(numTotalRegions, energy_g):
     phi_vectors = {}
 
-    for node_id, node in coarse_nodes.items():
-        phi_vectors[node_id] = {}
-        regions = node.fine_nodes_ids
-        for r in regions:
-            phi_vectors[node_id][r] = {}
-            for g in range(energy_g):
-                phi_vectors[node_id][r][g] = 1.0
+    for g in range(energy_g):
+        phi_vectors[g] = np.ones(numTotalRegions)
+
     return phi_vectors
-
-
-
-
-
-
-
-
-
-
 
 
 

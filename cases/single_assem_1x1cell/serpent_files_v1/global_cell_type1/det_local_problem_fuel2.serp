@@ -1,0 +1,68 @@
+set title ""
+
+mat fuel2 -10.424 
+92235.09c -0.018512
+92238.09c -0.86299
+8016.09c -0.1185
+
+
+mat coolant -0.44376 moder lwtr 1001
+8016.06c 0.33333
+1001.06c 0.66667
+
+
+
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+therm lwtr lwj3.11t
+
+set bc 2
+
+
+
+set pop 2000 500 50
+
+set seed 1474468046
+
+
+
+
+surf 8 sqc 1.2950 24.6050 0.6475
+surf 7 cyl 1.2950 24.6050 0.4335
+
+cell 51 0 fill pin_fuel2 -8
+cell 49 pin_fuel2 fuel2  -7
+cell 50 pin_fuel2 coolant  7 -8
+cell 1 0 outside 8
+
+ene 2groups_grid_0 1 0 6.25e-07
+ene 2groups_grid_1 1 6.25e-07 20
+
+
+% ----- Surface for detectors
+surf 10 py 25.2525
+surf 11 px 1.9425
+surf 12 py 23.9575
+surf 9 px 0.6475
+
+
+% ----- Detectors ------
+det total_rate_reg49_g0  de 2groups_grid_0 dr -1 fuel2 dc 49
+det j_in_reg49_g0 ds 7 -1 de 2groups_grid_0   dfl 1 1 
+det j_out_reg49_g0 ds 7 1 de 2groups_grid_0   dfl 1 3  dfl 2 1 
+det all_to_reg49_g0  de 2groups_grid_0 dr -1 fuel2 dc 49 dfl 1 2  dfl 1 0 
+det reg49_to_reg50_g0  de 2groups_grid_0 dr -1 coolant dc 50 dfl 2 2  dfl 2 0 
+det reg49_to_surface10_g0 ds 10 1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+det reg49_to_surface11_g0 ds 11 1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+det reg49_to_surface12_g0 ds 12 -1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+det reg49_to_surface9_g0 ds 9 -1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+det total_rate_reg49_g1  de 2groups_grid_1 dr -1 fuel2 dc 49
+det j_in_reg49_g1 ds 7 -1 de 2groups_grid_1   dfl 3 1 
+det j_out_reg49_g1 ds 7 1 de 2groups_grid_1   dfl 3 3  dfl 4 1 
+det all_to_reg49_g1  de 2groups_grid_1 dr -1 fuel2 dc 49 dfl 3 2  dfl 3 0 
+det reg49_to_reg50_g1  de 2groups_grid_1 dr -1 coolant dc 50 dfl 4 2  dfl 4 0 
+det reg49_to_surface10_g1 ds 10 1 de 2groups_grid_1   dfl 4 2  dfl 4 0 
+det reg49_to_surface11_g1 ds 11 1 de 2groups_grid_1   dfl 4 2  dfl 4 0 
+det reg49_to_surface12_g1 ds 12 -1 de 2groups_grid_1   dfl 4 2  dfl 4 0 
+det reg49_to_surface9_g1 ds 9 -1 de 2groups_grid_1   dfl 4 2  dfl 4 0 

@@ -97,11 +97,13 @@ class Pin(Universe):
         
     
     def __check_init_levels(self, mat, radius, surroundings):
-        if mat and radius:
+        if mat and radius: # both are not None
+            # single level is declared
             if isinstance(mat, Material) and (isinstance(radius, float) or isinstance(radius, int)):
+                # a single level is declared
                 self.add_level(mat, radius)
                 if surroundings:
-                    self.add_surroundings(surroundings)
+                    self.add_level(surroundings)
             else:
                 try:
                     assert(isinstance(mat, list) and isinstance(radius, list))
@@ -112,17 +114,20 @@ class Pin(Universe):
                     for m in range(len(mat)):
                         self.add_level(mat[m], radius[m])
                     if surroundings:
-                        self.add_surroundings(surroundings)
+                        self.add_level(surroundings)
                 except AssertionError:
                     print(f"*** Error while difining either materials or radius for pin '{self.__name}'")
                     print("material and radius must be introduced in an array")
                     raise SystemExit
-        else:
-            pass
             # print("--- Warning --- Do not forget to declare the levels for the pin")
-        
-    def add_surroundings(self, material):
-        self.add_level(material)        
+        elif mat is None and radius is None:
+            # Empty Pin declared
+            pass
+        else:
+            print(f"*** Error while difining either materials or radius for pin '{self.__name}'")
+            print("material and radius must be introduced either both or none")
+            # Error: material and radius have to be declared either both or none
+            raise SystemExit
 
     def add_level(self, material, radius=None):
         """
@@ -145,7 +150,7 @@ class Pin(Universe):
         Level = namedtuple("Level", ["cell", "radius"])
         corresponding_cyl = None
         if radius:
-            corresponding_cyl =  InfiniteCylinderZ(0.0, 0.0, radius)
+            corresponding_cyl = InfiniteCylinderZ(0.0, 0.0, radius)
             if len(self.__pin_levels) == 0:
                 self.__last_region = -corresponding_cyl # SurfaceSide type
             else:
@@ -252,27 +257,27 @@ class Pin(Universe):
     def materials(self):
         return self.__materials
         
-    def __str__(self):
-        """
-            __str__ method to print the class
-        """
-        pin_levels_str = [
-            """
-                level %s:
-                + material: %s
-                + radius:   %s
-            """ %(
-                    self.__pin_levels.index(level),
-                    level.cell.content.name, 
-                    level.radius
-                ) for level in self.__pin_levels
-        ]
-        return """
-        Pin universe
-        - name: %s
-        - pin levels:
-            %s
-        """%(self.name, "".join(pin_levels_str))
+    # def __str__(self):
+    #     """
+    #         __str__ method to print the class
+    #     """
+    #     pin_levels_str = [
+    #         """
+    #             level %s:
+    #             + material: %s
+    #             + radius:   %s
+    #         """ %(
+    #                 self.__pin_levels.index(level),
+    #                 level.cell.content.name, 
+    #                 level.radius
+    #             ) for level in self.__pin_levels
+    #     ]
+    #     return """
+    #     Pin universe
+    #     - name: %s
+    #     - pin levels:
+    #         %s
+    #     """%(self.name, "".join(pin_levels_str))
 
     def __eq__(self, other) -> bool:
         """
@@ -329,10 +334,12 @@ class SquareLattice(Universe):
         num_cols = len(self.__array[0])
         new_array = [[0 for i in range(num_cols)] for j in range(num_rows)]
 
-        for r in range(num_rows):
+        for r in range(num_cols):
             dy = (num_rows-1-r+0.5)*self.__pitch + self.__left_bottom[1]
+
             for p in range(num_cols):
                 dx = (p+0.5)*self.__pitch + self.__left_bottom[0]
+
                 # create a pin with the same characteristics to move the cell
                 pin_replacement = self.__array[r][p].replicate()
 
@@ -346,7 +353,7 @@ class SquareLattice(Universe):
 
                 
                 new_pin = Cell(region=-closing_surface, fill=pin_replacement)
-                new_array[r][p] = new_pin
+                new_array[r][p] = new_pin # order of the cells from column by column
 
         self.array = new_array
 

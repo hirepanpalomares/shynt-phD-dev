@@ -1,16 +1,26 @@
+from os import system
+from matplotlib.pyplot import axis
 import numpy as np
+
+from Shynt.api_py.ResponseMatrix.matrix_utilities import getBlockMatrix
 
 
 class SourceQ:
 
 
-    def __init__(self, coarse_nodes, energy_g, xs) -> None:
+    def __init__(self, coarse_nodes, coarse_nodes_regions, energy_g, xs) -> None:
         self.__coarseNodes = coarse_nodes
+        self.__coarseNodesRegions = coarse_nodes_regions
+        
         self.__energyG = energy_g
         self.__xs = xs
 
         self.__fissionMatrix = self.__buildFissionMatrix() 
         self.__scatteringMatrix = self.__buildScatteringMatrix()
+        
+        self.__fissionSource = [] # for the power iteration formula
+        self.__scatteringSource = {}
+        
         
 
 
@@ -22,73 +32,70 @@ class SourceQ:
         # print("chi: ", self.__xs[1][1]["chi"])
         # print("fiss: ", self.__xs[1][1]["nuSigFission"])
         # print("fission  ")
-        for n_id, node in self.__coarseNodes.items():
-            regions = node.fine_nodes_ids
-            fission[n_id] = {}
+        for n_id in self.__coarseNodes:
+            regions = self.__coarseNodesRegions[n_id]
             for r in regions:
-                fission[n_id][r] = np.zeros((self.__energyG, self.__energyG))
-                nuFiss_xs = self.__xs[n_id][r]["nuSigFission"]
-                chi_xs = self.__xs[n_id][r]["chi"]
+                fission[r] = np.zeros((self.__energyG, self.__energyG))
+                nuFiss_xs = self.__xs[r]["nuSigFission"]
+                chi_xs = self.__xs[r]["chi"]
                 for g in range(self.__energyG):
                     chi_g = chi_xs[g]
                     for gp in range(self.__energyG):
-                        fission[n_id][r][g][gp] = chi_g * nuFiss_xs[gp]
+                        fission[r][g][gp] = chi_g * nuFiss_xs[gp]
         return fission
     
 
     def __buildScatteringMatrix(self):
         scattering = {}
-        for n_id, node in self.__coarseNodes.items():
-            regions = node.fine_nodes_ids
-            scattering[n_id] = {}
+        for n_id in self.__coarseNodes:
+            regions = self.__coarseNodesRegions[n_id]
             for r in regions:
-                scattMatrix = self.__xs[n_id][r]["scatter"]
-                scattering[n_id][r] = scattMatrix
-        print("scatter matrix ", scattering)
+                scattMatrix = self.__xs[r]["scatter"]
+                scattering[r] = scattMatrix
         return scattering
 
 
-    def buildFissionSource(self, phi):
-        # print("building fission source ....")
-        fission_source = {}
-        for n_id, node in self.__coarseNodes.items():
-            fission_source[n_id] = {}
-            regions = node.fine_nodes_ids
+    def buildFissionSource(self, mesh_info, probabilities):
+        """
+            for the power iteration formula
+            
+            block matrix
+        """
+        coarse_nodes_order = mesh_info.coarse_order
+        coarse_nodes_regions = mesh_info.coarse_region_rel
+        all_regions = mesh_info.all_regions_order
+        regions_vol = mesh_info.all_regions_vol
+
+
+        array_of_matrixes = []
+        for n_id in coarse_nodes_order:
+            regions = coarse_nodes_regions[n_id]
             numRegions = len(regions)
-            for r in range(numRegions):
-                region_id = regions[r]
-                fission_source[n_id][region_id] = {}
-                fission_matrix = self.__fissionMatrix[n_id][region_id]
+            mF = np.zeros((numRegions*self.__energyG,numRegions*self.__energyG))
+            for j in range(numRegions):
+                reg_j = regions[j]
+                vol_j = regions_vol[reg_j]
                 for g in range(self.__energyG):
-                    
-                    fiss_row = fission_matrix[g]
-                    for gp in range(self.__energyG):
-                        phi_val = phi[n_id][region_id][gp]
-                        fiss_row[gp] *= phi_val
-                    
-                    fission_source[n_id][region_id][g] = np.sum(fiss_row) 
+                    row_matrix = np.array([])
+                    for i in range(numRegions):
+                        reg_i = regions[i]
+                        vol_i = regions_vol[reg_i]
+                        prob = probabilities["regions"][reg_i]["regions"][reg_j][g]
+                        array = self.__fissionMatrix[reg_i][g] * vol_i * prob
+                        row_matrix = np.concatenate((row_matrix, array), axis=0)
+                    index_mF_row = numRegions * j + g
+                    mF[index_mF_row] = row_matrix
+            array_of_matrixes.append(mF)
         
-
-        # Filling total vector
-
-        fission_source_vector_total = []
-        for g in range(self.__energyG):
-            for n_id, node in self.__coarseNodes.items():
-                regions = node.fine_nodes_ids
-                numRegions = len(regions)
-                for r in range(numRegions):
-                    region_id = regions[r]
-                    fission_source_vector_total.append(fission_source[n_id][region_id][g])
-
-
-        return np.array(fission_source_vector_total)
+        big_fission_matrix = getBlockMatrix(array_of_matrixes)
+        return big_fission_matrix
     
-    def buildScatteringSource(self, phi):
     
-        pass
+    def buildScatteringSource(self, flux):
+        return 1
 
 
-    def calculate_Qvector(self, keff, flux):
+    def calculate_Qvector(self, keff, flux, total_regions):
         """
             It returns a dictionary with the source terms in it:
 
@@ -98,40 +105,39 @@ class SourceQ:
                     g_1: array([q_region_1_g1, q_region_2_g0, ..., q_region_I_g0]),
                     ...
                     ...
-                    ...
                     g_G:
                 }
             }
         """
+
+        # change order of fluxes
+        numRegions = len(total_regions)
+        flux_r_g = {
+            total_regions[r]: [flux[g][r] for g in range(self.__energyG)] for r in range(numRegions)
+        }
+        
         _Q = {}
-        for n_id, node in self.__coarseNodes.items():
-            _Q[n_id] = {}
-            regions = node.fine_nodes_ids
-            numRegions = len(regions)
-            for g in range(self.__energyG):
-                _Q[n_id][g] = np.zeros(numRegions)
-                for r in range(numRegions):
-                    region_id = regions[r]
-                    sum_gp = 0.0
-                    for gp in range(self.__energyG):
-                        scatt_term = self.__scatteringMatrix[n_id][region_id][g][gp] * flux[n_id][region_id][gp]
-                        fiss_term = self.__fissionMatrix[n_id][region_id][g][gp] * flux[n_id][region_id][gp] / keff
-                        sum_gp += scatt_term + fiss_term
-                    _Q[n_id][g][r] = sum_gp / (4 * np.pi)
-                
+        for g in range(self.__energyG):
+            _Q[g] = np.zeros(numRegions)
+
+            for r in range(numRegions):
+                r_id = total_regions[r]
+                phi = flux_r_g[r_id]
+
+                scatt_matrix = self.__scatteringMatrix[r_id].T
+                fiss_matrix = self.__fissionMatrix[r_id]
+                scattering_value = np.dot(scatt_matrix[g], phi)
+                fission_value = np.dot(fiss_matrix[g], phi) / keff
+                _Q[g][r] = scattering_value + fission_value   # / (4 * np.pi)       
+                db = True      
         
         return _Q
-    
-    def calculateTotalSourceVector(self, keff, flux):
-        source_Q = self.calculate_Qvector(keff, flux)
-        
-        print(source_Q)
-        # Joining vectors
-        total_source = np.array([])
-        for g in range(self.__energyG):
-            for n_id, node in self.__coarseNodes.items():
-                total_source = np.concatenate((total_source, source_Q[n_id][g]), axis=0)
-        print(total_source)
-        return total_source
 
 
+    @property
+    def fissionMatrix(self):
+        return self.__fissionMatrix
+
+    @property
+    def scatteringMatrix(self):
+        return self.__scatteringMatrix

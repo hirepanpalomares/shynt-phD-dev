@@ -24,14 +24,7 @@ class Material:
             print(" **** Error ***** Parameter 'isotope' must be of class Isotope")
             raise SystemExit
     
-    def isFuel(self):
-        for iso in self.__isotopes:
-            serpent_id = iso.name
-            zaid = int(serpent_id.split(".")[0])
-            if zaid >= 90000:
-                return True
-        return False
-
+    
     def __str__(self):
         return_statement = "%s\n"%self.__name
         return_statement += "\t- atom density: %s\n"%self.__atom_density
@@ -44,6 +37,16 @@ class Material:
     def __eq__(self, other) -> bool:
         if self.__name == other.name:
             return True
+        return False
+
+
+    @property
+    def isFuel(self):
+        for iso in self.__isotopes:
+            serpent_id = iso.name
+            zaid = int(serpent_id.split(".")[0])
+            if zaid >= 90000:
+                return True
         return False
 
     @property

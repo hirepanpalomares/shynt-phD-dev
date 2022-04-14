@@ -1,39 +1,48 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from Shynt.api_py.ResponseMatrix.matrix_utilities import getInitializedPhi_system_byGroup
 
-from Shynt.api_py.ResponseMatrix.matrix_utilities import getInitializedPhi_byNode
 
 from Shynt.api_py.ResponseMatrix.build_J_source import buildJsource
 from Shynt.api_py.ResponseMatrix.build_matrix_M import getM_matrix
 from Shynt.api_py.ResponseMatrix.build_matrix_R import getResponseMatrix_byGroup
-from Shynt.api_py.ResponseMatrix.build_matrix_R import getResponseMatrix_system
-from Shynt.api_py.ResponseMatrix.build_matrix_S import getMatrixS_byNode_byGroup, getMatrixS_system_byGroup
-from Shynt.api_py.ResponseMatrix.build_matrix_T import getMatrixT_byNode_byGroup
-from Shynt.api_py.ResponseMatrix.build_matrix_U import getMatrixU_byNode_byGroup
+from Shynt.api_py.ResponseMatrix.build_matrix_S import getMatrixS_system_byGroup
+from Shynt.api_py.ResponseMatrix.build_matrix_T import getMatrixT_system_byGroup
+from Shynt.api_py.ResponseMatrix.build_matrix_U import getMatrixU_system_byGroup
 from Shynt.api_py.ResponseMatrix.build_Phi_Source import buildPhiSource
-from Shynt.api_py.ResponseMatrix.build_source_Q import Source
+from Shynt.api_py.ResponseMatrix.build_source_Q import SourceQ
 
 
-def solveKeff(coarse_nodes, fine_nodes, energy_g, xs, probabilities, mesh_info):
+def solveKeff(coarse_nodes, energy_g, xs, probabilities, mesh_info):
+
+    # Useful mesh information ----------------------------------------------------
+    coarse_nodes_order = mesh_info.coarse_order
+    coarse_nodes_regions = mesh_info.coarse_region_rel
+    all_surfaces = mesh_info.all_surfaces_order
+    coarse_nodes_map = mesh_info.coarse_nodes_map
+    all_regions_order = mesh_info.all_regions_order
+    numRegions = len(all_regions_order)
 
 
     # Guessing of phi and k ------------------------------------------------------
-    phi_guess = getInitializedPhi_byNode(coarse_nodes, energy_g)
+    phi_guess = getInitializedPhi_system_byGroup(numRegions, energy_g)
     keff_guess = 1
 
+    # Building the source
+    systemSource = SourceQ(coarse_nodes_order, coarse_nodes_regions, energy_g, xs)
+    fission_source = systemSource.buildFissionSource(mesh_info, probabilities) # for power iteration
 
-    # Building matrixes and source -----------------------------------------------
-    matrixU = getMatrixU_byNode_byGroup(coarse_nodes, energy_g, probabilities) # ready
-    matrixR = getResponseMatrix_byGroup(coarse_nodes, energy_g, probabilities, mesh_info) # ready
-    matrixM = getM_matrix(coarse_nodes, energy_g) # ready 
-    matrixS = getMatrixS_system_byGroup(coarse_nodes, energy_g, xs, probabilities) # ready
-    matrixT = getMatrixT_byNode_byGroup(coarse_nodes, energy_g, xs, probabilities) # ready
+    # Building matrixes -----------------------------------------------------------
+    matrixU = getMatrixU_system_byGroup(mesh_info, energy_g, probabilities) # ready
+    matrixT = getMatrixT_system_byGroup(mesh_info, energy_g, xs, probabilities) # ready
+
+    matrixR = getResponseMatrix_byGroup(mesh_info, energy_g, probabilities) # ready
+    matrixM = getM_matrix(coarse_nodes_map, coarse_nodes, all_surfaces) # ready 
+    inverse_IMR = calculate_inverseIMR(matrixM, matrixR, energy_g)
+
+    matrixS = getMatrixS_system_byGroup(mesh_info, energy_g, xs, probabilities) # ready
     
-
-    systemSource = Source(
-        coarse_nodes, 
-        energy_g, 
-        xs
-    )
+    
 
 
     # Guessing initial keff and phi
@@ -41,131 +50,102 @@ def solveKeff(coarse_nodes, fine_nodes, energy_g, xs, probabilities, mesh_info):
     keff_prev = keff_guess
     phi_prev = phi_guess
 
-    tolerance = 0.000001
-    difference = 1
+    tolerance = 1E-10
+    k_converge = 1
+    phi_converge = 1
     
-    print("#"*100) 
-    
-    while difference >= tolerance:
-        print("#"*100) 
+    print() 
+    iteration = 1
+    k_array = []
 
-        # Calculating the Source 
-        source_Q = systemSource.calculate_Qvector(keff_prev, phi_prev) # checked
-        print("source Q ", source_Q)
-        
+    while k_converge >= tolerance and phi_converge >= tolerance:
+        print("-"*50)
 
+        # Estimating the Source 
+        source_Q_vectors = systemSource.calculate_Qvector(keff_prev, phi_prev, all_regions_order) # checked
+        j_source = buildJsource(coarse_nodes_order, matrixU, source_Q_vectors, energy_g)
+        phi_source = buildPhiSource(coarse_nodes_order, matrixT, source_Q_vectors, energy_g)
 
         # Solving the Global problem
-        j_source_total = buildJsource(
-            matrixU, source_Q, energy_g
-        )
-        print("j_source: ", j_source_total)
-
-        # print("-"*100)
-        # print("Global Problem")
-        # print(j_source_byGroup)
-        j_in = solveGlobalProblem(
-            energy_g, matrixM, matrixR, j_source_total
-        ) 
-        print("j_in", j_in)
-
+        j_in = solveGlobalProblem(energy_g, inverse_IMR, matrixM, j_source) 
 
         # Solving local problem:
-        phi_source_n = buildPhiSource(matrixT, source_Q, energy_g)
-
-        print("phi source", phi_source_n)
-        phi_new = solveLocalProblem(matrixS, j_in, phi_source_n, energy_g, coarse_nodes)
-        print("phi_new", phi_new)
-        raise SystemExit
+        phi_new = solveLocalProblem(matrixS, j_in, phi_source, energy_g, all_regions_order, coarse_nodes_regions)
         
         
         # power iteration
-        # keff_new = power_iteration_value_by_value(
-        #     keff_init, 
-        #     phi_init, 
-        #     phi_new, 
-        #     energy_g, 
-        #     coarse_nodes, 
-        #     xs, 
-        #     probabilities, 
-        #     all_regions,
-        #     coarse_fine_rel,
-        #     regions_vol
-        # )
-
-        # raise SystemExit
-        keff_new = power_iteration_matrixes(
-            systemSource,
-            keff_prev,
-            phi_prev,
-            phi_new,
-            probabilities,
-            coarse_nodes, 
-            energy_g,
-            mesh_info,
-            xs
-        )
-
+        keff_new = power_iteration(phi_new, phi_prev, keff_prev, fission_source, all_regions_order, energy_g)    
+        k_array.append(keff_new)
         print("keff: ", keff_new)
-        print("phi", phi_new)
 
-        # error previous iteration
-        difference = abs(keff_new - keff_prev)
+        # check convergence
+        k_converge, phi_converge = check_convergence(keff_prev, keff_new, phi_prev, phi_new, energy_g)
+        print("keff converge:", k_converge)
+        print("phi converge:", phi_converge)
+        print("iteration:", iteration)
 
+        
         # update for the next iteration
         keff_prev = keff_new
         phi_prev = phi_new
-        # break
+        
+        iteration += 1
+        
         
 
+    # print(k_array)
+    # plt.plot(k_array)
+    # plt.show()
 
-    return  0
 
+    return  {
+        "keff": keff_new, 
+        "phi": phi_new
+    }
 
-def solveGlobalProblem(energy_g, matrixM_system, matrixR_system, j_source_byGroup):
-    # print(matrixM_system)
-    # print(matrixR_system)
-    # print(j_source_byGroup)
-    j_in = {}
-    mM = matrixM_system
+def check_convergence(k_prev, k_new, phi_prev, phi_new, energy_g):
+    k_converge = abs(k_new - k_prev)/k_new
+
+    max_phi_prev = np.zeros(energy_g)
+    max_phi_new = np.zeros(energy_g)
+
     for g in range(energy_g):
-        mR = matrixR_system[g]
-        j_source = j_source_byGroup[g]
-        # print("mR", mR)
+        max_phi_new[g] = phi_new[g].max()
+        max_phi_prev[g] = phi_prev[g].max()
+
+    max_phi_prev = max_phi_prev.max()
+    max_phi_new = max_phi_new.max()
+    phi_converge = abs(max_phi_new - max_phi_prev) / max_phi_new 
+
+    return k_converge, phi_converge
+
+def calculate_inverseIMR(matrixM, matrixR, energy_g):
+    inv = {}
+    mM = matrixM
+    for g in range(energy_g):
+        mR = matrixR[g]
         mM_x_mR = np.matmul(mM, mR)
-        # print("multiplitic", mM_x_mR)
         identityMatrix = np.identity(mM_x_mR.shape[0])
         matrix_to_invert = identityMatrix - mM_x_mR
-        # print("to invert: ", matrix_to_invert)
         inverse = np.linalg.inv(matrix_to_invert)
-        # print("inverse: ", inverse)
+        inv[g] = inverse
+    return inv
+
+
+def solveGlobalProblem(energy_g, inverse_IMR, mM, j_source_byGroup):
+    
+    j_in = {}
+    for g in range(energy_g):
+        j_source = j_source_byGroup[g]
+        inverse = inverse_IMR[g]
         inverse_x_mM = np.matmul(inverse, mM)
-        # print(inverse_x_mM)
-        print(j_source)
-        # print("mpor Jsource", mM_x_jsource)
         j_in_vector = np.matmul(inverse_x_mM, j_source)
         j_in[g] = j_in_vector
-        print("*"*100)
-    
-    # mM = matrixM_system
-    # mR = matrixR_system
-    # j_source = j_source_byGroup
 
-    # mM_x_mR = np.matmul(mM, mR)
-    # identityMatrix = np.identity(mM_x_mR.shape[0])
-    # matrix_to_invert = identityMatrix - mM_x_mR
-    # inverse = np.linalg.inv(matrix_to_invert)
-    
-    # mM_x_jsource = np.matmul(mM, j_source)
-    # j_in = np.matmul(inverse, mM_x_jsource)
-    
-    
-    
     return j_in
 
 
-
-def solveLocalProblem(matrixS_n, jin_system, phi_source_n, energy_g, coarse_nodes):
+def solveLocalProblem(matrixS_n, jin_system, phi_source_n, energy_g, regions_order, coarse_nodes_regions):
     """
         It gives the solution of the flux by enery group
 
@@ -192,170 +172,57 @@ def solveLocalProblem(matrixS_n, jin_system, phi_source_n, energy_g, coarse_node
 
         local_solution = mS_x_jin + phi_source
         phi[g] = local_solution
-        
+    
+    # order phi in a dictionary
+    # region_phi = {}
+    # numRegions = len(regions_order)
+    # for r in range(numRegions):
+    #     reg_id = regions_order[r]
+    #     region_phi[reg_id] = []
+    #     array = np.zeros(energy_g)
+    #     for g in range(energy_g):
+    #         array[g] = phi[g][r]    
+    #     region_phi[reg_id] = array
+    
+    # ordered_phi = {
+    #     n_id: {} for n_id in coarse_nodes_regions.keys()
+    # }
+    # for n_id, regions in coarse_nodes_regions.items():
+    #     for r in regions:
+    #         ordered_phi[n_id][r] = region_phi[r]
 
     return phi
     
 
+def power_iteration(phi_new, phi_prev, keff_prev, fission_source, all_regions, energy_g):
+    
+    phi_new = create_long_vector_flux(phi_new, energy_g, all_regions)
+    phi_prev = create_long_vector_flux(phi_prev, energy_g, all_regions)
+    
+    vector_prev = np.matmul(fission_source, phi_prev)
+    vector_new = np.matmul(fission_source, phi_new)
+
+    new_product = np.inner(vector_prev, vector_new)
+    prev_product = np.inner(vector_prev, vector_prev)
+    
+    k_new = keff_prev * new_product / prev_product
+
+    return k_new
 
 
-def power_iteration_value_by_value(k_prev, phi_prev, phi_new, energy_g, coarse_nodes, xs, probabilities, all_regions, coarse_fine_rel, regions_vol):
-    
-    
-
-    # initializing vectors
-    
+def create_long_vector_flux(phi, energy_g, all_regions):
     numRegions = len(all_regions)
-    phi_power_prev = np.zeros(numRegions * energy_g)
-    phi_power_new = np.zeros(numRegions * energy_g)
+    vector = np.zeros(energy_g*numRegions)
 
-    # filling vectors
-    # print(phi_new)
-    # print(phi_prev)
-    for j in range(numRegions):
+    for r in range(numRegions):
+        reg_id = all_regions[r]
         for g in range(energy_g):
-            index_ = numRegions * g + j
-            phi_power_prev[index_] = calculate_power_vector_term(
-                coarse_fine_rel,
-                all_regions,
-                regions_vol,
-                energy_g,
-                j, g,
-                probabilities,
-                xs,
-                phi_prev
-            )
-            phi_power_new[index_] = calculate_power_vector_term(
-                coarse_fine_rel,
-                all_regions,
-                regions_vol,
-                energy_g,
-                j, g,
-                probabilities,
-                xs,
-                phi_new
-            )
+            flux_val = phi[g][r]
+            index = r * energy_g + g
+            vector[index] = flux_val
 
-    print("222")
-    print(phi_power_new)
-    print(phi_power_prev)
-    
-
-
-    numerator_dot_product = np.inner(phi_power_prev, phi_power_new)
-    denominator_dot_product = np.inner(phi_power_prev, phi_power_prev)
-    k_new = k_prev * numerator_dot_product / denominator_dot_product
-
-
-    return k_new
-
-
-def power_iteration_matrixes(systemSource, keff_prev, phi_prev, phi_new, probabilities, coarse_nodes, energyG, mesh_info, xs):
-    # print("¤"*100)
-    regions_vol = mesh_info.all_regions_vol
-
-    fission_source_prev = systemSource.buildFissionSource(phi_prev)
-    fission_source_new = systemSource.buildFissionSource(phi_new)
-
-    regions_vol_vector = np.array([regions_vol[r] for r in regions_vol])
-    p_r_rp_matrix = getRegRegProbabilityMatrix_system(probabilities, coarse_nodes, energyG, regions_vol)
-
-    phi_power_prev = np.matmul(p_r_rp_matrix, fission_source_prev)
-    phi_power_new = np.matmul(p_r_rp_matrix, fission_source_new)
-    print("new:  ", phi_power_new)
-    print("prev: ", phi_power_prev)
-
-    numerator_dot_product = np.inner(phi_power_prev, phi_power_new)
-    denominator_dot_product = np.inner(phi_power_prev, phi_power_prev)
-    # print(numerator_dot_product)
-    # print(denominator_dot_product)
-
-    k_new = keff_prev * numerator_dot_product / denominator_dot_product
+    return vector
 
 
 
 
-    # -----------------------------------------------------------------------
-    regions = mesh_info.all_regions_order
-    regions_vol = mesh_info.all_regions_vol
-    coarse_reg_rel = mesh_info.coarse_region_rel
-    coarse_order = mesh_info.coarse_order
-
-    
-    vector_prev = []
-    vector_new = []
-    # print(phi_prev)
-    p_i_j_byCoarse_byGroup = getRegRegProbabilityMatrix_byCoarse_byGroup(probabilities, coarse_nodes, energyG, regions_vol)
-    # print(p_i_j_byCoarse_byGroup)
-    for g in range(energyG):
-        for n_id in coarse_order:
-            regions = mesh_info.coarse_region_rel[n_id]
-            numRegions = len(regions)
-            for j in range(numRegions):
-                # Sumation for each term starts -----------
-                reg_j_id = regions[j]
-                sum_i_prev = 0
-                sum_i_new = 0
-                for i in range(numRegions):
-                    reg_i_id = regions[i]
-                    
-                    sum_gp_prev = 0
-                    sum_gp_new = 0
-                    xs_reg_i = xs[n_id][reg_i_id]
-                    for gp in range(energyG):
-                        nuFiss = xs_reg_i["nuSigFission"][gp]
-                        flux_igp_prev = phi_prev[n_id][reg_i_id][gp]
-                        flux_igp_new = phi_new[n_id][reg_i_id][gp]
-                        sum_gp_prev += nuFiss * flux_igp_prev
-                        sum_gp_new += nuFiss * flux_igp_new
-                    vol_i = regions_vol[reg_i_id]
-                    chi_g_i = xs_reg_i["chi"][g]
-                    p_g_i_j = p_i_j_byCoarse_byGroup[n_id][g][i][j]
-                    sum_i_new += vol_i * p_g_i_j * chi_g_i * sum_gp_new
-                    sum_i_prev += vol_i * p_g_i_j * chi_g_i * sum_gp_prev
-                vector_new.append(sum_i_new)
-                vector_prev.append(sum_i_prev)
-
-    vector_new = np.array(vector_new)
-    vector_prev = np.array(vector_prev)
-    print("new:  ", vector_new)
-    print("prev: ", vector_prev) 
-
-    numerator_dot_product = np.inner(vector_prev, vector_new)
-    denominator_dot_product = np.inner(vector_prev, vector_prev)
-    # print(numerator_dot_product)
-    # print(denominator_dot_product)
-
-    k_new = keff_prev * numerator_dot_product / denominator_dot_product
-
-
-
-
-    return k_new
-    
-
-
-
-def calculate_power_vector_term(coarse_fine_rel, regions, regions_vol, energy_g, j, g, probabilities, xs, flux):
-    region_materials = ["fuel", "coolant"]
-
-    
-    numRegions = len(regions)
-    term = 0
-    for i in range(numRegions):
-        region_i_id = regions[i]
-        coarse_id = coarse_fine_rel[region_i_id]
-        mat_j = region_materials[j]
-        mat_i = region_materials[i]
-        vol_i = regions_vol[region_i_id]
-        chi = xs[coarse_id][region_i_id]["chi"][g]
-        p_i_j = probabilities[coarse_id][mat_i][mat_j][g]
-        sumation_energy = 0
-        
-        for gp in range(energy_g):
-            nuFiss = xs[coarse_id][region_i_id]["nuSigFission"][gp]
-            phi = flux[coarse_id][region_i_id][gp]
-            sumation_energy += nuFiss * phi
-        term += vol_i * p_i_j * chi * sumation_energy
-
-    return term

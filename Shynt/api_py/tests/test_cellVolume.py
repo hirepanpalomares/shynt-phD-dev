@@ -37,6 +37,10 @@ class TestSingleCellVolume(unittest.TestCase):
         vol = cell.volume
         assert vol == 25, print(test_did_not_passed("VOLUME OF SQUARE CELL"), end="")
         print(test_did_passed("VOLUME OF SQUARE CELL"), end="")
+    
+    def test_hexagonal_cell_2D(self):
+        
+        pass
 
 
 

@@ -8,6 +8,7 @@ from Shynt.api_py.materials import Material
 from Shynt.api_py.Geometry.regions import Region, destructure_region
 from Shynt.api_py.Geometry.regions import SurfaceSide
 from .universes import Pin, Universe
+from .cell_counter import cell_ids
 
 
 class Cell:
@@ -63,22 +64,32 @@ class Cell:
             No parameters
             ----------------------------------------------------------------
         """
-        try:
-            id_ = None
-            with open("cell-counter", "r") as fileCounter:
-                for line in fileCounter:
-                    id_ = int(line.split()[0]) + 1
-                    break
-            with open("cell-counter", "w") as fileCounter:
-                fileCounter.write(str(id_))
-            return id_
-            
-            
-        except FileNotFoundError:
-            with open("cell-counter", "w") as fileCounter:
-                fileCounter.write("1")
+        # path = os.getcwd() + "/cell-counter"
+        if len(cell_ids) == 0:
             id_ = 1
+            cell_ids.append(id_)
             return id_
+        else:
+            id_ = cell_ids[-1] + 1
+            cell_ids.append(id_)
+            return id_
+
+        # try:
+        #     id_ = None
+        #     with open(path, "r") as fileCounter:
+        #         for line in fileCounter:
+        #             id_ = int(line.split()[0]) + 1
+        #             break
+        #     with open(path, "w") as fileCounter:
+        #         fileCounter.write(str(id_))
+        #     return id_
+            
+            
+        # except FileNotFoundError:
+        #     with open(path, "w") as fileCounter:
+        #         fileCounter.write("1")
+        #     id_ = 1
+        #     return id_
 
     def __calculate_volume(self):
         region = self.__region
@@ -203,10 +214,10 @@ class Cell:
             syntax += self.serpent_syntax_region(self.__region)
             syntax += "\n"
 
-            outside_id = self.calculateId()
-            outside_reg = self.__region.invert()
-            syntax += f"cell {outside_id} {self.__universe} outside"
-            syntax += self.serpent_syntax_region(outside_reg)
+            # outside_id = self.calculateId()
+            # outside_reg = self.__region.invert()
+            # syntax += f"cell {outside_id} {self.__universe} outside"
+            # syntax += self.serpent_syntax_region(outside_reg)
             syntax += "\n\nset gcu "
             for gcu in self.__gcu_universes:
                 syntax += f"{gcu} "
@@ -219,14 +230,13 @@ class Cell:
             Method to print the cell in the serpent syntax 
             It will be printed by material found in the cell
 
+            This is a recursive function the base cases are when
+            the cell contains a material or if it is outside cell
 
-            Parameters
-            -----------------------------------------------
-                - gcu :   It is when the xs generation is needed
-            -----------------------------------------------
         """
         syntax = f"\ncell {self.__id} {self.__universe} "
-        
+        # print(self.__id)
+        # print("33333")
         # for the content of the cell
         if isinstance(self.__content, Material):
             syntax += f"{self.__content.name} "
@@ -240,7 +250,9 @@ class Cell:
 
         # checking if the content is a universe to declare that universe' cells
         if isinstance(self.__content, Universe):
-            syntax += self.serpent_syntax_universe_cells(self.__content)
+            universe = self.__content
+            for cell in universe.cells:
+                syntax += cell.serpent_syntax()
     
         return syntax
 
@@ -252,7 +264,7 @@ class Cell:
             syntax += f" {side(reg.side)}{reg.surface.id}"
         elif isinstance(reg, Region):
             # find the surfaces sides of the Region
-            surfaces_sides = destructure_region(reg)
+            surfaces_sides = destructure_region(reg, surfaces_sides=[])
             for surf_side in surfaces_sides:
                 syntax += f" {side(surf_side.side)}{surf_side.surface.id}"
         syntax += ""
@@ -266,16 +278,16 @@ class Cell:
         return syntax
         
   
-    def __str__(self):
-        print_statement = ""
-        print_statement += "Cell: %s:\n"%self.__name
-        if self.content_is_material():
-            print_statement += "\t- filled with material: %s\n"%self.__content
-        elif self.content_is_universe():
-            print_statement += "\t- filled with universe: %s\n"%self.__content
-        print_statement += "\t- region: %s\n\n\n"%self.__region
+    # def __str__(self):
+    #     print_statement = ""
+    #     print_statement += f"Cell {self.__name}:\n"
+    #     if self.content_is_material():
+    #         print_statement += "\t- filled with material: %s\n"%self.__content
+    #     elif self.content_is_universe():
+    #         print_statement += "\t- filled with universe: %s\n"%self.__content
+    #     print_statement += "\t- region: %s\n\n\n"%self.__region
 
-        return print_statement
+    #     return print_statement
     
     def __eq__(self, other) -> bool:
         """
@@ -356,8 +368,7 @@ class Cell:
 
 
 def reset_cell_counter():
-    try:
-        os.remove("cell-counter")
-    except FileNotFoundError:
-        pass
+    cell_ids = []
+    return 0
+        
 

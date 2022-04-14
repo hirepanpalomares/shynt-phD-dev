@@ -1,21 +1,34 @@
 import numpy as np
 
+from Shynt.api_py.ResponseMatrix.matrix_utilities import getBlockMatrix
 
 
 
 
 
 
-def getMatrixT_byNode_byGroup(coarse_nodes, energy_g, xs, probabilities):
+
+def getMatrixT_byNode_byGroup(mesh_info, energy_g, xs, probabilities):
+    coarse_nodes = mesh_info.coarse_order
+    coarse_nodes_regions = mesh_info.coarse_region_rel
+    coarse_nodes_surfaces = mesh_info.coarse_surface_rel
+    surface_areas = mesh_info.all_surfaces_area
+    regions_volume = mesh_info.all_regions_vol
+
+
     matrix_T_byNode_byGroup = {}
-    for n_id, node in coarse_nodes.items():
+    prob = { "regions": {}, "surfaces": {}}
+    for n_id in coarse_nodes:
         matrix_T_byNode_byGroup[n_id] = {}
-        regions = node.fine_nodes_ids
-        regions_volume = node.fine_nodes_volume
+        regions = coarse_nodes_regions[n_id]
+
+        prob["regions"] = {r: probabilities["regions"][r] for r in regions}
+        xs_node = {r: xs[r] for r in regions}
+
         for g in range(energy_g):
             mT = build_T(
-                xs[n_id],
-                probabilities[n_id],
+                xs_node,
+                prob,
                 regions,
                 regions_volume,
                 g
@@ -25,25 +38,55 @@ def getMatrixT_byNode_byGroup(coarse_nodes, energy_g, xs, probabilities):
     return matrix_T_byNode_byGroup
 
 
+def getMatrixT_system_byGroup(mesh_info, energy_g, xs, probabilities):
+    coarse_nodes = mesh_info.coarse_order
+    coarse_nodes_regions = mesh_info.coarse_region_rel
+    coarse_nodes_surfaces = mesh_info.coarse_surface_rel
+    surface_areas = mesh_info.all_surfaces_area
+    regions_volume = mesh_info.all_regions_vol
+
+
+    matrix_T_system_byGroup = {}
+    prob = { "regions": {}, "surfaces": {}}
+    for g in range(energy_g):
+        systemMatrixes = []
+        for n_id in coarse_nodes:
+            regions = coarse_nodes_regions[n_id]
+
+            prob["regions"] = {r: probabilities["regions"][r] for r in regions}
+            xs_node = {r: xs[r] for r in regions}
+
+            mT = build_T(
+                xs_node,
+                prob,
+                regions,
+                regions_volume,
+                g
+            )
+            systemMatrixes.append(mT)
+        big_matrix_T = getBlockMatrix(systemMatrixes)
+        matrix_T_system_byGroup[g] = big_matrix_T
+            
+    return matrix_T_system_byGroup
+
 
 
 
 def build_T(xs, probabilities, regions, regions_volume, g):
     numRegions = len(regions)
-    matrix_T = np.zeros((numRegions, numRegions))
 
-    cell_materials = ["fuel", "coolant"]
+    matrix_T_shape = (numRegions, numRegions)
+    matrix_T = np.zeros(matrix_T_shape)
 
     for j in range(numRegions):
         region_j_id = regions[j]
         vol_j = regions_volume[region_j_id]
-        material_region_j = cell_materials[j]
+        
         xsTotal_j = xs[region_j_id]["total"][g]
         for i in range(numRegions):
             region_i_id = regions[i]
             vol_i = regions_volume[region_i_id]
-            material_region_i = cell_materials[i]
-            p_i_j = probabilities[material_region_i][material_region_j][g]
+            p_i_j = probabilities["regions"][region_i_id]["regions"][region_j_id][g]
             matrix_T[j][i] =  vol_i * p_i_j / (xsTotal_j * vol_j)
     
     return matrix_T

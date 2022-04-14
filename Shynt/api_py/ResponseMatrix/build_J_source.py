@@ -1,30 +1,27 @@
 import numpy as np
 
 
-class SourceJ:
-
-    def __init__(self) -> None:
-        pass
-
+def buildJsource(coarse_nodes, matrixU, source, energy_g):
+    """
+        Calculate the vector J_source 
 
 
-def buildJsource(matrixU, source, energy_g):
-    j_source = {}
-    print(matrixU)
+        returns
+        ---------
+        {
+            g0: array([js1, js2, ...., jsA])
+            g1: array([js1, js2, ...., jsA])
+            ...
+            ...
+        }
     
-
-    total_j_source = np.array([])
+    """
+    j_source = {}
     for g in range(energy_g):
-        system_vector = np.array([])
-        for n_id, values in matrixU.items():
-            q_vector = source[n_id][g]
-            
-            j_s = np.matmul(matrixU[n_id][g], q_vector)
-            system_vector = np.concatenate((system_vector, j_s), axis=0)
-            # print(system_vector)
-        # print()
-        total_j_source = np.concatenate((total_j_source, system_vector), axis=0)
-        j_source[g] = system_vector
+        matU = matrixU[g]
+        q_vector = source[g]
+        j_s = np.matmul(matU, q_vector)
+        j_source[g] = j_s
     
     # print(total_j_source)
     # print(j_source)

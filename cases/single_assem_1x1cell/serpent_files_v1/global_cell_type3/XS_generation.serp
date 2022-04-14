@@ -1,0 +1,48 @@
+set title ""
+
+mat fuel3 -10.424 
+92235.09c -0.022919
+92238.09c -0.85858
+8016.09c -0.1185
+
+
+mat coolant -0.44376 moder lwtr 1001
+8016.06c 0.33333
+1001.06c 0.66667
+
+
+
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+therm lwtr lwj3.11t
+
+set bc 2
+
+
+
+set pop 2000 500 50
+
+set seed 1474468046
+
+
+
+
+ene 2groups_grid 1 0 6.25e-07 20 
+
+
+
+
+surf 20 sqc 6.4750 24.6050 0.6475
+surf 19 cyl 6.4750 24.6050 0.4335
+
+cell 13 u4gcu_1 fuel3 -19
+cell 14 pin_fuel3 fill u4gcu_1 -19
+
+cell 15 u4gcu_2 coolant 19 -20
+cell 16 pin_fuel3 fill u4gcu_2 19 -20
+
+cell 17 0 fill pin_fuel3  -20
+cell 18 0 outside 8 20
+
+set gcu u4gcu_1 u4gcu_2 

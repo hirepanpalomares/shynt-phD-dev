@@ -22,9 +22,9 @@ class Region:
 
 
     """
-    def __init__(self, child1, child2, operation):
-        self.__child1 = child1
-        self.__child2 = child2
+    def __init__(self, child1=None, child2=None, operation=""):
+        self.child1 = child1
+        self.child2 = child2
         self.__operation = operation
         """
             Checar los child?? yes/no
@@ -32,11 +32,11 @@ class Region:
     
 
 
-    def __str__(self):
-        print_statement = "Region between two surfaces or two regions \n"
-        print_statement += f"{self.__child1}\n"
-        print_statement += f"{self.__child2}\n"
-        return print_statement
+    # def __str__(self):
+    #     print_statement = "Region between two surfaces or two regions \n"
+    #     print_statement += f"{self.child1}\n"
+    #     print_statement += f"{self.child2}\n"
+    #     return print_statement
 
     def __and__(self, other):
         """Class method to add to create the intersection of two Regions
@@ -96,13 +96,7 @@ class Region:
             return surfaces_sides
 
 
-    @property
-    def child1(self):
-        return self.__child1
     
-    @property
-    def child2(self):
-        return self.__child2
 
     @property
     def operation(self):
@@ -140,13 +134,14 @@ class SurfaceSide(Region):
         
         return Region(self, other, operation="and")
     
-    def __str__(self):
-        return_string = """
-        Surface side:  (%s)
-        Surface: 
-        %s
-        """%(self.side, self.surface)
-        return return_string
+    # def __str__(self):
+    #     # return_string = """
+    #     # # Surface side:  (%s)
+    #     # # Surface: 
+    #     # # %s
+    #     # # """%(self.side, self.surface)
+    #     # return return_string
+    #     return ""
     
     def encloses(self, other):
         others_vertex = other.surface.vertex_points
@@ -154,6 +149,14 @@ class SurfaceSide(Region):
             if not self.surface.is_point(point):
                 return False
         return True
+    
+    # @property
+    # def child1(self):
+    #     return self.child1
+    
+    # @property
+    # def child2(self):
+    #     return self.child2
 
 
 def destructure_region(region, surfaces_sides=[]):

@@ -65,7 +65,7 @@
 
  Nuclide    1 / 6 : 1001.06c -- hydrogen (H-1)
 
- Pointers                     : 36545 1099
+ Pointers                     : 27003 1099
  Primary type                 : Transport
  Nuclide ZAI                  : 10010
  Library ID                   : 06c
@@ -114,7 +114,7 @@
 
  Nuclide    2 / 6 : 1001.06s -- hydrogen (H-1)
 
- Pointers                     : 37157 1099
+ Pointers                     : 27615 1099
  Primary type                 : Transport
  Nuclide ZAI                  : 10010
  Library ID                   : 06s
@@ -164,7 +164,7 @@
 
  Nuclide    3 / 6 : 8016.09c -- oxygen 16 (O-16)
 
- Pointers                     : 26151 5515
+ Pointers                     : 16609 5515
  Primary type                 : Transport
  Nuclide ZAI                  : 80160
  Library ID                   : 09c
@@ -279,7 +279,7 @@
 
  Nuclide    4 / 6 : 8016.06c -- oxygen 16 (O-16)
 
- Pointers                     : 31348 5469
+ Pointers                     : 21806 5469
  Primary type                 : Transport
  Nuclide ZAI                  : 80160
  Library ID                   : 06c
@@ -394,7 +394,7 @@
 
  Nuclide    5 / 6 : 92235.09c -- uranium 235 (U-235)
 
- Pointers                     : 19256 105979
+ Pointers                     : 9714 105979
  Primary type                 : Transport
  Nuclide ZAI                  : 922350
  Library ID                   : 09c
@@ -483,7 +483,7 @@
 
  Nuclide    6 / 6 : 92238.09c -- uranium 238 (U-238)
 
- Pointers                     : 22487 106807
+ Pointers                     : 12945 106807
  Primary type                 : Transport
  Nuclide ZAI                  : 922380
  Library ID                   : 09c
@@ -581,12 +581,12 @@
  2 materials included in calculation
 
 
-Material "fuel1":
+Material "fuel6":
 
  - Material is not burnable
  - Material is included in majorant
  - Material is included in geometry
- - Atom density 6.97572E-02 1/barn*cm
+ - Atom density 6.97629E-02 1/barn*cm
  - Mass density 1.04240E+01 g/cm3
  - Volume 5.90375E-01 cm3
  - Mass 6.15407E+00 g
@@ -601,10 +601,10 @@ Isotopic composition (non-zero densities):
 -------------------------------------------------------------------
  Nuclide    a. weight   temp      a. dens      a. frac      m. frac
 -------------------------------------------------------------------
- 92235.09c  235.04415  900.0  4.23765E-04  6.07486E-03  1.58670E-02 
- 92238.09c  238.05078  900.0  2.28267E-02  3.27230E-01  8.65633E-01 
-  8016.09c   15.99492  900.0  4.65068E-02  6.66695E-01  1.18500E-01 
-       sum                    6.97572E-02  1.00000E+00  1.00000E+00
+ 92235.09c  235.04415  900.0  8.71061E-04  1.24860E-02  3.26152E-02 
+ 92238.09c  238.05078  900.0  2.23850E-02  3.20873E-01  8.48884E-01 
+  8016.09c   15.99492  900.0  4.65068E-02  6.66641E-01  1.18501E-01 
+       sum                    6.97629E-02  1.00000E+00  1.00000E+00
 -------------------------------------------------------------------
 
 Material "coolant":

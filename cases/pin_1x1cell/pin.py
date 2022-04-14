@@ -32,11 +32,11 @@ coolant = Shynt.materials.Material("coolant", moder="lwtr 1001", mass_density=0.
 coolant.addIsotope(oxygen06, atom_fraction=0.33333)
 coolant.addIsotope(hydrogen, atom_fraction=0.66667)
 
-clading = Shynt.materials.Material("clading", mass_density=7.5)
-clading.addIsotope(zyrconium, atom_fraction=1)
+# clading = Shynt.materials.Material("clading", mass_density=7.5)
+# clading.addIsotope(zyrconium, atom_fraction=1)
 
-mat_helium = Shynt.materials.Material("helium", mass_density=0.03)
-mat_helium.addIsotope(helium06, atom_fraction=1.0)
+# mat_helium = Shynt.materials.Material("helium", mass_density=0.03)
+# mat_helium.addIsotope(helium06, atom_fraction=1.0)
 
 # Defining pin universe ---------------------------------------
 

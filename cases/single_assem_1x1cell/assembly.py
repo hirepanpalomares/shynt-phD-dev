@@ -18,9 +18,9 @@ helium06 = Shynt.materials.Isotope("2004.06c")
 zyrconium = Shynt.materials.Isotope("40000.06")
 
 # Montecarlo params and libraries --------------------------------------
-mc_params = Shynt.montecarlo.MontecarloParams(2000, 500, 50)
-libraries = Shynt.libraries.SerpentLibraries(acelib="/home/segonpin/codesother/Serpent/xsdata/jeff311/sss_jeff311u.xsdata", therm="therm lwtr lwj3.11t")
-energy_grid = Shynt.energy.Grid([0, 0.625E-06, 20]) # MeV
+mc_params = Shynt.montecarlo.MontecarloParams(2000, 500, 50, seed=1474468046)
+libraries = Shynt.libraries.SerpentLibraries(acelib='"jeff311/sss_jeff311u.xsdata"', therm="therm lwtr lwj3.11t")
+energy_grid = Shynt.energy.Grid([0, 0.625E-06, 20], name="2groups_grid") # MeV
 
 # Defining materials -------------------------------------------------
 fuel1 = Shynt.materials.Material("fuel1", mass_density=10.424)
@@ -53,88 +53,60 @@ fuel6.addIsotope(u235, mass_fraction=0.032615)
 fuel6.addIsotope(u238, mass_fraction=0.84888)
 fuel6.addIsotope(oxygen09, mass_fraction=0.1185)
 
-coolant = Shynt.materials.Material("coolant", moder="lwtr 1001", mass_density=0.6)
+coolant = Shynt.materials.Material("coolant", moder="lwtr 1001", mass_density=0.443760)
 coolant.addIsotope(oxygen06, atom_fraction=0.33333)
 coolant.addIsotope(hydrogen, atom_fraction=0.66667)
 
-clading = Shynt.materials.Material("clading", mass_density=7.424)
-clading.addIsotope(zyrconium, atom_fraction=1)
 
-mat_helium = Shynt.materials.Material("helium", mass_density=0.0424)
-mat_helium.addIsotope(helium06, atom_fraction=1.0)
 
 # -------------------------------------------------------------
 
-pin_fuel1 = Shynt.universes.Pin("pin_fuel1", material=fuel1, radius=0.4335)
-pin_fuel1.add_level(clading, radius=0.4400)
-pin_fuel1.add_level(coolant)
-
-pin_fuel2 = Shynt.universes.Pin("pin_fuel2", material=fuel2, radius=0.4335)
-pin_fuel2.add_level(clading, radius=0.4400)
-pin_fuel2.add_level(coolant)
-
-pin_fuel3 = Shynt.universes.Pin("pin_fuel3", material=fuel3, radius=0.4335, surroundings=coolant)
-pin_fuel4 = Shynt.universes.Pin("pin_fuel4", material=fuel4, radius=0.4335, surroundings=coolant)
-pin_fuel5 = Shynt.universes.Pin("pin_fuel5", material=fuel5, radius=0.4335, surroundings=coolant)
-pin_fuel6 = Shynt.universes.Pin("pin_fuel6", material=fuel6, radius=0.4335, surroundings=coolant)
+pin1 = Shynt.universes.Pin("pin_fuel1", material=fuel1, radius=0.4335, surroundings=coolant)
+pin2 = Shynt.universes.Pin("pin_fuel2", material=fuel2, radius=0.4335, surroundings=coolant)
+pin3 = Shynt.universes.Pin("pin_fuel3", material=fuel3, radius=0.4335, surroundings=coolant)
+pin4 = Shynt.universes.Pin("pin_fuel4", material=fuel4, radius=0.4335, surroundings=coolant)
+pin5 = Shynt.universes.Pin("pin_fuel5", material=fuel5, radius=0.4335, surroundings=coolant)
+pin6 = Shynt.universes.Pin("pin_fuel6", material=fuel6, radius=0.4335, surroundings=coolant)
 
 
 lattice_10x10 =  [
-    [pin_fuel2, pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel3, pin_fuel2, pin_fuel2],
-    [pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3, pin_fuel2],
-    [pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3],
-    [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
-    [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
-    [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
-    [pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5],
-    [pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3],
-    [pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel6, pin_fuel5, pin_fuel3, pin_fuel2],
-    [pin_fuel2, pin_fuel2, pin_fuel3, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel5, pin_fuel3, pin_fuel2, pin_fuel2]
+    [pin2, pin2, pin3, pin5, pin5, pin5, pin5, pin3, pin2, pin2],
+    [pin2, pin3, pin5, pin6, pin6, pin6, pin6, pin5, pin3, pin2],
+    [pin3, pin5, pin6, pin6, pin6, pin6, pin6, pin6, pin5, pin3],
+    [pin5, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin5],
+    [pin5, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin5],
+    [pin5, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin5],
+    [pin5, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin5],
+    [pin3, pin5, pin6, pin6, pin6, pin6, pin6, pin6, pin5, pin3],
+    [pin2, pin3, pin5, pin6, pin6, pin6, pin6, pin5, pin3, pin2],
+    [pin2, pin2, pin3, pin5, pin5, pin5, pin5, pin3, pin2, pin2]
 ]
 
-lattice_2x2 = [
-    [pin_fuel1, pin_fuel2],
-    [pin_fuel2, pin_fuel1]
-]
+assembly_10x10 = Shynt.universes.SquareLattice("assembly", (0.0, 0.0), 1.295, lattice_10x10)
 
-# assembly_10x10 = Shynt.universes.SquareLattice("assembly", (0.0, 0.0), 1.2950, lattice_10x10)
-assembly_2x2 = Shynt.universes.SquareLattice("assembly", (0.0, 0.0), 1.2950, lattice_2x2)
+outer_boundary = Shynt.surfaces.InfiniteSquareCylinderZ(0, 0, 1.2950*5, boundary="reflective")
 
-
-
-outer_boundary = Shynt.surfaces.InfiniteSquareCylinderZ(1.2950, 1.2950, 1.2950*2, boundary="reflective")
-
-print("#"*50)
 # Main problem cell
-model_cell = Shynt.cells.Cell(
-    "assembly_problem", 
-    region=-outer_boundary, 
-    fill=assembly_2x2
-)
+model_cell = Shynt.cells.Cell("assembly_problem", region=-outer_boundary, fill=assembly_10x10)
+
+# meshed cell
+model_cell_meshed = Shynt.mesh.make_mesh(model_cell, global_mesh_type="pin_cell", local_mesh_type="material")
 
 
-array = model_cell.content.array
-# print(array)
-# print(array[0][0].get_center(),  array[0][1].get_center())
-# print(array[1][0].get_center(),  array[1][1].get_center())
+# # Make the Global and Local mesh
 
-# Make the Global and Local mesh
-
-global_mesh_points = [
-    [(), (), (), (), (), (), (), (), (), (), ()],
-    [(), (), (), (), (), (), (), (), (), (), ()],
-    [(), (), (), (), (), (), (), (), (), (), ()],
-    [(), (), (), (), (), (), (), (), (), (), ()],
-    [(), (), (), (), (), (), (), (), (), (), ()],
-    [(), (), (), (), (), (), (), (), (), (), ()],
-    [(), (), (), (), (), (), (), (), (), (), ()],
-    [(), (), (), (), (), (), (), (), (), (), ()],
-    [(), (), (), (), (), (), (), (), (), (), ()],
-    [(), (), (), (), (), (), (), (), (), (), ()]
-]
-
-
-meshed_model_cell = Shynt.mesh.make_mesh(model_cell, global_mesh_type="pin_cell", local_mesh_type="material")
+# global_mesh_points = [
+#     [(), (), (), (), (), (), (), (), (), (), ()],
+#     [(), (), (), (), (), (), (), (), (), (), ()],
+#     [(), (), (), (), (), (), (), (), (), (), ()],
+#     [(), (), (), (), (), (), (), (), (), (), ()],
+#     [(), (), (), (), (), (), (), (), (), (), ()],
+#     [(), (), (), (), (), (), (), (), (), (), ()],
+#     [(), (), (), (), (), (), (), (), (), (), ()],
+#     [(), (), (), (), (), (), (), (), (), (), ()],
+#     [(), (), (), (), (), (), (), (), (), (), ()],
+#     [(), (), (), (), (), (), (), (), (), (), ()]
+# ]
 
 
 # Outside world
@@ -142,7 +114,7 @@ outside_cell = Shynt.cells.Cell("outside_world", region=+outer_boundary)
 
 # Total Universe (root)
 model_universe = Shynt.universes.Root(
-    cells=[meshed_model_cell, outside_cell],
+    cells=[model_cell_meshed, outside_cell],
     energy_grid=energy_grid, 
     mcparams=mc_params, 
     libraries=libraries

@@ -8,10 +8,10 @@ class TestGlobalMesh(unittest.TestCase):
 
     def test_pin_problem(self):
         pin_fuel1 = Shynt.universes.Pin("pin_fuel")
-        mat_lev = [None, None]
-        rad_lev = [0.4335, None]
-        pin_fuel1.add_pin_levels(mat_lev, rad_lev)
-        outer_boundary = Shynt.surfaces.InfiniteSquareCylinderZ(0.0, 0.0, 0.6475, boundary="reflective")
+        
+        outer_boundary = Shynt.surfaces.InfiniteSquareCylinderZ(
+            0.0, 0.0, 0.6475, boundary="reflective"
+        )
         reg = -outer_boundary
         model_cell = Shynt.cells.Cell(
             "pin_problem", 
