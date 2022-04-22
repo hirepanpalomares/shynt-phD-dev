@@ -7,7 +7,7 @@ from .surf_counter import surf_ids
 
 class Surface:
 
-    def __init__(self, type_surface,  name=""):
+    def __init__(self, type_surface="",  name=""):
         """
             Init method of the class
 
@@ -93,15 +93,78 @@ class PlaneX(Surface):
     def __init__(self, x0, name="", boundary=None):
         super().__init__(type_surface="plane_x", name=name)
         self.__x0 = x0
-
         self.__function = lambda x: x - self.__x0
-        
+        self.__isRotated = False
         self.serpent_syntax = f"surf {self.id} px {format(x0, '.4f')}\n"
 
+    def __useFunction(self, var_):
+        try:
+            assert(var_ is not None)
+            return self.__function(var_)
+        except AssertionError:
+            print("Error in using lambda function of Surface PlaneY - value is None type")
+            raise SystemExit
+
+    def rotate(self, angle, ref_point):
+        """
+            The plane is rotated considering a unit vector from the ref_point 
+            in the positive "x" direction.
+
+            The vector is rotated and the equation of the plane is calculated
+            based on two points in the vector
+        """
+        try: 
+            assert(angle != 0)
+        except AssertionError:
+            return 0
         
+        angle = math.radians(angle)
+        xc, yc = ref_point # TODO checck that the refpoint is on the plane
+        # TODO choose a point over the line (plane) instead just adding one
+        x0 = xc     # This only works if the plane hasn't been rotated
+        y0 = yc + 1     # This only works if the plane hasn't been rotated
         
-    def eval_point(self, x):
-        return self.__function(x)
+        x1 = (x0 - xc) * np.cos(angle) - (y0 - yc) * np.sin(angle) + xc
+        y1 = (x0 - xc) * np.sin(angle) + (y0 - yc) * np.cos(angle) + yc
+
+        # Calculating line equation
+        m = (y1-yc)/(x1-xc)
+        b = yc - m * xc
+
+        print(f"y = {m:.6f}x + {b:.6f}")
+        self.__function = lambda x: m*x + b
+        self.__isRotated = True
+    
+    def isPointNegativeSide(self, x=None, y=None):
+        # print(x, y)
+
+        if self.__isRotated:
+            y_new = self.__useFunction(x)
+            try:
+                assert(y < y_new)
+                return True
+            except AssertionError:
+                return False
+        else:
+            x_new = self.__useFunction(x)
+            try:
+                assert(x_new < 0)
+                return True
+            except AssertionError:
+                return False
+
+    def isPointPositiveSide(self, x=None, y=None):
+        try:
+            assert(self.isPointNegativeSide(x=x, y=y))
+            return False
+        except AssertionError:
+            return True
+
+    def eval_point(self, y=None, x=None):
+        if self.__isRotated:
+            return self.__useFunction(y)
+        else:
+            return self.__useFunction(x)
     
     @property
     def x0(self):
@@ -122,6 +185,14 @@ class PlaneY(Surface):
         self.__isRotated = False
         self.serpent_syntax = f"surf {self.id} py {format(y0, '.4f')}\n"
 
+    def __useFunction(self, var_):
+        try:
+            assert(var_ is not None)
+            return self.__function(var_)
+        except AssertionError:
+            print("Error in using lambda function of Surface PlaneY - value is None type")
+            raise SystemExit
+
     def rotate(self, angle, ref_point):
         """
             The plane is rotated considering a unit vector from the ref_point 
@@ -130,57 +201,59 @@ class PlaneY(Surface):
             The vector is rotated and the equation of the plane is calculated
             based on two points in the vector
         """
-        x0, y0 = ref_point
-        x1 = x0 + 1
+        try: 
+            assert(angle != 0)
+        except AssertionError:
+            return 0
+
+        angle = math.radians(angle)
+        xc, yc = ref_point # TODO checck that the refpoint is on the plane
+        # TODO choose a point over the line (plane) instead just adding one
+        x0 = xc + 1 # This only works if the plane hasn't been rotated
+        y0 = yc     # This only works if the plane hasn't been rotated
         
-        
-        x2 = np.cos(angle) / x1
-        y2 = np.sin(angle) / x1
+        x1 = (x0 - xc) * np.cos(angle) - (y0 - yc) * np.sin(angle) + xc
+        y1 = (x0 - xc) * np.sin(angle) + (y0 - yc) * np.cos(angle) + yc
 
         # Calculating line equation
-        m = (y2-y0)/(x2-x0)
-        b = y2 - m * x2
-
+        m = (y1-yc)/(x1-xc)
+        b = yc - m * xc
+        
+        print(f"y = {m:.2f}x + {b:.2f}")
         self.__function = lambda x: m*x + b
+
         self.__isRotated = True
 
-    def isPointNegativeSide(self, y=None, x=None):
+    def isPointNegativeSide(self, x=None, y=None):
+        # print(x, y)
         if self.__isRotated:
-            y_new = self.__function(x)
+            y_new = self.__useFunction(x)
+            # print(y_new)
             try:
                 assert(y < y_new)
                 return True
             except AssertionError:
                 return False
         else:
-            y_new = self.__function(x)
+            y_new = self.__useFunction(y)
             try:
-                assert(y < 0)
+                assert(y_new < 0)
                 return True
             except AssertionError:
                 return False
 
-    def isPointPositiveSide(self, y=None, x=None):
-        if self.__isRotated:
-            y_new = self.__function(x)
-            try:
-                assert(y > y_new)
-                return True
-            except AssertionError:
-                return False
-        else:
-            y_new = self.__function(x)
-            try:
-                assert(y > 0)
-                return True
-            except AssertionError:
-                return False
+    def isPointPositiveSide(self, x=None, y=None):
+        try:
+            assert(self.isPointNegativeSide(x=x, y=y))
+            return False
+        except AssertionError:
+            return True
 
     def eval_point(self, y=None, x=None):
         if self.__isRotated:
-            return self.__function(x)
+            return self.__useFunction(x)
         else:
-            return self.__function(y)
+            return self.__useFunction(y)
 
         
 
@@ -504,13 +577,14 @@ class InfiniteSquareCylinderZ(Surface):
 class InfiniteHexagonalCylinderXtype(Surface):
 
     def __init__(self, center_x, center_y, half_width, name="", boundary=None):
-        super()._init__(name, type_surf="inf hex_x")
+        super().__init__(name=name, type_surface="inf hex_x")
         self.__center_x = center_x
         self.__center_y = center_y
         self.__half_width = half_width
         self.__boundary = boundary
         self.__radius = self.__half_width * math.sqrt(5) / 2
         self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
+        # self.serpent_syntax = f"surf {self.id} hexyc {center_x} {center_y} {half_width}\n"
 
     def __generate_surfaces(self):
         """
@@ -519,16 +593,16 @@ class InfiniteHexagonalCylinderXtype(Surface):
         
         """
         rot_ref_A = (self.__center_x, self.__center_y + self.__radius)
-        rot_ref_C = (self.__center_x, self.__center_y - self.__radius)
-        rot_ref_D = (self.__center_x - self.__half_width, self.__center_y - 0.5 * self.__radius)
-        rot_ref_F = (self.__center_x - self.__half_width, self.__center_y + 0.5 * self.__radius)
+        rot_ref_C = (self.__center_x, self.__center_y + self.__radius)
+        rot_ref_D = (self.__center_x, self.__center_y - self.__radius)
+        rot_ref_F = (self.__center_x, self.__center_y - self.__radius)
 
-        _A = PlaneY(self.__center_y + 0.5*self.__radius, boundary=self.__boundary)
+        _A = PlaneY(self.__center_y + self.__radius, boundary=self.__boundary)
         _B = PlaneX(self.__center_x + self.__half_width, boundary=self.__boundary)
-        _C = PlaneY(self.__center_y - 0.5*self.__radius, boundary=self.__boundary)
-        _D = PlaneY(self.__center_y - 0.5*self.__radius, boundary=self.__boundary)
+        _C = PlaneY(self.__center_y - self.__radius, boundary=self.__boundary)
+        _D = PlaneY(self.__center_y - self.__radius, boundary=self.__boundary)
         _E = PlaneX(self.__center_x - self.__half_width, boundary=self.__boundary)
-        _F = PlaneY(self.__center_y + 0.5*self.__radius, boundary=self.__boundary)
+        _F = PlaneY(self.__center_y + self.__radius, boundary=self.__boundary)
         _A.rotate(-30, rot_ref_A)
         _C.rotate(+30, rot_ref_C)
         _D.rotate(-30, rot_ref_D)
@@ -538,9 +612,8 @@ class InfiniteHexagonalCylinderXtype(Surface):
 
         return surfaces
     
-    def is_point(self, point):
-        x = point[0]
-        y = point[1]
+    def isPointNegativeSide(self, point):
+        x, y = point
         try:
             assert(self.__surf_A.eval_point(y) <= 0)
             assert(self.__surf_B.eval_point(x) <= 0)
@@ -551,6 +624,14 @@ class InfiniteHexagonalCylinderXtype(Surface):
             return True
         except AssertionError:
             return False
+    
+    def isPointPositiveSide(self, point):
+        x, y = point
+        try:
+            assert(self.isPointNegativeSide((x,y)))
+            return False
+        except AssertionError:
+            return True
     
     def evaluate_enclosed_volume(self):
         return self.__half_width * self.__radius * 3
@@ -590,15 +671,135 @@ class InfiniteHexagonalCylinderXtype(Surface):
         return self.__boundary
 
 
-
-
 class InfiniteHexagonalCylinderYtype(Surface):
 
     def __init__(self, center_x, center_y, half_width, name="", boundary=None):
-        super()._init__(name, type_surf="inf hex_y")
+        super().__init__(name=name, type_surface="inf hex_x")
+        self.__center_x = center_x
+        self.__center_y = center_y
+        self.__half_width = half_width
+        self.__boundary = boundary
+        # self.__side = 2 * self.__half_width * math.tan(math.radians(30))
+        self.__radius = 2 * self.__half_width / math.sqrt(3)
+        self.__side = self.__radius
+        # self.__radius = self.__half_width * math.sqrt(5) / 2
+        
+        self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
         self.serpent_syntax = f"surf {self.id} hexyc {center_x} {center_y} {half_width}\n"
 
+    def __generate_surfaces(self):
+        """
+            To rotate the plane-Y we consider the rotation of a vector with unitary length
+            pointing in the positive x-direction
+        
+        """
+        rot_ref_B = (self.__center_x + self.__radius, self.__center_y)
+        rot_ref_C = (self.__center_x + self.__radius, self.__center_y)
+        rot_ref_E = (self.__center_x - self.__radius, self.__center_y)
+        rot_ref_F = (self.__center_x - self.__radius, self.__center_y)
 
+        _A = PlaneY(self.__center_y + self.__half_width, boundary=self.__boundary)
+        _B = PlaneX(self.__center_x + self.__radius, boundary=self.__boundary)
+        _C = PlaneX(self.__center_x + self.__radius, boundary=self.__boundary)
+        _D = PlaneY(self.__center_y - self.__half_width, boundary=self.__boundary)
+        _E = PlaneX(self.__center_x - self.__radius, boundary=self.__boundary)
+        _F = PlaneX(self.__center_x - self.__radius, boundary=self.__boundary)
+
+        _B.rotate(+30, rot_ref_B)
+        _C.rotate(-30, rot_ref_C)
+        _E.rotate(+30, rot_ref_E)
+        _F.rotate(-30, rot_ref_F)
+        
+        surfaces = [_A, _B, _C, _D, _E, _F ]
+
+        return surfaces
+    
+    def isPointNegativeSide(self, point):
+        x, y = point
+        try:
+            print(self.__surf_A.isPointNegativeSide(x=x,y=y))
+            print(self.__surf_B.isPointNegativeSide(x=x,y=y))
+            print(self.__surf_C.isPointNegativeSide(x=x,y=y))
+            print(self.__surf_D.isPointPositiveSide(x=x,y=y))
+            print(self.__surf_E.isPointPositiveSide(x=x,y=y))
+            print(self.__surf_F.isPointPositiveSide(x=x,y=y))
+            return True
+        except AssertionError:
+            return False
+    
+    def isPointPositiveSide(self, point):
+        x, y = point
+        try:
+            assert(self.isPointNegativeSide((x,y)))
+            return False
+        except AssertionError:
+            return True
+    
+    def evaluate_enclosed_volume(self):
+        return self.__half_width * self.__radius * 3
+    
+    def evaluate_surface_area(self):
+        return {
+            self.__surf_A.id: self.__radius,
+            self.__surf_B.id: self.__radius,
+            self.__surf_C.id: self.__radius,
+            self.__surf_D.id: self.__radius,
+            self.__surf_E.id: self.__radius,
+            self.__surf_F.id: self.__radius,
+        }
+
+    def get_surface_orientation(self):
+        return {
+            self.__surf_A.id: "A",
+            self.__surf_B.id: "B",
+            self.__surf_C.id: "C",
+            self.__surf_D.id: "D",
+            self.__surf_E.id: "E",
+            self.__surf_F.id: "F",
+        }
+
+    def get_surface_relation(self):
+        return {
+            self.__surf_A.id: self.__surf_A,
+            self.__surf_B.id: self.__surf_B,
+            self.__surf_C.id: self.__surf_C,
+            self.__surf_D.id: self.__surf_D,
+            self.__surf_E.id: self.__surf_E,
+            self.__surf_F.id: self.__surf_F,
+        }
+
+    def get_vertex_points(self):
+        points = [
+            (self.__center_x - self.__radius, self.__center_y),
+            (self.__center_x + self.__radius, self.__center_y),
+            (self.__center_x - self.__radius, self.__surf_A.y0),
+            (self.__center_x + self.__radius, self.__surf_A.y0),
+            (self.__center_x - self.__radius, self.__surf_D.y0),
+            (self.__center_x + self.__radius, self.__surf_D.y0),
+        ]        
+        return points
+
+    def get_side_middle_points(self):
+        sx = math.cos(math.radians(30)) * self.__half_width
+        sy = math.sin(math.radians(30)) * self.__half_width
+        points = [
+            (self.__center_x, self.__surf_A.y0),
+            (self.__center_x + sx, self.__center_y + sy),
+            (self.__center_x - sx, self.__center_y + sy),
+            (self.__center_x + sx, self.__center_y - sy),
+            (self.__center_x - sx, self.__center_y - sy),
+            (self.__center_x, self.__surf_D.y0)
+        ]
+
+        return points
+
+    @property
+    def radius(self):
+        return self.__radius
+
+    @property
+    def boundary(self):
+        return self.__boundary
 
 
 

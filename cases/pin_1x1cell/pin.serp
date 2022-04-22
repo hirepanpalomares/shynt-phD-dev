@@ -1,0 +1,35 @@
+set title "pin_problem"
+
+mat fuel1 -10.424 
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c  -0.1185
+
+
+mat coolant -0.44376 moder lwtr 1001
+8016.06c 0.33333
+1001.06c 0.66667
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+therm lwtr lwj3.11t
+
+set bc 2
+
+
+set pop 50000 500 50
+
+set seed 1474468046
+
+
+ene 2groups_grid 1 0 6.25e-07 20 
+
+pin pin1
+fuel1 0.4335
+coolant
+
+surf 2 sqc 0.0000 0.0000 0.6475
+surf 1 cyl 0.0000 0.0000 0.4335
+
+cell 99 0 fill pin1 -2
+cell 13 0 outside    2

@@ -55,10 +55,7 @@ class Cell:
         """
             Class method to calculate the consecutive id of the cell
 
-            It generates a file with a single line where the number
-            of created cells is updated every time the user calls
-            this class.
-
+            
             Parameters
             ----------------------------------------------------------------
             No parameters

@@ -93,9 +93,9 @@ def solveKeff(coarse_nodes, energy_g, xs, probabilities, mesh_info):
         
         
 
-    # print(k_array)
-    # plt.plot(k_array)
-    # plt.show()
+    
+    plt.plot(k_array)
+    plt.savefig("k_convergence.png")
 
 
     return  {

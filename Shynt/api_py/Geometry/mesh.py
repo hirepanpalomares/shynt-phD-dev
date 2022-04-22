@@ -159,7 +159,7 @@ class CoarseNode(Node):
 
         relation = {}
         if isinstance(region, SurfaceSide):
-            relation = region.surface.getSurface_relation()
+            relation = region.surface.get_surface_relation()
 
 
         return relation
@@ -186,7 +186,7 @@ class CoarseNode(Node):
         if isinstance(region, SurfaceSide):
             surface = self.cell.region.surface
             if isinstance(surface, InfiniteSquareCylinderZ):
-                directions = surface.get_directions()
+                directions = surface.get_surface_orientation()
         return directions
 
 
