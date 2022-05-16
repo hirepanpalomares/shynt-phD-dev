@@ -67,7 +67,7 @@ outside_cell = Shynt.cells.Cell("outside_world", region=+outer_boundary)
 
 # Total Unverse (root)
 model_universe = Shynt.universes.Root(
-    [meshed_model_cell, outside_cell], 
+    meshed_model_cell, outside_cell, 
     energy_grid=energy_grid, 
     mcparams=mc_params, 
     libraries=libraries, 

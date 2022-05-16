@@ -1,10 +1,11 @@
 
 from Shynt.api_py.Geometry.mesh_info import MeshInfo
+from Shynt.api_py.Postprocess.write_output import OutputFile
 from Shynt.api_py.Serpent.serpent_runners import run_detector_files, run_xs_files
 from Shynt.api_py.Probabilities.get_probabilities_system import get_probabilities_data
 from Shynt.api_py.CrossSections.get_xs_system import get_xs_data
 from Shynt.api_py.ResponseMatrix.iterations import solveKeff
-from Shynt.api_py.Serpent.generator import generate_serpent_files
+from Shynt.api_py.Serpent.file_generator import generate_serpent_files
 
 from Shynt.api_py.Geometry.surfaces import reset_surface_counter
 from Shynt.api_py.Geometry.cells import reset_cell_counter
@@ -14,7 +15,9 @@ from Shynt.api_py.Geometry.cells import reset_cell_counter
 def run(root):
     
     # Extracting cells from root model
-    model_cell, outside_cell = root.cells # Here it is assumed that model_cell is already meshed
+    model_cell = root.model_cell
+    outside_cell = root.outside_cell
+
     energy_g = root.energy_grid.energy_groups
     coarse_nodes = model_cell.global_mesh.coarse_nodes
     coarse_nodes_map = model_cell.global_mesh.coarse_nodes_map
@@ -47,12 +50,25 @@ def run(root):
         probabilities, 
         mesh_info
     )
+
+    keff = solution["keff"]
+    phi = solution["phi"]
+    keff_convergence = solution["keff_convergence"]
+    flux_convergence = solution["flux_convergence"]
+    iterations = solution["iterations"]
+
+    outfile = OutputFile(
+        root, keff, phi, iterations, (keff_convergence, flux_convergence), mesh_info
+    )
+
+
+
+    
     
 
 
-    # Reset counters and delete counter files Probably store it in some memory
-    # location that can be readable from every part of the code.
-    return 0
+    
+    return keff, phi
 
 
 

@@ -1,7 +1,7 @@
-from Shynt.api_py.Geometry.surfaces import InfiniteSquareCylinderZ
+from Shynt.api_py.Geometry.surfaces import Hexagon, InfiniteSquareCylinderZ, Surface
 from Shynt.api_py.Geometry.regions import Region, SurfaceSide
-from Shynt.api_py.Geometry.cells import Cell
-from Shynt.api_py.Geometry.universes import Pin, Universe
+from Shynt.api_py.Geometry.cells import Cell, materials_in_cell
+from Shynt.api_py.Geometry.universes import Lattice, Pin, SquareLattice, Universe
 from Shynt.api_py.materials import Material
 
 
@@ -121,8 +121,154 @@ class Detector():
     def cell(self):
         return self.__cell
 
-
 class SerpentInputFile():
+    
+    def __init__(self, cell, name, libraries, energyGrid, mc_params, type_detectors=None):
+        self.cell = cell
+        self.name = name
+        self.libraries = libraries
+        self.energy_grid = energyGrid
+        self.mcparams = mc_params
+        self.type_detectors = type_detectors
+        self.surfaces_ids = []
+
+        with open(name, "w") as self.__file:
+            self.__write_title()
+            self.__write_material()
+            self.__write_libraries()
+            self.__file.write("\n\nset bc 2\n\n")
+            self.__write_mc_params()
+            if self.type_detectors == "flux":
+                self.__write_energy_grid()
+                self.__write_geometry()
+                self.__write_outside_cell()
+
+    
+    def __write_title(self):
+        self.__file.write(f"set title \"{self.cell.name}\"\n\n")
+
+    def __write_material(self):
+        if isinstance(self.cell.content, Pin):
+            materials = self.cell.content.materials
+            for mat in materials:
+                syntax = mat.serpent_syntax
+                self.__file.write(syntax)
+        elif isinstance(self.cell.content, SquareLattice):
+            materials = materials_in_cell(self.cell)
+            for mat in materials.values():
+                syntax = mat.serpent_syntax
+                self.__file.write(syntax)
+            a = 10
+
+    def __write_libraries(self):
+        self.__file.write(self.libraries.serpent_syntax)
+ 
+    def __write_mc_params(self):
+        self.__file.write("\n\n")
+        self.__file.write(self.mcparams.serpent_syntax)
+        self.__file.write("\n\n")
+
+    def __write_energy_grid(self, syntax="complete"):
+        self.__file.write("\n\n")
+        if syntax == "by_bin":
+            self.__file.write(self.energy_grid.serpent_syntax_by_bins())
+        elif syntax == "complete":
+            self.__file.write(self.energy_grid.serpent_syntax())
+        self.__file.write("\n\n")
+
+    def __write_geometry(self):
+        """
+            # Consider if it is better to print the geometry from the local problems
+        """
+        
+
+        # Surfaces for region enclosing the cell ----------------------------------------------
+        region = self.cell.region
+        # searching surfaces
+        surfaces_region = self.__surface_searcher_in_region(region, surfaces=[])
+        # self.__surface_searcher_in_region(region)
+        self.surfaces = surfaces_region
+
+        # Looking for surfaces in the cells of the universe ---------------------------------
+        if isinstance(self.cell.content, Universe):
+            universe = self.cell.content
+            for c in universe.cells.values():
+                cell_region = c.region
+                surfaces = self.__surface_searcher_in_region(cell_region, surfaces=[])
+                self.surfaces += surfaces
+        
+        self.__file.write("\n\n")
+        for surf in self.surfaces:
+            self.__file.write(surf)
+        
+        # Write cell
+        cell_syntax = ""
+        if isinstance(self.cell.content, Lattice):
+            # write all the cells of the pins separetely to call them in the detectors
+            pass
+        elif isinstance(self.cell.content, Pin):
+            pass
+        elif isinstance(self.cell.content, Material):
+            pass
+        
+        
+        if self.type_detectors == "xs_generation":
+            cell_syntax = self.cell.serpent_syntax_gcu()
+        elif self.type_detectors is not None:
+            cell_syntax = self.cell.serpent_syntax()
+            # print(cell_syntax)
+            # print(self.cell)
+        self.__file.write(cell_syntax)
+    
+    def __surface_searcher_in_region(self, region, surfaces=[]):
+        
+        """
+            This is a recursive function
+            
+            Whichever region is received, returns the surfaces needed to build that region
+        """
+
+        if isinstance(region, SurfaceSide):
+            # base case
+            surf = region.surface
+            surf_id = surf.id
+            surf_syntax = surf.serpent_syntax
+            if surf_id not in self.surfaces_ids:
+                self.surfaces_ids.append(surf_id)
+                if surf_syntax not in surfaces:
+                    surfaces.append(surf_syntax)
+            # print("surf after", surfaces)
+            return surfaces
+        elif isinstance(region, Region):
+            # print("reg")
+            reg1 = region.child1
+            reg2 = region.child2
+            surfaces += self.__surface_searcher_in_region(reg1, surfaces=surfaces)
+            surfaces += self.__surface_searcher_in_region(reg2, surfaces=surfaces)
+            return surfaces
+
+    def __surfaces_from_region_instance(self, reg, surfaces=[]):
+        print("surf before", surfaces)
+        if isinstance(reg, SurfaceSide):
+            # base case
+            surf = reg.surface
+            print("surface side", surf)
+            if surf.id not in self.surfaces_ids:
+                self.surfaces_ids.append(surf.id)
+                if surf.serpent_syntax not in surfaces:
+                    surfaces.append(surf.serpent_syntax)
+            print("surf after", surfaces)
+            return surfaces
+        elif isinstance(reg, Region):
+            print("reg")
+            reg1 = reg.child1
+            reg2 = reg.child2
+            surfaces = self.__surfaces_from_region_instance(reg1, surfaces)
+            surfaces = self.__surfaces_from_region_instance(reg2, surfaces)
+            return surfaces
+
+
+class SerpentInputFileRmm():
     """
         Class for a serpent input file:
 
@@ -252,8 +398,7 @@ class SerpentInputFile():
         # Looking for surfaces in the cells of the universe ---------------------------------
         if isinstance(self.cell.content, Universe):
             universe = self.cell.content
-            universe_cells = universe.cells
-            for c in universe_cells:
+            for c in universe.cells.values():
                 cell_region = c.region
                 surfaces = self.__surface_searcher_in_region(cell_region, surfaces=[])
                 self.surfaces += surfaces
@@ -414,46 +559,20 @@ class SerpentInputFile():
         self.surface_direction = {}
         closing_surf = self.cell.region.surface 
 
-        # TODO Code this for every closing surf in general
-        if isinstance(closing_surf, InfiniteSquareCylinderZ):
-            surf_1 = closing_surf.surf_top      # cell in - side 
-            surf_2 = closing_surf.surf_right    # cell in - side
-            surf_3 = closing_surf.surf_bottom   # cell in + side
-            surf_4 = closing_surf.surf_left     # cell in + side
-            
-            # print(f"Top    surface: {surf_1.id}")
-            # print(f"Right  surface: {surf_2.id}")
-            # print(f"Bottom surface: {surf_3.id}")
-            # print(f"Left   surface: {surf_4.id}")
-
-            # surf T --> outward current = +1 --> inward current = -1
-            # surf R --> outward current = +1 --> inward current = -1
-            # surf B --> outward current = -1 --> inward current = +1
-            # surf L --> outward current = -1 --> inward current = +1
-
-            surface_for_detectors += surf_1.serpent_syntax
-            surface_for_detectors += surf_2.serpent_syntax
-            surface_for_detectors += surf_3.serpent_syntax
-            surface_for_detectors += surf_4.serpent_syntax
-
-            self.closing_surface_ids.append(surf_1.id)
-            self.closing_surface_ids.append(surf_2.id)
-            self.closing_surface_ids.append(surf_3.id)
-            self.closing_surface_ids.append(surf_4.id)
-
-            self.surface_direction = {
-                surf_1.id: {"inward": "-1", "outward": "1"},
-                surf_2.id: {"inward": "-1", "outward": "1"},
-                surf_3.id: {"inward": "1", "outward": "-1"},
-                surf_4.id: {"inward": "1", "outward": "-1"},
-            }
+        if isinstance(closing_surf, Surface):
+            # Only for square en hexagon sufaces ATM
+            surf_cl = closing_surf.get_surface_relation()
+            for s_id, surf in surf_cl.items():
+                surface_for_detectors += surf.serpent_syntax
+                self.closing_surface_ids.append(s_id)
+                self.surface_direction = closing_surf.get_neutron_current_directions()
         
         # Adding surfaces from inside the pin cell
         self.material_cell_ids_relation = {}
         universe = self.cell.content
-        universe_cells = universe.cells
+        
         # print(self.surfaces_ids)
-        for cell in universe_cells:
+        for cell in universe.cells.values():
             if isinstance(cell.content, Material):
                 if cell.content.isFuel:
                     # self.isFuel_relation[]
@@ -465,7 +584,6 @@ class SerpentInputFile():
                     # self.material_cell_ids_relation["fuel"] = cell.id
                     self.isFuel_relation[cell.id] = (cell.content.name, True)
                 else:
-                    pass
                     # self.material_cell_ids_relation[cell.content.name] = cell.id
                     # self.material_cell_ids_relation["coolant"] = cell.id
                     self.isFuel_relation[cell.id] = (cell.content.name, False)

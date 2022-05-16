@@ -1,7 +1,6 @@
 
+from logging import root
 import numpy as np
-import os 
-import sys
 
 import Shynt
 
@@ -114,17 +113,17 @@ outside_cell = Shynt.cells.Cell("outside_world", region=+outer_boundary)
 
 # Total Universe (root)
 model_universe = Shynt.universes.Root(
-    cells=[model_cell_meshed, outside_cell],
+    model_cell_meshed, outside_cell,
     energy_grid=energy_grid, 
     mcparams=mc_params, 
-    libraries=libraries
+    libraries=libraries,
+    name ="Square lattice 10x10 - LWR system"
 )
 
 
-Shynt.run(model_universe)
+# Shynt.run(model_universe)
 
-
-# sudo systemctl enable --now code-server@$USER
+Shynt.file_generator.generate_root_serpent_file(model_universe)
 
 
 

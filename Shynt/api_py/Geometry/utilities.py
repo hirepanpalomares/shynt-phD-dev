@@ -1,5 +1,8 @@
 
 
+from Shynt.api_py.Geometry.surfaces import Hexagon, InfiniteSquareCylinderZ
+
+
 def is_pin_in_array(pin, arr, global_nodes, local_nodes):
     """
         Function that tells if a pin is in an array 
@@ -70,15 +73,26 @@ def get_surface_equality(node, node_base):
         equal node
     """
     node_cell = node.cell
-    node_base_cell = node_base.cell
+    base_node_cell = node_base.cell
 
-    surface_cell = node_cell.region.surface
-    surface_base_cell = node_base_cell.region.surface
+    cell_surface = node_cell.region.surface
+    base_cell_surface = base_node_cell.region.surface
 
-    rel = {
-        surface_cell.surf_top.id: surface_base_cell.surf_top.id,
-        surface_cell.surf_right.id: surface_base_cell.surf_right.id,
-        surface_cell.surf_bottom.id: surface_base_cell.surf_bottom.id,
-        surface_cell.surf_left.id: surface_base_cell.surf_left.id,
+    if isinstance(cell_surface, InfiniteSquareCylinderZ) and isinstance(base_cell_surface, InfiniteSquareCylinderZ):
+        return {
+            cell_surface.surf_top.id: base_cell_surface.surf_top.id,
+            cell_surface.surf_right.id: base_cell_surface.surf_right.id,
+            cell_surface.surf_bottom.id: base_cell_surface.surf_bottom.id,
+            cell_surface.surf_left.id: base_cell_surface.surf_left.id,
     }
-    return rel
+    if isinstance(cell_surface, Hexagon) and isinstance(base_cell_surface, Hexagon):
+        return {
+            cell_surface.surf_A.id: base_cell_surface.surf_A.id,
+            cell_surface.surf_B.id: base_cell_surface.surf_B.id,
+            cell_surface.surf_C.id: base_cell_surface.surf_C.id,
+            cell_surface.surf_D.id: base_cell_surface.surf_D.id,
+            cell_surface.surf_E.id: base_cell_surface.surf_E.id,
+            cell_surface.surf_F.id: base_cell_surface.surf_F.id,
+        }
+
+    

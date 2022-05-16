@@ -1,16 +1,36 @@
 
 class Material:
 
-    def __init__(self, name, atom_density=None, mass_density=None, moder=""):
+    def __init__(self, name, atom_density=None, mass_density=None, moder="", composition={"fractions":[], "type":""}, options=""):
         self.__name = name
         self.__isotopes = []
+        self.__composition = composition
+        self.__options = options
         self.__mass_density = mass_density
         self.__atom_density = atom_density
         self.__moderLibrary = None
         if moder != "":
             self.__moderLibrary = moder
-            
-        
+        self.__check_composition()
+    
+    def __check_composition(self):
+        array_isos = self.__composition["fractions"]
+        type_dens = self.__composition["type"]
+        try:
+            for item in array_isos:
+                iso, density = item
+                assert (isinstance(iso, Isotope))
+                new_isotope = Isotope(iso.name)
+                if type_dens == "atomic_density":
+                    new_isotope.atom_density = density
+                self.__isotopes.append(new_isotope)
+        except AssertionError:
+            print(" **** Error ***** Parameter 'isotope' must be of class Isotope")
+            raise SystemExit
+
+
+
+
 
     def addIsotope(self, isotope, mass_fraction=None, atom_fraction=None,
         ):
@@ -44,9 +64,10 @@ class Material:
     def isFuel(self):
         for iso in self.__isotopes:
             serpent_id = iso.name
-            zaid = int(serpent_id.split(".")[0])
-            if zaid >= 90000:
-                return True
+            zaid = serpent_id.split(".")[0]
+            if zaid.isnumeric():
+                if int(zaid) >= 90000:
+                    return True
         return False
 
     @property

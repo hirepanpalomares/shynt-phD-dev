@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from Shynt.api_py import energy
 from Shynt.api_py.ResponseMatrix.matrix_utilities import getInitializedPhi_system_byGroup
 
 
@@ -100,8 +101,12 @@ def solveKeff(coarse_nodes, energy_g, xs, probabilities, mesh_info):
 
     return  {
         "keff": keff_new, 
-        "phi": phi_new
+        "phi": order_flux_output(phi_new, mesh_info, energy_g),
+        "keff_convergence": k_converge,
+        "flux_convergence": phi_converge, 
+        "iterations": iteration
     }
+
 
 def check_convergence(k_prev, k_new, phi_prev, phi_new, energy_g):
     k_converge = abs(k_new - k_prev)/k_new
@@ -118,6 +123,7 @@ def check_convergence(k_prev, k_new, phi_prev, phi_new, energy_g):
     phi_converge = abs(max_phi_new - max_phi_prev) / max_phi_new 
 
     return k_converge, phi_converge
+
 
 def calculate_inverseIMR(matrixM, matrixR, energy_g):
     inv = {}
@@ -192,7 +198,7 @@ def solveLocalProblem(matrixS_n, jin_system, phi_source_n, energy_g, regions_ord
     #         ordered_phi[n_id][r] = region_phi[r]
 
     return phi
-    
+
 
 def power_iteration(phi_new, phi_prev, keff_prev, fission_source, all_regions, energy_g):
     
@@ -224,5 +230,47 @@ def create_long_vector_flux(phi, energy_g, all_regions):
     return vector
 
 
+def order_flux_output(flux_group, mesh_info, energy_g):
+    """
+        This method orders the flux in a dictionary per coarse node
+        and per region per energy group
 
+        phi = {
+            g0: {
+                coarse_id : {
+                    reg_1: <float_number>,
+                    reg_2: <float_number>,
+                    .
+                    .
+                    reg_n: <float_number>
+                }
+            },
+            g1: { ... }
+            .
+            .
+            gG: { ... }
+        }
+
+    """
+    
+    all_regions_order = mesh_info.all_regions_order
+    coarse_order = mesh_info.coarse_order
+    region_coarse_rel = mesh_info.region_coarse_rel
+    
+    phi_output = {
+        g: {
+            c_id: {} for c_id in coarse_order
+        } for g in range(energy_g)
+    }
+
+    for g in range(energy_g):
+        for r in range(len(all_regions_order)):
+            region =  all_regions_order[r]
+            coarse_id = region_coarse_rel[region]
+            phi_output[g][coarse_id][region] = flux_group[g][r]
+    
+    return phi_output
+    
+    
+    
 

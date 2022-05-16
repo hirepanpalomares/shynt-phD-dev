@@ -1,0 +1,12 @@
+Title: Square lattice 10x10 - LWR system
+
+-------------------------------------------- 
+Energy structure: 2groups_grid
+Energy bins: [0, 6.25e-07, 20]
+Energy groups: 2
+-------------------------------------------- 
+iterations: 401
+Keff convergence: 1.7511669624428602e-10
+Flux convergence: 9.818907158439409e-11
+-------------------------------------------- 
+Keff: 1.2663767833447646

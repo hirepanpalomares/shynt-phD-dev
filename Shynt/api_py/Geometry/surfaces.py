@@ -43,22 +43,6 @@ class Surface:
             id_ = surf_ids[-1] + 1
             surf_ids.append(id_)
             return id_
-        # path = os.getcwd() + "/surf-id-counter"
-        # try:
-        #     id_ = None
-        #     with open(path, "r") as fileCounter:
-        #         for line in fileCounter:
-        #             id_ = int(line.split()[0]) + 1
-        #             self.__id = id_
-        #             break
-        #     with open(path, "w") as fileCounter:
-        #         fileCounter.write(str(id_))
-            
-        # except FileNotFoundError:
-        #     self.__id = 1
-        #     with open(path, "w") as fileCounter:
-        #         fileCounter.write("1")
-    
     
     @property
     def name(self):
@@ -94,21 +78,25 @@ class PlaneX(Surface):
         super().__init__(type_surface="plane_x", name=name)
         self.__x0 = x0
         self.__function = lambda x: x - self.__x0
+        self.__lineParameters = {
+            "b": None,
+            "m": "inf"
+        }
         self.__isRotated = False
         self.serpent_syntax = f"surf {self.id} px {format(x0, '.4f')}\n"
 
-    def __useFunction(self, var_):
+    def useFunction(self, var_):
         try:
             assert(var_ is not None)
             return self.__function(var_)
         except AssertionError:
-            print("Error in using lambda function of Surface PlaneY - value is None type")
+            print("Error in using lambda function of Surface PlaneX - value is None type")
             raise SystemExit
 
     def rotate(self, angle, ref_point):
         """
             The plane is rotated considering a unit vector from the ref_point 
-            in the positive "x" direction.
+            in the positive "y" direction.
 
             The vector is rotated and the equation of the plane is calculated
             based on two points in the vector
@@ -119,7 +107,7 @@ class PlaneX(Surface):
             return 0
         
         angle = math.radians(angle)
-        xc, yc = ref_point # TODO checck that the refpoint is on the plane
+        xc, yc = ref_point # TODO check that the refpoint is on the plane
         # TODO choose a point over the line (plane) instead just adding one
         x0 = xc     # This only works if the plane hasn't been rotated
         y0 = yc + 1     # This only works if the plane hasn't been rotated
@@ -131,24 +119,53 @@ class PlaneX(Surface):
         m = (y1-yc)/(x1-xc)
         b = yc - m * xc
 
-        print(f"y = {m:.6f}x + {b:.6f}")
+        # print(f"y = {m:.6f}x + {b:.6f}")
+        self.__lineParameters["m"] = m 
+        self.__lineParameters["b"] = b 
         self.__function = lambda x: m*x + b
         self.__isRotated = True
-    
+        
+    def translate(self, trans_vector):
+        x_t, y_t = trans_vector
+        if self.__isRotated:
+            # eval any point --> x = 0 
+            x1 = 0
+            y1 = self.__function(x1)
+            x2 = x1 + x_t
+            y2 = y1 + y_t
+            new_b = y2 - self.__lineParameters["m"] * x2
+            self.__lineParameters["b"] = new_b
+            self.__function = lambda x: self.__lineParameters["m"]*x + new_b
+        else:
+            self.__x0 += x_t
+
+    def reset_rotation(self):
+        self.__isRotated == False
+        self.__lineParameters = {
+            "b": None,
+            "m": "inf"
+        }
+
+        self.__function = lambda x: x - self.__x0
+
     def isPointNegativeSide(self, x=None, y=None):
         # print(x, y)
 
         if self.__isRotated:
-            y_new = self.__useFunction(x)
+            y_in_line = self.useFunction(x)
+            # print(y_in_line)
             try:
-                assert(y < y_new)
+                if self.__lineParameters["m"] < 0:
+                    assert(y <= y_in_line)
+                else:
+                    assert(y >= y_in_line)
                 return True
             except AssertionError:
                 return False
         else:
-            x_new = self.__useFunction(x)
+            x_new = self.useFunction(x)
             try:
-                assert(x_new < 0)
+                assert(x_new <= 0)
                 return True
             except AssertionError:
                 return False
@@ -159,16 +176,18 @@ class PlaneX(Surface):
             return False
         except AssertionError:
             return True
-
-    def eval_point(self, y=None, x=None):
-        if self.__isRotated:
-            return self.__useFunction(y)
-        else:
-            return self.__useFunction(x)
     
     @property
     def x0(self):
         return self.__x0
+
+    @x0.setter
+    def x0(self, new_x0):
+        self.__x0 = new_x0
+
+    @property
+    def line_params(self):
+        return self.__lineParameters
 
 
 class PlaneY(Surface):
@@ -182,10 +201,14 @@ class PlaneY(Surface):
         super().__init__(type_surface="plane_y", name=name)
         self.__y0 = y0
         self.__function = lambda y: y - self.__y0
+        self.__lineParameters = {
+            "b": None,
+            "m": "inf"
+        }
         self.__isRotated = False
         self.serpent_syntax = f"surf {self.id} py {format(y0, '.4f')}\n"
 
-    def __useFunction(self, var_):
+    def useFunction(self, var_):
         try:
             assert(var_ is not None)
             return self.__function(var_)
@@ -219,25 +242,35 @@ class PlaneY(Surface):
         m = (y1-yc)/(x1-xc)
         b = yc - m * xc
         
-        print(f"y = {m:.2f}x + {b:.2f}")
+        # print(f"y = {m:.2f}x + {b:.2f}")
+        self.__lineParameters["m"] = m 
+        self.__lineParameters["b"] = b 
         self.__function = lambda x: m*x + b
-
         self.__isRotated = True
+
+    def reset_rotation(self):
+        self.__isRotated == False
+        self.__lineParameters = {
+            "b": None,
+            "m": "inf"
+        }
+
+        self.__function = lambda y: y - self.__y0
 
     def isPointNegativeSide(self, x=None, y=None):
         # print(x, y)
         if self.__isRotated:
-            y_new = self.__useFunction(x)
-            # print(y_new)
+            y_in_line = self.useFunction(x)
+            # print(y_in_line)
             try:
-                assert(y < y_new)
+                assert(y <= y_in_line)
                 return True
             except AssertionError:
                 return False
         else:
-            y_new = self.__useFunction(y)
+            y_in_line = self.useFunction(y)
             try:
-                assert(y_new < 0)
+                assert(y_in_line <= 0)
                 return True
             except AssertionError:
                 return False
@@ -251,15 +284,35 @@ class PlaneY(Surface):
 
     def eval_point(self, y=None, x=None):
         if self.__isRotated:
-            return self.__useFunction(x)
+            return self.useFunction(x)
         else:
-            return self.__useFunction(y)
+            return self.useFunction(y)
 
+    def translate(self, trans_vector):
+        x_t, y_t = trans_vector
+        if self.__isRotated:
+            # eval any point --> x = 0 
+            x1 = 0
+            y1 = self.__function(x1)
+            x2 = x1 + x_t
+            y2 = y1 + y_t
+            new_b = y2 - self.__lineParameters["m"] * x2
+            self.__lineParameters["b"] = new_b
+            self.__function = lambda x: self.__lineParameters["m"]*x + new_b
+        else:
+            self.__y0 += y_t
         
-
     @property
     def y0(self):
         return self.__y0
+    
+    @y0.setter
+    def y0(self, new_y0):
+        self.__y0 = new_y0
+
+    @property
+    def line_params(self):
+        return self.__lineParameters
     
 
 class PlaneZ(Surface):
@@ -300,9 +353,18 @@ class InfiniteCylinderZ(Surface):
         self.__function = lambda x, y: (x - self.__center_x)**2 + (y - self.__center_y)**2 - self.__radius**2
         
         
-    def translate(self, dx, dy):
-        self.__center_x += dx
-        self.__center_y += dy
+    def translate_to(self, new_x, new_y):
+        trans_vector = (
+            new_x - self.__center_x,
+            new_y - self.__center_y
+        )
+        self.translate(trans_vector)
+    
+    def translate(self, trans_vector):
+        t_x, t_y = trans_vector
+        self.__center_x += t_x
+        self.__center_y += t_y
+
 
     def eval_point(self, x, y):
         return self.__function(x, y)
@@ -455,6 +517,11 @@ class InfiniteSquareCylinderZ(Surface):
 
     It is composed by 2 x-planes and 2 y-planes
 
+    surf_top    --> cell in - side
+    surf_right  --> cell in - side
+    surf_bottom --> cell in + side
+    surf_left   --> cell in + side
+
     """
     def __init__(self, center_x, center_y, half_width, name="", boundary=None):
         super().__init__(type_surface="infinite square", name=name)
@@ -463,7 +530,6 @@ class InfiniteSquareCylinderZ(Surface):
         self.__center_y = center_y
         self.__half_width = half_width
         self.__surf_left, self.__surf_top, self.__surf_right, self.__surf_bottom = self.__generate_surfaces()
-
         
     def __generate_surfaces(self):
         surfaces = [
@@ -512,6 +578,18 @@ class InfiniteSquareCylinderZ(Surface):
             self.__surf_right.id: self.__surf_right,
             self.__surf_top.id: self.__surf_top,
             self.__surf_bottom.id:self.__surf_bottom
+        }
+    
+    def get_neutron_current_directions(self):
+        # surf T --> outward current = +1 --> inward current = -1
+        # surf R --> outward current = +1 --> inward current = -1
+        # surf B --> outward current = -1 --> inward current = +1
+        # surf L --> outward current = -1 --> inward current = +1
+        return {
+            self.__surf_top.id: {"inward": "-1", "outward": "1"},
+            self.__surf_right.id: {"inward": "-1", "outward": "1"},
+            self.__surf_bottom.id: {"inward": "1", "outward": "-1"},
+            self.__surf_left.id: {"inward": "1", "outward": "-1"},
         }
 
     # def __str__(self):    
@@ -574,7 +652,22 @@ class InfiniteSquareCylinderZ(Surface):
         return points
 
 
-class InfiniteHexagonalCylinderXtype(Surface):
+class Hexagon(Surface):
+
+    def __init__(self, type_surface="", name=""):
+        super().__init__(type_surface, name)
+        
+class InfiniteHexagonalCylinderXtype(Hexagon):
+    """
+    
+        surf_A   --> cell in - side
+        surf_B   --> cell in - side
+        surf_C   --> cell in + side
+        surf_D   --> cell in + side
+        surf_E   --> cell in + side
+        surf_F   --> cell in - side
+
+    """
 
     def __init__(self, center_x, center_y, half_width, name="", boundary=None):
         super().__init__(name=name, type_surface="inf hex_x")
@@ -582,8 +675,10 @@ class InfiniteHexagonalCylinderXtype(Surface):
         self.__center_y = center_y
         self.__half_width = half_width
         self.__boundary = boundary
-        self.__radius = self.__half_width * math.sqrt(5) / 2
+        self.__radius = 2 * self.__half_width / math.sqrt(3)
+        self.__side = self.__radius
         self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
+        self.serpent_syntax = f"surf {self.id} hexxc {center_x} {center_y} {half_width}\n"
         # self.serpent_syntax = f"surf {self.id} hexyc {center_x} {center_y} {half_width}\n"
 
     def __generate_surfaces(self):
@@ -593,9 +688,9 @@ class InfiniteHexagonalCylinderXtype(Surface):
         
         """
         rot_ref_A = (self.__center_x, self.__center_y + self.__radius)
-        rot_ref_C = (self.__center_x, self.__center_y + self.__radius)
+        rot_ref_C = (self.__center_x, self.__center_y - self.__radius)
         rot_ref_D = (self.__center_x, self.__center_y - self.__radius)
-        rot_ref_F = (self.__center_x, self.__center_y - self.__radius)
+        rot_ref_F = (self.__center_x, self.__center_y + self.__radius)
 
         _A = PlaneY(self.__center_y + self.__radius, boundary=self.__boundary)
         _B = PlaneX(self.__center_x + self.__half_width, boundary=self.__boundary)
@@ -612,15 +707,31 @@ class InfiniteHexagonalCylinderXtype(Surface):
 
         return surfaces
     
+    def translate(self, translation_vector):
+        x_tr, y_tr = translation_vector
+        
+        self.__center_x += x_tr
+        self.__center_y += y_tr
+
+        self.surf_A.translate(translation_vector)
+        self.surf_B.translate(translation_vector)
+        self.surf_C.translate(translation_vector)
+        self.surf_D.translate(translation_vector)
+        self.surf_E.translate(translation_vector)
+        self.surf_F.translate(translation_vector)
+
+        return 1
+
+
     def isPointNegativeSide(self, point):
         x, y = point
         try:
-            assert(self.__surf_A.eval_point(y) <= 0)
-            assert(self.__surf_B.eval_point(x) <= 0)
-            assert(self.__surf_C.eval_point(y) >= 0)
-            assert(self.__surf_D.eval_point(y) >= 0)
-            assert(self.__surf_E.eval_point(x) >= 0)
-            assert(self.__surf_F.eval_point(y) <= 0)
+            assert self.__surf_A.isPointNegativeSide(x=x,y=y)
+            assert self.__surf_B.isPointNegativeSide(x=x,y=y)
+            assert self.__surf_C.isPointPositiveSide(x=x,y=y)
+            assert self.__surf_D.isPointPositiveSide(x=x,y=y)
+            assert self.__surf_E.isPointPositiveSide(x=x,y=y)
+            assert self.__surf_F.isPointNegativeSide(x=x,y=y)
             return True
         except AssertionError:
             return False
@@ -665,13 +776,98 @@ class InfiniteHexagonalCylinderXtype(Surface):
             self.__surf_E.id: self.__surf_E,
             self.__surf_F.id: self.__surf_F,
         }
+    
+    def get_neutron_current_directions(self):
+        # surf A --> outward current = +1 --> inward current = -1
+        # surf B --> outward current = +1 --> inward current = -1
+        # surf C --> outward current = -1 --> inward current = +1
+        # surf D --> outward current = -1 --> inward current = +1
+        # surf E --> outward current = -1 --> inward current = +1
+        # surf F --> outward current = +1 --> inward current = -1
+        return {
+            self.__surf_A.id: {"inward": "-1", "outward": "1"},
+            self.__surf_B.id: {"inward": "-1", "outward": "1"},
+            self.__surf_C.id: {"inward": "1", "outward": "-1"},
+            self.__surf_D.id: {"inward": "1", "outward": "-1"},
+            self.__surf_E.id: {"inward": "1", "outward": "-1"},
+            self.__surf_F.id: {"inward": "-1", "outward": "1"}
+        }
+
+    def get_vertex_points(self):
+        points = [
+            (self.__center_x, self.__center_y - self.__radius),         # vertex F - A
+            (self.__center_x, self.__center_y + self.__radius),         # vertex C - D
+
+            (self.__surf_B.x0, self.__center_y + 0.5*self.__radius),    # vertex A - B
+            (self.__surf_B.x0, self.__center_y - 0.5*self.__radius),    # vertex B - C
+
+            (self.__surf_E.x0, self.__center_y - 0.5*self.__radius),    # vertex D - E
+            (self.__surf_E.x0, self.__center_y + 0.5*self.__radius),    # vertex E - F    
+        ]        
+        return points
+
+    def get_side_middle_points(self):
+        sx = 0.5 * self.__half_width
+        sy = math.cos(math.radians(30)) * self.__half_width
+        points = [
+            (self.__center_x + sx, self.__center_y + sy),   # A
+            (self.__surf_B.x0, self.__center_x),            # B
+            (self.__center_x + sx, self.__center_y - sy),   # C
+            (self.__center_x - sx, self.__center_y - sy),   # D
+            (self.__surf_E.x0, self.__center_x),            # E
+            (self.__center_x - sx, self.__center_y + sy),   # F
+        ]
+
+        return points
+
+    @property
+    def radius(self):
+        return self.__radius
 
     @property
     def boundary(self):
         return self.__boundary
+    
+    @property
+    def surf_A(self):
+        return self.__surf_A
+    
+    @property
+    def surf_B(self):
+        return self.__surf_B
+    
+    @property
+    def surf_C(self):
+        return self.__surf_C
+    
+    @property
+    def surf_D(self):
+        return self.__surf_D
+
+    @property
+    def surf_E(self):
+        return self.__surf_E
+
+    @property
+    def surf_F(self):
+        return self.__surf_F
+    
+    @property
+    def center(self):
+        return (self.__center_x, self.__center_y)
 
 
-class InfiniteHexagonalCylinderYtype(Surface):
+class InfiniteHexagonalCylinderYtype(Hexagon):
+    """
+    
+        surf_A   --> cell in - side
+        surf_B   --> cell in - side
+        surf_C   --> cell in - side
+        surf_D   --> cell in + side
+        surf_E   --> cell in + side
+        surf_F   --> cell in + side
+
+    """
 
     def __init__(self, center_x, center_y, half_width, name="", boundary=None):
         super().__init__(name=name, type_surface="inf hex_x")
@@ -714,15 +910,30 @@ class InfiniteHexagonalCylinderYtype(Surface):
 
         return surfaces
     
+    def translate(self, translation_vector):
+        x_tr, y_tr = translation_vector
+        
+        self.__center_x += x_tr
+        self.__center_y += y_tr
+
+        self.surf_A.translate(translation_vector)
+        self.surf_B.translate(translation_vector)
+        self.surf_C.translate(translation_vector)
+        self.surf_D.translate(translation_vector)
+        self.surf_E.translate(translation_vector)
+        self.surf_F.translate(translation_vector)
+
+        return 1
+        
     def isPointNegativeSide(self, point):
         x, y = point
         try:
-            print(self.__surf_A.isPointNegativeSide(x=x,y=y))
-            print(self.__surf_B.isPointNegativeSide(x=x,y=y))
-            print(self.__surf_C.isPointNegativeSide(x=x,y=y))
-            print(self.__surf_D.isPointPositiveSide(x=x,y=y))
-            print(self.__surf_E.isPointPositiveSide(x=x,y=y))
-            print(self.__surf_F.isPointPositiveSide(x=x,y=y))
+            assert self.__surf_A.isPointNegativeSide(x=x,y=y)
+            assert self.__surf_B.isPointNegativeSide(x=x,y=y)
+            assert self.__surf_C.isPointNegativeSide(x=x,y=y)
+            assert self.__surf_D.isPointPositiveSide(x=x,y=y)
+            assert self.__surf_E.isPointPositiveSide(x=x,y=y)
+            assert self.__surf_F.isPointPositiveSide(x=x,y=y)
             return True
         except AssertionError:
             return False
@@ -768,27 +979,43 @@ class InfiniteHexagonalCylinderYtype(Surface):
             self.__surf_F.id: self.__surf_F,
         }
 
+    def get_neutron_current_directions(self):
+        # surf A --> outward current = +1 --> inward current = -1
+        # surf B --> outward current = +1 --> inward current = -1
+        # surf C --> outward current = +1 --> inward current = -1
+        # surf D --> outward current = -1 --> inward current = +1
+        # surf E --> outward current = -1 --> inward current = +1
+        # surf F --> outward current = -1 --> inward current = +1
+        return {
+            self.__surf_A.id: {"inward": "-1", "outward": "1"},
+            self.__surf_B.id: {"inward": "-1", "outward": "1"},
+            self.__surf_C.id: {"inward": "-1", "outward": "1"},
+            self.__surf_D.id: {"inward": "1", "outward": "-1"},
+            self.__surf_E.id: {"inward": "1", "outward": "-1"},
+            self.__surf_F.id: {"inward": "1", "outward": "-1"}
+        }
+
     def get_vertex_points(self):
         points = [
-            (self.__center_x - self.__radius, self.__center_y),
-            (self.__center_x + self.__radius, self.__center_y),
-            (self.__center_x - self.__radius, self.__surf_A.y0),
-            (self.__center_x + self.__radius, self.__surf_A.y0),
-            (self.__center_x - self.__radius, self.__surf_D.y0),
-            (self.__center_x + self.__radius, self.__surf_D.y0),
+            (self.__center_x - self.__radius, self.__center_y),         # vertex E - F
+            (self.__center_x + self.__radius, self.__center_y),         # vertex B - C
+            (self.__center_x - 0.5*self.__radius, self.__surf_A.y0),    # vertex F - A    
+            (self.__center_x + 0.5*self.__radius, self.__surf_A.y0),    # vertex A - B
+            (self.__center_x - 0.5*self.__radius, self.__surf_D.y0),    # vertex D - E
+            (self.__center_x + 0.5*self.__radius, self.__surf_D.y0),    # vertex C - D
         ]        
         return points
 
     def get_side_middle_points(self):
         sx = math.cos(math.radians(30)) * self.__half_width
-        sy = math.sin(math.radians(30)) * self.__half_width
+        sy = 0.5 * self.__half_width
         points = [
-            (self.__center_x, self.__surf_A.y0),
-            (self.__center_x + sx, self.__center_y + sy),
-            (self.__center_x - sx, self.__center_y + sy),
-            (self.__center_x + sx, self.__center_y - sy),
-            (self.__center_x - sx, self.__center_y - sy),
-            (self.__center_x, self.__surf_D.y0)
+            (self.__center_x, self.__surf_A.y0),            # A
+            (self.__center_x + sx, self.__center_y + sy),   # B
+            (self.__center_x + sx, self.__center_y - sy),   # C
+            (self.__center_x, self.__surf_D.y0),            # D
+            (self.__center_x - sx, self.__center_y - sy),   # E
+            (self.__center_x - sx, self.__center_y + sy),   # F
         ]
 
         return points
@@ -801,6 +1028,33 @@ class InfiniteHexagonalCylinderYtype(Surface):
     def boundary(self):
         return self.__boundary
 
+    @property
+    def surf_A(self):
+        return self.__surf_A
+    
+    @property
+    def surf_B(self):
+        return self.__surf_B
+    
+    @property
+    def surf_C(self):
+        return self.__surf_C
+    
+    @property
+    def surf_D(self):
+        return self.__surf_D
+
+    @property
+    def surf_E(self):
+        return self.__surf_E
+
+    @property
+    def surf_F(self):
+        return self.__surf_F
+    
+    @property
+    def center(self):
+        return self.__center_x, self.__center_y
 
 
 

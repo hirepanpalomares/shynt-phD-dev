@@ -10,8 +10,8 @@ class Region:
 
     Parameters
     -----------------
-    child1      :   Child SurfaceSide of the binary tree
-    child2      :   Child SurfaceSide of the binary tree
+    child1      :   Child SurfaceSide or Region of the binary tree
+    child2      :   Child SurfaceSide or Region of the binary tree
     operation   :   Atribute of the root of the binary tree, is the
                     boolean operation involving the 2 childs
     -----------------
@@ -95,7 +95,10 @@ class Region:
         
             return surfaces_sides
 
-
+    def translate(self, trans_vector):
+        self.child1.translate(trans_vector)
+        self.child2.translate(trans_vector)
+        
     
 
     @property
@@ -150,6 +153,10 @@ class SurfaceSide(Region):
                 return False
         return True
     
+    def translate(self, trans_vector):
+        self.surface.translate(trans_vector)
+        
+    
     # @property
     # def child1(self):
     #     return self.child1
@@ -176,3 +183,5 @@ def destructure_region(region, surfaces_sides=[]):
         surfaces_sides =  destructure_region(region.child2, surfaces_sides)
     
         return surfaces_sides
+
+

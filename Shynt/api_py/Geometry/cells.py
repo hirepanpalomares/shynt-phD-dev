@@ -1,13 +1,12 @@
 import os
 
-from json.tool import main
 from Shynt.api_py.Geometry.surfaces import Surface
 from Shynt.api_py.materials import Material
 
 
 from Shynt.api_py.Geometry.regions import Region, destructure_region
 from Shynt.api_py.Geometry.regions import SurfaceSide
-from .universes import Pin, Universe
+from .universes import HexagonalLatticeTypeX, Pin, Universe
 from .cell_counter import cell_ids
 
 
@@ -61,7 +60,6 @@ class Cell:
             No parameters
             ----------------------------------------------------------------
         """
-        # path = os.getcwd() + "/cell-counter"
         if len(cell_ids) == 0:
             id_ = 1
             cell_ids.append(id_)
@@ -70,23 +68,6 @@ class Cell:
             id_ = cell_ids[-1] + 1
             cell_ids.append(id_)
             return id_
-
-        # try:
-        #     id_ = None
-        #     with open(path, "r") as fileCounter:
-        #         for line in fileCounter:
-        #             id_ = int(line.split()[0]) + 1
-        #             break
-        #     with open(path, "w") as fileCounter:
-        #         fileCounter.write(str(id_))
-        #     return id_
-            
-            
-        # except FileNotFoundError:
-        #     with open(path, "w") as fileCounter:
-        #         fileCounter.write("1")
-        #     id_ = 1
-        #     return id_
 
     def __calculate_volume(self):
         region = self.__region
@@ -129,19 +110,38 @@ class Cell:
             relation = self.__region.surface.getSurface_relation()
         return relation
         
-
     def check_region(self, reg):
         print_statement = "Argument 'region' must be either of type <class Region> or <class SurfaceSide>"
+        if reg is None:
+            # it can be defined later
+            return None
         assert isinstance(reg, Region) or isinstance(reg, SurfaceSide), print_statement
         return reg
 
     def check_fill(self, fill):
-        # TODO: When a cell is filled with a universe check the coordinates of that universe. Translate all the content of the universe to the cell bounded by the surface
+        """
+            When a cell is filled with a universe check the coordinates 
+            of that universe. Translate all the content of the universe 
+            to the cell bounded by the surface
+            The middle of the universe will be used as a reference to fill 
+            the surface of the cell
+        
+        """
+        
         if isinstance(fill, Universe):
             #  Here translate content of the universe
             if isinstance(fill, Pin):
                 # declare last cell
                 fill.close_last_level(self.__region)
+            if isinstance(fill, HexagonalLatticeTypeX):
+                x0, y0 = fill.center
+                x1, y1 = self.__region.surface.center
+                xv = x1 - x0 # translation vector - x
+                yv = y1 - y0 # translation vector - y
+                fill.translate((xv,yv))
+                fill.calculate_enclosed_cells(self.__region)
+            # if isinstance(fill, HexagonalLatticeTypeY):
+            #     fill.calculate_enclosed_cells()
             return fill
         elif isinstance(fill, Material):
             # the cell is being filled by a material
@@ -150,6 +150,13 @@ class Cell:
             return fill
         return None
     
+    def translate(self, trans_vector):
+        # translating the surface delimitting the cell 
+        self.__region.translate(trans_vector)
+        if isinstance(self.__content, Universe):
+            # and the content of the cell
+            self.__content.translate(trans_vector)
+
     def has_global_mesh(self):
         return self.__global_mesh
 
@@ -202,7 +209,7 @@ class Cell:
             """
             uni = self.__content
             # print(uni.name)
-            for cell in uni.cells:
+            for cell in uni.cells.values():
                 syntax += self.serpent_syntax_cell_with_material_gcu(cell)
             
             syntax += "\n"
@@ -248,7 +255,7 @@ class Cell:
         # checking if the content is a universe to declare that universe' cells
         if isinstance(self.__content, Universe):
             universe = self.__content
-            for cell in universe.cells:
+            for cell in universe.cells.values():
                 syntax += cell.serpent_syntax()
     
         return syntax
@@ -270,7 +277,7 @@ class Cell:
     def serpent_syntax_universe_cells(self, universe):
         # print(universe.cells)
         syntax = ""
-        for cell in universe.cells:
+        for cell in universe.cells.values():
             syntax += cell.serpent_syntax()
         return syntax
         
@@ -369,3 +376,13 @@ def reset_cell_counter():
     return 0
         
 
+def materials_in_cell(cell, materials={}):
+    if isinstance(cell.content, Material):
+        mat_name = cell.content.name
+        materials[mat_name] = cell.content
+        return materials
+    elif isinstance(cell.content, Universe):
+        universe_cells = cell.content.cells
+        for c_id, cell in universe_cells.items():
+            materials = materials_in_cell(cell, materials=materials)
+        return materials
