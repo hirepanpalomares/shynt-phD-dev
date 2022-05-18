@@ -173,6 +173,16 @@ class Cell:
             return True
         return False
     
+    def get_cell_materials(self):
+        if self.content_is_material():
+            return {
+                self.__content.name: self.__content
+            }
+        elif self.content_is_universe():
+            universe = self.__content
+            uni_materials = universe.get_universe_materials()
+            return uni_materials
+
     def serpent_syntax_cell_with_material_gcu(self, simple_cell):
         """
             This method does not check when the simple_cell is another universe 

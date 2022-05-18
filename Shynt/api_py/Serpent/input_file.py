@@ -270,10 +270,7 @@ class SerpentInputFile():
 
 class SerpentInputFileRmm():
     """
-        Class for a serpent input file:
-
-        A serpent input file represents an input file for a specific coarse node
-
+       
         ------------------------
         Parameters:
             - coarse_node:      Coarse node corresponding to the serpent file
@@ -292,32 +289,14 @@ class SerpentInputFileRmm():
         
         ------------------------
         Attributes:
-            - self.detectors_relation:  Dictionary with a relation of detectors including 'total_rate', 
-                                        'surface_count', 'surface_to_cell', 'surface_to_surf', 'cell_to_surf' and
-                                        'cell_to_cell', The relations are explained as follow:
-
-                + total_rate:       Counts the number of total interactions that occur in a
-                                    given cell.
-                + surf_count:       Count the neutrons that enters the cell crossing 
-                                    a given surface.
-                + surf_to_surf:     Count the neutrons entering the cell through a given
-                                    surface and exiting the cell through another given
-                                    surface
-                + surf_to_region:   Count the neutrons entering the cell through a given
-                                    surface and then first interacting in a given cell.
-                + region_to_surf:   Counts the total number of neutrons that first interacts in
-                                    a given cell and then cross a surface without interacting
-                + region_to_region: Counts the total number of neutrons that first interacts in
-                                    a given cell and then first interact in another given cell
+            
         ------------------------
         
     """
     
 
     def __init__(self, 
-        coarse_node, 
-        id_coarse, 
-        regions, 
+        cell,
         name, 
         libraries, 
         energyGrid, 
@@ -327,54 +306,45 @@ class SerpentInputFileRmm():
         specific=None
     ):
         
-        self.cell = coarse_node.cell
+        self.cell = cell
         self.name = name
         self.libraries = libraries
         self.energy_grid = energyGrid
         self.mcparams = mc_params
-        self.global_id = id_coarse # is del global node 
-        self.regions = list(regions.values())
+        self.global_id = cell.id 
         self.type_detectors = type_detectors
         # --------------------------------------------------------------------------------------------------
         self.region_id = region_id # This variable is for 
         self.specific = specific
         # --------------------------------------------------------------------------------------------------
 
-        self.detector_flags = []
+        # self.detector_flags = []
         self.surfaces_ids = []
         self.surfaces = []
-        self.surface_for_detectors = None
-        self.closing_surface_ids = None
+        # self.surface_for_detectors = None
+        # self.closing_surface_ids = None
         self.surface_direction = None
-        self.material_cell_ids_relation = None
-        self.isFuel_relation = {}
-        self.detectors = []
-        self.flag_counter = 1
-        self.detectors_relation = {
-            "regions": {},
-            "surfaces": {}
-        }
+        # self.material_cell_ids_relation = None
+        # self.isFuel_relation = {}
+        # self.detectors = []
+        # self.flag_counter = 1
+        # self.detectors_relation = {
+        #     "regions": {},
+        #     "surfaces": {}
+        # }
 
-
-        
         with open(name, "w") as self.__file:
             self.__write_title()
             self.__write_material()
             self.__write_libraries()
             self.__file.write("\n\nset bc 2\n\n")
-
             self.__write_mc_params()
-            if self.type_detectors == "xs_generation":
+            if self.type_detectors == "flux":
                 self.__write_energy_grid()
                 self.__write_geometry()
-                self.__write_outside_cell()
-
-            elif self.type_detectors is not None:
-                self.__write_geometry()
-                self.__write_outside_cell()
-                self.__write_energy_grid(syntax="by_bin")
-                self.__write_detectors()
+                #self.__write_outside_cell()
     
+
     def __write_title(self):
         self.__file.write(f"set title \"{self.cell.name}\"\n\n")
 
@@ -489,11 +459,11 @@ class SerpentInputFileRmm():
             return surfaces
 
     def __write_material(self):
-        if isinstance(self.cell.content, Pin):
-            materials = self.cell.content.materials
-            for mat in materials:
-                syntax = mat.serpent_syntax
-                self.__file.write(syntax)
+        materials = self.cell.get_cell_materials()
+        for mat_name, mat in materials.items():
+            syntax = mat.serpent_syntax
+            self.__file.write(syntax)
+        
 
     def __write_libraries(self):
         self.__file.write(self.libraries.serpent_syntax)

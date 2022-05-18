@@ -143,7 +143,7 @@ def generate_root_serpent_file(root, ask_flux="cell"):
         os.mkdir(serpent_root_dir)
     
     name_file = f"{serpent_root_dir}/root_universe.serp"
-    serp_file = SerpentInputFile(
+    serp_file = SerpentInputFileRmm(
         root.model_cell,
         name_file,
         root.libraries,

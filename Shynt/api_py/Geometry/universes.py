@@ -29,6 +29,13 @@ class Universe(object):
     def translate(self, trans_vector):
         for id, cell in self.__cells.items():
             cell.translate(trans_vector)
+    
+    def get_universe_materials(self):
+        universe_materials = {}
+        for id_, cell in self.__cells.items():
+            cell_materials = cell.get_cell_materials()
+            universe_materials.update(cell_materials)
+        return universe_materials
         
     @property
     def name(self):
