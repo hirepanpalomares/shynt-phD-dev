@@ -99,7 +99,23 @@ class Region:
         self.child1.translate(trans_vector)
         self.child2.translate(trans_vector)
         
-    
+    def surfaces_of_region(self, surfaces=[]):
+        if isinstance(self, SurfaceSide):
+            # base case
+            surf = self.surface
+            surfaces.append(surf)
+            # print("surf after", surfaces)
+            return surfaces
+        elif isinstance(self, Region):
+            # print("reg")
+            reg1 = self.child1
+            reg2 = self.child2
+            new_surf_reg1 = reg1.surfaces_of_region(surfaces=surfaces[:]) # [:] To copy properly the array
+            surfaces += new_surf_reg1 
+            new_surf_reg2 = reg1.surfaces_of_region(surfaces=surfaces[:])
+            surfaces += new_surf_reg2 
+
+            return surfaces
 
     @property
     def operation(self):
@@ -157,14 +173,6 @@ class SurfaceSide(Region):
         self.surface.translate(trans_vector)
         
     
-    # @property
-    # def child1(self):
-    #     return self.child1
-    
-    # @property
-    # def child2(self):
-    #     return self.child2
-
 
 def destructure_region(region, surfaces_sides=[]):
     """

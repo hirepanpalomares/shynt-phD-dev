@@ -1,7 +1,11 @@
 import unittest
 
 import Shynt
+from Shynt.api_py.Geometry.universes import Pin
 from Shynt.api_py.tests.printing_statements import test_did_not_passed, test_did_passed
+
+import materials_testing as mat
+
 
 
 """
@@ -9,53 +13,69 @@ from Shynt.api_py.tests.printing_statements import test_did_not_passed, test_did
     $: nose2 -v 
 """
 
+
 class TestUniverse(unittest.TestCase):
 
 
     def test_pin_universe(self):
-        u235 = Shynt.materials.Isotope("92235.09c")
-        u238 = Shynt.materials.Isotope("92238.09c")
-        oxygen09 = Shynt.materials.Isotope("8016.09c")
-        oxygen06 = Shynt.materials.Isotope("8016.06c")
-        hydrogen = Shynt.materials.Isotope("1001.06c")
-        fuel1 = Shynt.materials.Material("fuel1", mass_density=10.424)
-        fuel1.addIsotope(u235, mass_fraction=0.015867)
-        fuel1.addIsotope(u238, mass_fraction=0.86563)# Adding the isotope hydrogen to the
-        fuel1.addIsotope(oxygen09, mass_fraction=0.1185)        
-        coolant = Shynt.materials.Material("coolant", moder="lwtr 1001", mass_density=0.443760)
-        coolant.addIsotope(oxygen06, atom_fraction=0.33333)
-        coolant.addIsotope(hydrogen, atom_fraction=0.66667)
+        p_i = Pin("pin_inner")
+        mat_lev = [mat.helium_gas, mat.inner_fuel, mat.helium_gas, mat.cladding, mat.na_coolant]
+        rad_lev = [0.10000, 0.35700, 0.36947, 0.43035, None]
+        p_i.add_pin_levels(mat_lev, rad_lev)
 
-        pin1 = Shynt.universes.Pin("pin_fuel1", material=fuel1, radius=0.4335, surroundings=coolant)
-        
+
         # Aqui testear toda la syntaxis de la geometria del pin y ya
+
+        p_i.serpent_universe_pin_by_cell_syntax()
 
     
     def test_square_lattice_universe(self):
-        u235 = Shynt.materials.Isotope("92235.09c")
-        u238 = Shynt.materials.Isotope("92238.09c")
-        oxygen09 = Shynt.materials.Isotope("8016.09c")
-        oxygen06 = Shynt.materials.Isotope("8016.06c")
-        hydrogen = Shynt.materials.Isotope("1001.06c")
-        fuel1 = Shynt.materials.Material("fuel1", mass_density=10.424)
-        fuel1.addIsotope(u235, mass_fraction=0.015867)
-        fuel1.addIsotope(u238, mass_fraction=0.86563)# Adding the isotope hydrogen to the
-        fuel1.addIsotope(oxygen09, mass_fraction=0.1185)       
-        fuel2 = Shynt.materials.Material("fuel2", mass_density=10.424)
-        fuel2.addIsotope(u235, mass_fraction=0.018512)
-        fuel2.addIsotope(u238, mass_fraction=0.86299)
-        fuel2.addIsotope(oxygen09, mass_fraction=0.1185) 
-        coolant = Shynt.materials.Material("coolant", moder="lwtr 1001", mass_density=0.443760)
-        coolant.addIsotope(oxygen06, atom_fraction=0.33333)
-        coolant.addIsotope(hydrogen, atom_fraction=0.66667)
+        p_i = Pin("pin_inner")
+        mat_lev = [mat.helium_gas, mat.inner_fuel, mat.helium_gas, mat.cladding, mat.na_coolant]
+        rad_lev = [0.10000, 0.35700, 0.36947, 0.43035, None]
+        p_i.add_pin_levels(mat_lev, rad_lev)
 
-        pin1 = Shynt.universes.Pin("pin_fuel1", material=fuel1, radius=0.4335, surroundings=coolant)
-        pin1 = Shynt.universes.Pin("pin_fuel2", material=fuel2, radius=0.4335, surroundings=coolant)
-        
+        p_c = Pin("pin_coolant")
+        mat_lev = [mat.na_coolant]
+        rad_lev = [None]
+        p_c.add_pin_levels(mat_lev, rad_lev)
+
+        mc_params = Shynt.montecarlo.MontecarloParams(2000, 500, 50, seed=1474468046)
+        libraries = Shynt.libraries.SerpentLibraries(acelib='"jeff311/sss_jeff311u.xsdata"', therm="therm lwtr lwj3.11t")
+        energy_grid = Shynt.energy.Grid([0, 0.625E-06, 20], name="2groups_grid") # MeV
+
         # Aqui testear toda la syntaxis de la geometria del lattice y ya con differentes pin
+
+        lattice_2x2 =  [
+            [p_i, p_c],
+            [p_c, p_i],
+        ]
+
+        outer_boundary = Shynt.surfaces.InfiniteSquareCylinderZ(0, 0, 1.2950, boundary="reflective")
+        
+        assembly_2x2 = Shynt.universes.SquareLattice("assembly", (0.0, 0.0), 1.295, lattice_2x2)
+        # assembly_2x2.serpent_syntax_pin_by_cell()
+
+        model_cell = Shynt.cells.Cell("assembly_problem", region=-outer_boundary, fill=assembly_2x2)
+
+        outside_cell = Shynt.cells.Cell("outside_world", region=+outer_boundary)
+
+        model_universe = Shynt.universes.Root(
+            model_cell, outside_cell,
+            energy_grid=energy_grid, 
+            mcparams=mc_params, 
+            libraries=libraries,
+            name ="Square lattice 2x2 - LWR system"
+        )
+
+        Shynt.file_generator.generate_root_serpent_file(model_universe)
+
 
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # unittest.main()
+    tt = TestUniverse()
+    # tt.test_pin_universe()
+    tt.test_square_lattice_universe()
     

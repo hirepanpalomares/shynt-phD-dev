@@ -1,6 +1,10 @@
 
 
+from Shynt.api_py.materials import Material
+from builtins import isinstance, list
 from Shynt.api_py.Geometry.surfaces import Hexagon, InfiniteSquareCylinderZ
+from Shynt.api_py.Geometry.universes import Lattice, Pin, SquareLattice, Universe
+
 
 
 def is_pin_in_array(pin, arr, global_nodes, local_nodes):
@@ -95,4 +99,19 @@ def get_surface_equality(node, node_base):
             cell_surface.surf_F.id: base_cell_surface.surf_F.id,
         }
 
-    
+
+def get_all_surfaces_in_a_cell(cell, surfaces_in_cell=[]):
+    if isinstance(cell.content, Material):
+        # base case
+        region = cell.region
+        surfaces_in_cell += region.surfaces_of_region()
+        return surfaces_in_cell
+    if isinstance(cell.content, Universe):
+        print(cell.content)
+        region = cell.region
+        new_surf_in_cell = region.surfaces_of_region()
+        surfaces_in_cell += new_surf_in_cell
+        cells_uni = list(cell.content.cells.values())
+        for cell in cells_uni:
+            surfaces_in_cell += get_all_surfaces_in_a_cell(cell, surfaces_in_cell=surfaces_in_cell[:])
+        return surfaces_in_cell

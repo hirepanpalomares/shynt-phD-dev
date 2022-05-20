@@ -1,3 +1,4 @@
+from builtins import isinstance, property
 import os
 
 from Shynt.api_py.Geometry.surfaces import Surface
@@ -284,7 +285,10 @@ class Cell:
         syntax += ""
         return syntax
 
-    def serpent_syntax_universe_cells(self, universe):
+    def serpent_syntax_universe_cells(self):
+        """
+            This is used when we want to extract the flux from each cell
+        """
         # print(universe.cells)
         syntax = ""
         for cell in universe.cells.values():

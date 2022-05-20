@@ -1,3 +1,4 @@
+from matplotlib.pyplot import xlabel
 from Shynt.api_py.Geometry.regions import Region
 from collections import namedtuple
 
@@ -36,6 +37,13 @@ class Universe(object):
             cell_materials = cell.get_cell_materials()
             universe_materials.update(cell_materials)
         return universe_materials
+    
+    def get_universe_surfaces(self):
+        surfaces_uni = []
+        for c in self.__cells.values():
+            cell_region = c.region
+            surfaces_uni = self.__surface_searcher_in_region(cell_region, surfaces=[])
+        return surfaces_uni
         
     @property
     def name(self):
@@ -44,6 +52,8 @@ class Universe(object):
     @name.setter
     def name(self, name):
         self.__name = name
+        for cell in self.cells.values():
+            cell.universe = name
 
     @property
     def cells(self):
@@ -154,14 +164,14 @@ class Pin(Universe):
             ------------------------------------------------------------------------
         """
         from .cells import Cell
-        if material not in self.__materials:
-            self.__materials.append(material)
+        
 
         Level = namedtuple("Level", ["cell_id", "radius"])
         corresponding_cyl = None
         if radius:
             corresponding_cyl = InfiniteCylinderZ(0.0, 0.0, radius)
             if len(self.__pin_levels) == 0:
+                # First level to be declared
                 self.__last_region = -corresponding_cyl # SurfaceSide type
             else:
                 self.__last_region = +self.__outer_most_surface & -corresponding_cyl  # Region type
@@ -203,15 +213,28 @@ class Pin(Universe):
 
     def close_last_level(self, region): #region
         last_level = self.__pin_levels[-1]
+        first_level = self.__pin_levels[0]
         ll_id = last_level.cell_id
-        if last_level.radius is None:
-            # Closing last level of a void pin with material
-            super().cells[ll_id].region = region
-            
+        num_levels = len(self.__pin_levels)
+        if num_levels == 0:
+            # Void pin with no materials inside
+            pass
+        elif num_levels == 1:
+            # The pin has only one level (surroundings)
+            if first_level.radius is None:
+                # Pin only with the surroundings (no cylinders inside)
+                super().cells[ll_id].region = region
+            else:
+                # It means that there is a cylinder and could be an error
+                # because the pin will be closed with a void space (no material)
+                pass
         else:
-            # Closing the last region, normally the coolant:
-            ll_region = super().__cells[ll_id].region & region
-            super().__cells[ll_id].region = ll_region
+            # The pin has two or more levels
+            if last_level.radius is None:
+                # the last level is infinite and will be closed with the region
+                # Closing the last region, normally the coolant:
+                ll_region = super().cells[ll_id].region & region
+                super().cells[ll_id].region = ll_region
     
     def add_pin_levels(self, materials, radius):
         """
@@ -269,12 +292,19 @@ class Pin(Universe):
                 syntax += f"{mat_name}\n\n"
         return syntax
 
-    def serpent_cell_syntax(self):
-        syntax = ""
+    def serpent_universe_pin_by_cell_syntax(self):
+        syntax = []
+        # syntax = ""
+
+        cells = super().cells # levels of the pin { }
+        
         for l in self.__pin_levels:
-            text = l.cell.serpent_syntax()
-            syntax += text
-        syntax += "\n"    
+            l_id = l.cell_id
+            text = cells[l_id].serpent_syntax()
+            # syntax += text
+            syntax.append(text)
+
+        # syntax += "\n"
 
         return syntax
 
@@ -312,10 +342,12 @@ class Pin(Universe):
         
         return False
 
+
 class Lattice(Universe):
 
     def __init__(self, name=""):
         super().__init__(name)
+
 
 class SquareLattice(Lattice):
     """
@@ -375,9 +407,11 @@ class SquareLattice(Lattice):
             new_center_y = y0 - self.__pitch * r
             for p in range(num_cols):
                 new_center_x = top_left_center + self.__pitch * p
+                pin = self.__array[r][p]
                 # create a pin with the same characteristics to move the cell
-                pin_replacement = self.__array[r][p].replicate()
+                pin_replacement = pin.replicate()
                 if pin_replacement.pin_levels[0].radius is not None:
+                    # assuring that is not a void pin
                     # moving the pin
                     trans_vector = (
                         new_center_x - pin_replacement.get_center()[0],
@@ -388,7 +422,7 @@ class SquareLattice(Lattice):
                 # new_center
     
                 closing_surface = InfiniteSquareCylinderZ(new_center_x, new_center_y, self.__pitch*0.5)
-                new_pin = Cell(region=-closing_surface, fill=pin_replacement)
+                new_pin = Cell(region=-closing_surface, fill=pin_replacement, universe=self.name)
                 self.add_cells(new_pin)
                 new_array[r][p] = new_pin.id # order of the cells from column by column
 
@@ -403,8 +437,35 @@ class SquareLattice(Lattice):
                     types.append(pin.name)
         return types
 
-    def serpent_syntax(self):
-        pass
+
+    def serpent_syntax_pin_by_cell(self):
+        # pin_cells_syntax = []
+        pin_cells_syntax = ""
+
+        pin_cells = super().cells
+        array = self.__array
+        
+        for id_, cell_ in pin_cells.items():
+            # The id_ variable is the id of the cell that was created
+            # for the pin in the lattice in the specific position
+            pin_uni = cell_.content
+            pin_uni.name = pin_uni.name + str(id_)
+            pin_cells_syntax += pin_uni.serpent_universe_pin_by_cell_syntax()
+            # pin_cells_syntax.append(pin_uni.serpent_universe_pin_by_cell_syntax())
+
+        x_lb, y_lb = self.__left_bottom
+
+        lattice_syntax = f"\n lat {super().name} 1 {x_lb} {y_lb} {self.__nx} {self.__ny} {self.__pitch}"
+        for row in array:
+            for id_ in row:
+                lattice_syntax += f"{pin_cells[id_].content.name} "
+            lattice_syntax += "\n"
+        
+        
+
+        return pin_cells_syntax + lattice_syntax
+
+
 
     @property
     def array(self):
