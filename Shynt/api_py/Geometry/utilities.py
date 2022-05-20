@@ -100,18 +100,22 @@ def get_surface_equality(node, node_base):
         }
 
 
-def get_all_surfaces_in_a_cell(cell, surfaces_in_cell=[]):
+def get_all_surfaces_in_a_cell(cell):
     if isinstance(cell.content, Material):
         # base case
         region = cell.region
-        surfaces_in_cell += region.surfaces_of_region()
+        surfaces_in_cell = region.surfaces_of_region([])
         return surfaces_in_cell
     if isinstance(cell.content, Universe):
         print(cell.content)
         region = cell.region
-        new_surf_in_cell = region.surfaces_of_region()
-        surfaces_in_cell += new_surf_in_cell
+        new_surf_in_cell = region.surfaces_of_region([])
+        surfaces_in_cell = new_surf_in_cell
         cells_uni = list(cell.content.cells.values())
-        for cell in cells_uni:
-            surfaces_in_cell += get_all_surfaces_in_a_cell(cell, surfaces_in_cell=surfaces_in_cell[:])
+        for c in cells_uni:
+            new_surfs = get_all_surfaces_in_a_cell(c)
+            for s in new_surfs:
+                if s not in surfaces_in_cell:
+                    surfaces_in_cell.append(s)
+
         return surfaces_in_cell

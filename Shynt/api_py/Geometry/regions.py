@@ -99,7 +99,7 @@ class Region:
         self.child1.translate(trans_vector)
         self.child2.translate(trans_vector)
         
-    def surfaces_of_region(self, surfaces=[]):
+    def surfaces_of_region(self, surfaces):
         if isinstance(self, SurfaceSide):
             # base case
             surf = self.surface

@@ -356,23 +356,26 @@ class SerpentInputFileRmm():
         # Surfaces for region enclosing the main cell ------------------------
         region = self.cell.region
         # surfaces_main_cell = self.__surface_searcher_in_region(region, surfaces=[])
-        surfaces_main_cell = region.surfaces_of_region()
+        surfaces_main_cell = region.surfaces_of_region([])
 
         self.__add_surfaces(surfaces_main_cell)
 
-        universe_cells = get_all_surfaces_in_a_cell(self.cell)
+        universe_surfaces = get_all_surfaces_in_a_cell(self.cell)
+        # Apparently the lattice doesn not create new surfaces 
+        # for the same type of pin, it uses the same object in
+        # memory
         # Looking for surfaces inside the main cell -------------------
         if isinstance(self.cell.content, SquareLattice):
             # only surfaces that enclose the pin cells
             lattice = self.cell.content
             for c in lattice.cells.values():
                 cell_region = c.region
-                surfaces = cell_region.surfaces_of_region()
+                surfaces = cell_region.surfaces_of_region([])
                 self.__add_surfaces(surfaces)
                 
         
         self.__file.write("\n\n")
-        for surf in self.surfaces:
+        for surf in self.surfaces_syntax:
             self.__file.write(surf)
         
 
