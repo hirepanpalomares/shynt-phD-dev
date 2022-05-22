@@ -77,6 +77,8 @@ class Material:
             syntax += f"-{self.__mass_density} "
         elif self.__atom_density:
             syntax += f"{self.__atom_density} "
+        else:
+            syntax += f"{self.__options}"
         if self.__moderLibrary:
             syntax += f"moder {self.__moderLibrary}"
         
@@ -142,6 +144,8 @@ class Isotope:
         syntax = f"{self.name} "
         if self.__atom_fraction:
             syntax += f"{self.__atom_fraction}\n"
+        elif self.__atom_density:
+            syntax += f"{self.__atom_density}\n"
         elif self.__mass_fraction:
             syntax += f"-{self.__mass_fraction}\n"
         return syntax

@@ -58,14 +58,13 @@ class TestUniverse(unittest.TestCase):
 
         model_cell = Shynt.cells.Cell("assembly_problem", region=-outer_boundary, fill=assembly_2x2)
 
-        outside_cell = Shynt.cells.Cell("outside_world", region=+outer_boundary)
+        outside_cell = Shynt.cells.Cell("outside_world", region=+outer_boundary, fill="outside")
 
         model_universe = Shynt.universes.Root(
             model_cell, outside_cell,
             energy_grid=energy_grid, 
             mcparams=mc_params, 
             libraries=libraries,
-            name ="Square lattice 2x2 - LWR system"
         )
 
         Shynt.file_generator.generate_root_serpent_file(model_universe)

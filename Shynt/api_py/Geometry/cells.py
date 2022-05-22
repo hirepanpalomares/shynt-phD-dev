@@ -250,9 +250,7 @@ class Cell:
 
         """
         syntax = f"\ncell {self.__id} {self.__universe} "
-        # print(self.__id)
-        # print("33333")
-        # for the content of the cell
+        
         if isinstance(self.__content, Material):
             syntax += f"{self.__content.name} "
         elif isinstance(self.__content, Universe):
@@ -264,10 +262,10 @@ class Cell:
         syntax += self.serpent_syntax_region(self.__region)
 
         # checking if the content is a universe to declare that universe' cells
-        if isinstance(self.__content, Universe):
-            universe = self.__content
-            for cell in universe.cells.values():
-                syntax += cell.serpent_syntax()
+        # if isinstance(self.__content, Universe):
+        #     universe = self.__content
+        #     for cell in universe.cells.values():
+        #         syntax += cell.serpent_syntax()
     
         return syntax
 
@@ -285,27 +283,23 @@ class Cell:
         syntax += ""
         return syntax
 
-    def serpent_syntax_universe_cells(self):
+    
+    def serpent_syntax_pin_cell_inside(self):
         """
             This is used when we want to extract the flux from each cell
         """
         # print(universe.cells)
         syntax = ""
-        for cell in universe.cells.values():
-            syntax += cell.serpent_syntax()
+        if isinstance(self.content, Pin):
+            pin_uni = self.content
+            for id_, cell in pin_uni.cells.items():
+                syntax += cell.serpent_syntax()
+
+
         return syntax
+
         
   
-    # def __str__(self):
-    #     print_statement = ""
-    #     print_statement += f"Cell {self.__name}:\n"
-    #     if self.content_is_material():
-    #         print_statement += "\t- filled with material: %s\n"%self.__content
-    #     elif self.content_is_universe():
-    #         print_statement += "\t- filled with universe: %s\n"%self.__content
-    #     print_statement += "\t- region: %s\n\n\n"%self.__region
-
-    #     return print_statement
     
     def __eq__(self, other) -> bool:
         """

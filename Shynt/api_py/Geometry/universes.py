@@ -67,8 +67,8 @@ class Universe(object):
 class Root(Universe):
 
 
-    def __init__(self, model, outside, energy_grid=None, mcparams=None, libraries="", name=""):
-        super().__init__(name=name)
+    def __init__(self, model, outside, energy_grid=None, mcparams=None, libraries=""):
+        super().__init__(name="0")
         self.add_cells(model, outside)
         self.model_cell = model
         self.outside_cell = outside
@@ -401,12 +401,13 @@ class SquareLattice(Lattice):
         x_lb, y_lb = self.__left_bottom
         top_left = (x_lb, y_lb + num_rows*self.__pitch)
         x0, y0 = top_left
-        top_left_center = x0 + self.__pitch/2
+        top_left_center_x = x0 + self.__pitch/2
+        top_left_center_y = y0 - self.__pitch/2
         
         for r in range(num_cols):
-            new_center_y = y0 - self.__pitch * r
+            new_center_y = top_left_center_y - self.__pitch * r
             for p in range(num_cols):
-                new_center_x = top_left_center + self.__pitch * p
+                new_center_x = top_left_center_x + self.__pitch * p
                 pin = self.__array[r][p]
                 # create a pin with the same characteristics to move the cell
                 pin_replacement = pin.replicate()
@@ -441,7 +442,7 @@ class SquareLattice(Lattice):
     def serpent_syntax_pin_by_cell(self):
         # pin_cells_syntax = []
         pin_cells_syntax = ""
-
+        cells = {}
         pin_cells = super().cells
         array = self.__array
         
@@ -449,13 +450,13 @@ class SquareLattice(Lattice):
             # The id_ variable is the id of the cell that was created
             # for the pin in the lattice in the specific position
             pin_uni = cell_.content
-            pin_uni.name = pin_uni.name + str(id_)
-            pin_cells_syntax += pin_uni.serpent_universe_pin_by_cell_syntax()
-            # pin_cells_syntax.append(pin_uni.serpent_universe_pin_by_cell_syntax())
+            cells.update(pin_uni.cells)
+            pin_uni.name = pin_uni.name + f"_{id_}"
+            pin_cells_syntax += cell_.serpent_syntax_pin_cell_inside()
 
         x_lb, y_lb = self.__left_bottom
 
-        lattice_syntax = f"\n lat {super().name} 1 {x_lb} {y_lb} {self.__nx} {self.__ny} {self.__pitch}"
+        lattice_syntax = f"\n\n\nlat {super().name} 1 {x_lb} {y_lb} {self.__nx} {self.__ny} {self.__pitch}\n"
         for row in array:
             for id_ in row:
                 lattice_syntax += f"{pin_cells[id_].content.name} "
@@ -463,7 +464,7 @@ class SquareLattice(Lattice):
         
         
 
-        return pin_cells_syntax + lattice_syntax
+        return pin_cells_syntax + lattice_syntax, cells
 
 
 

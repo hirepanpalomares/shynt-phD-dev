@@ -178,6 +178,14 @@ class PlaneX(Surface):
             return True
     
     @property
+    def serpent_syntax_for_detector(self):
+        return f"surf {self.id} px {format(self.x0, '.4f')}\n"
+    
+    @property
+    def serpent_syntax_for_lattice(self):
+        return f"surf {self.id} px {0.0000}\n"
+
+    @property
     def x0(self):
         return self.__x0
 
@@ -206,7 +214,7 @@ class PlaneY(Surface):
             "m": "inf"
         }
         self.__isRotated = False
-        self.serpent_syntax = f"surf {self.id} py {format(y0, '.4f')}\n"
+        
 
     def useFunction(self, var_):
         try:
@@ -301,7 +309,15 @@ class PlaneY(Surface):
             self.__function = lambda x: self.__lineParameters["m"]*x + new_b
         else:
             self.__y0 += y_t
-        
+    
+    @property
+    def serpent_syntax_for_detector(self):
+        return f"surf {self.id} py {format(self.y0, '.4f')}\n"
+    
+    @property
+    def serpent_syntax_for_lattice(self):
+        return f"surf {self.id} py {0.0000}\n"
+
     @property
     def y0(self):
         return self.__y0
@@ -399,13 +415,20 @@ class InfiniteCylinderZ(Surface):
         return self.__radius
     
     @property
-    def serpent_syntax(self):
+    def serpent_syntax_for_detector(self):
         serpent_syntax = f"surf {self.id} " 
         serpent_syntax += f"cyl {format(self.__center_x, '.4f')} " 
         serpent_syntax += f"{format(self.__center_y, '.4f')} "
         serpent_syntax += f"{format(self.__radius, '.4f')}\n"
         return serpent_syntax
 
+    @property
+    def serpent_syntax_for_lattice(self):
+        serpent_syntax = f"surf {self.id} " 
+        serpent_syntax += f"cyl {0.0000} " 
+        serpent_syntax += f"{0.0000} "
+        serpent_syntax += f"{format(self.__radius, '.4f')}\n"
+        return serpent_syntax
 
     @property
     def vertex_points(self):
@@ -601,12 +624,21 @@ class InfiniteSquareCylinderZ(Surface):
     #     """%(self.name, self.__center_x, self.__center_y, self.__half_width, 2*self.__half_width)
 
     @property
-    def serpent_syntax(self):
+    def serpent_syntax_for_detector(self):
         serpent_syntax = f"surf {self.id} " 
         serpent_syntax += f"sqc {format(self.__center_x, '.4f')} " 
         serpent_syntax += f"{format(self.__center_y, '.4f')} "
         serpent_syntax += f"{format(self.__half_width, '.4f')}\n"
         return serpent_syntax
+
+    @property
+    def serpent_syntax_for_lattice(self):
+        serpent_syntax = f"surf {self.id} " 
+        serpent_syntax += f"sqc {0.0000} " 
+        serpent_syntax += f"{0.0000} "
+        serpent_syntax += f"{format(self.__half_width, '.4f')}\n"
+        return serpent_syntax
+
 
     @property
     def center_x(self):

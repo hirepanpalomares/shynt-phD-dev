@@ -144,11 +144,8 @@ def generate_root_serpent_file(root, ask_flux="cell"):
     
     name_file = f"{serpent_root_dir}/root_universe.serp"
     serp_file = SerpentInputFileRmm(
-        root.model_cell,
+        root,
         name_file,
-        root.libraries,
-        root.energy_grid,
-        root.mcparams,
         type_detectors="flux",
     )
 
