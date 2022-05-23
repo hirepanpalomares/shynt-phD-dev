@@ -38,7 +38,7 @@ def solveKeff(coarse_nodes, energy_g, xs, probabilities, mesh_info):
     matrixT = getMatrixT_system_byGroup(mesh_info, energy_g, xs, probabilities) # ready
 
     matrixR = getResponseMatrix_byGroup(mesh_info, energy_g, probabilities) # ready
-    matrixM = getM_matrix(coarse_nodes_map, coarse_nodes, all_surfaces) # ready 
+    matrixM = getM_matrix(coarse_nodes_map, coarse_nodes, all_surfaces, mesh_info.type_system) # ready 
     inverse_IMR = calculate_inverseIMR(matrixM, matrixR, energy_g)
 
     matrixS = getMatrixS_system_byGroup(mesh_info, energy_g, xs, probabilities) # ready

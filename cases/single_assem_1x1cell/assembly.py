@@ -3,6 +3,7 @@ from logging import root
 import numpy as np
 
 import Shynt
+from Shynt.api_py.Postprocess.process_flux import plot_flux
 
 
 # Defining isotopes ----------------------------------------------------
@@ -109,21 +110,17 @@ model_cell_meshed = Shynt.mesh.make_mesh(model_cell, global_mesh_type="pin_cell"
 
 
 # Outside world
-outside_cell = Shynt.cells.Cell("outside_world", region=+outer_boundary)
+outside_cell = Shynt.cells.Cell("outside_world", fill="outside", region=+outer_boundary)
 
 # Total Universe (root)
 model_universe = Shynt.universes.Root(
     model_cell_meshed, outside_cell,
     energy_grid=energy_grid, 
     mcparams=mc_params, 
-    libraries=libraries,
-    name ="Square lattice 10x10 - LWR system"
+    libraries=libraries
 )
 
-
 # Shynt.run(model_universe)
-
-Shynt.file_generator.generate_root_serpent_file(model_universe)
-
+serp_root_input_file = Shynt.file_generator.generate_root_serpent_file(model_universe)
 
 

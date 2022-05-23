@@ -1,5 +1,6 @@
 
 from Shynt.api_py.Geometry.mesh_info import MeshInfo
+from Shynt.api_py.Geometry.universes import HexagonalLatticeTypeX, SquareLattice
 from Shynt.api_py.Postprocess.write_output import OutputFile
 from Shynt.api_py.Serpent.serpent_runners import run_detector_files, run_xs_files
 from Shynt.api_py.Probabilities.get_probabilities_system import get_probabilities_data
@@ -25,6 +26,10 @@ def run(root):
 
     # Generating mesh info
     mesh_info = MeshInfo(coarse_nodes, fine_nodes, coarse_nodes_map)
+    if isinstance(model_cell.content, SquareLattice):
+        mesh_info.type_system = "squared"
+    elif isinstance(model_cell.content, HexagonalLatticeTypeX):
+        mesh_info.type_system = "hexagonal"
     
     # Generate local problems files, and file for cross section generation
     det_inputs, xs_inputs = generate_serpent_files(root, mesh_info.equal_nodes)

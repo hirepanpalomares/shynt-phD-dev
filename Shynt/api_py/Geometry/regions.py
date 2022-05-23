@@ -165,7 +165,7 @@ class SurfaceSide(Region):
     def encloses(self, other):
         others_vertex = other.surface.vertex_points
         for point in others_vertex:
-            if not self.surface.is_point(point):
+            if not self.surface.isPointNegativeSide(point):
                 return False
         return True
     

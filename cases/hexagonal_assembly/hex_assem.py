@@ -144,7 +144,7 @@ assembly_cell_meshed = Shynt.mesh.make_mesh(
 
 # Total Universe (root)
 root_universe = Shynt.universes.Root(
-    cells=[assembly_cell_meshed, outside_cell],
+    assembly_cell_meshed, outside_cell,
     energy_grid=energy_grid, 
     mcparams=mc_params, 
     libraries=libraries

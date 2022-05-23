@@ -385,10 +385,21 @@ class InfiniteCylinderZ(Surface):
     def eval_point(self, x, y):
         return self.__function(x, y)
 
-    def is_point(self, point):
-        x = point[0]
-        y = point[1]
-        return self.eval_point(x, y) < 0
+    def isPointNegativeSide(self, point):
+        x, y = point
+        try:
+            assert self.eval_point(x, y) < 0
+            return True
+        except AssertionError:
+            return False
+    
+    def isPointPositiveSide(self, point):
+        x, y = point
+        try:
+            assert(self.isPointNegativeSide((x,y)))
+            return False
+        except AssertionError:
+            return True
 
     # def __str__(self):    
     #     return """infinite cylinder:
@@ -563,9 +574,8 @@ class InfiniteSquareCylinderZ(Surface):
         ]
         return surfaces
 
-    def is_point(self, point):
-        x = point[0]
-        y = point[1]
+    def isPointNegativeSide(self, point):
+        x, y = point
         try:
             assert(x >= self.__surf_left.x0)
             assert(x <= self.__surf_right.x0)
@@ -574,6 +584,14 @@ class InfiniteSquareCylinderZ(Surface):
             return True
         except AssertionError:
             return False
+    
+    def isPointPositiveSide(self, point):
+        x, y = point
+        try:
+            assert(self.isPointNegativeSide((x,y)))
+            return False
+        except AssertionError:
+            return True
 
     def evaluate_enclosed_volume(self):
         return self.__half_width * self.__half_width * 4
@@ -639,7 +657,6 @@ class InfiniteSquareCylinderZ(Surface):
         serpent_syntax += f"{format(self.__half_width, '.4f')}\n"
         return serpent_syntax
 
-
     @property
     def center_x(self):
         return self.__center_x
@@ -688,7 +705,8 @@ class Hexagon(Surface):
 
     def __init__(self, type_surface="", name=""):
         super().__init__(type_surface, name)
-        
+
+
 class InfiniteHexagonalCylinderXtype(Hexagon):
     """
     
@@ -753,7 +771,6 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
         self.surf_F.translate(translation_vector)
 
         return 1
-
 
     def isPointNegativeSide(self, point):
         x, y = point
@@ -887,6 +904,10 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
     @property
     def center(self):
         return (self.__center_x, self.__center_y)
+    
+    @property
+    def vertex_points(self):
+        return self.get_vertex_points()
 
 
 class InfiniteHexagonalCylinderYtype(Hexagon):
@@ -1087,7 +1108,6 @@ class InfiniteHexagonalCylinderYtype(Hexagon):
     @property
     def center(self):
         return self.__center_x, self.__center_y
-
 
 
 def reset_surface_counter():

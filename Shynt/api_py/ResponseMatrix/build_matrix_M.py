@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def getM_matrix(coarse_nodes_map, coarse_nodes, surfaces):
+def getM_matrix(coarse_nodes_map, coarse_nodes, surfaces, type_system):
     numSurfaces = len(surfaces)
     surfaces_indexes = {surfaces[s]: s for s in range(numSurfaces)}
 
@@ -24,7 +24,12 @@ def getM_matrix(coarse_nodes_map, coarse_nodes, surfaces):
                 if not surface_checked[surf_id]:
                     surface_checked[surf_id] = True
                     direction = surface_directions[surf_id]
-                    twin_surf = twin_surface(n_id, coarse_nodes_map, coarse_nodes, direction, x, y, numRows, numCols)
+                    twin_surf = twin_surface(
+                        n_id, coarse_nodes_map, 
+                        coarse_nodes, direction, 
+                        x, y, numRows, numCols
+                    )
+                    
                     matrixM = write_one(surf_id, twin_surf, surfaces_indexes, matrixM) # write 
                     if twin_surf:
                         surface_checked[twin_surf] = True

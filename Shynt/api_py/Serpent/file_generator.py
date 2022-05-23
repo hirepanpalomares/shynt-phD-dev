@@ -149,6 +149,8 @@ def generate_root_serpent_file(root, ask_flux="cell"):
         type_detectors="flux",
     )
 
+    return serp_file
+
 
 if __name__=="__main__":
     pass
