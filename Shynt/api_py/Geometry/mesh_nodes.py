@@ -1,7 +1,9 @@
+from typing import Dict
 import numpy as np
 
+from Shynt.api_py.Geometry.universes import Pin
 from Shynt.api_py.Geometry.regions import SurfaceSide
-from Shynt.api_py.Geometry.surfaces import InfiniteSquareCylinderZ
+from Shynt.api_py.Geometry.surfaces import InfiniteHexagonalCylinderXtype, InfiniteHexagonalCylinderYtype, InfiniteSquareCylinderZ
 
 class Node:
 
@@ -14,7 +16,9 @@ class CoarseNode(Node):
         super().__init__()
         self.__cell = cell
         
+        
         self.__surfaces = self.__getSurfaces()                      # Dictionary of surface classes {id: <Surface class>}
+        self.fictional_surfaces = self.__getFictionalSurfaces()
         self.__surface_ids = list(self.__surfaces.keys())           # Array with surface ids
         self.__surface_areas = self.__getSurfaceAreas()             # Dictionary of surfaces areas {id: area}
         self.__surface_directions = self.__getSurfaceDirections()   # Dictionary with the direction of the surfaces
@@ -25,13 +29,24 @@ class CoarseNode(Node):
 
     def __getSurfaces(self):
         region = self.cell.region
-
         relation = {}
         if isinstance(region, SurfaceSide):
             relation = region.surface.get_surface_relation()
-
-
         return relation
+
+    def __getFictionalSurfaces(self) -> Dict:
+        coarse_node_region = self.cell.region
+
+        # Doing that with the closing surfaces, 
+        # the surfaces inside the cell will be fictional surfaces
+        # of the FineNode
+        closing_surface = self.__cell.region.surface
+        if isinstance(closing_surface, InfiniteSquareCylinderZ):
+            return closing_surface.get_fictional_surfaces()
+        elif isinstance(closing_surface, InfiniteHexagonalCylinderXtype):
+            raise SystemError
+        elif isinstance(closing_surface, InfiniteHexagonalCylinderYtype):
+            raise SystemError
 
     def __getSurfaceAreas(self):
         areas = {}
@@ -57,7 +72,6 @@ class CoarseNode(Node):
             if isinstance(surface, InfiniteSquareCylinderZ):
                 directions = surface.get_surface_orientation()
         return directions
-
 
     def setFineNodes(self, fine_nodes):
         for id_, node in fine_nodes.items():

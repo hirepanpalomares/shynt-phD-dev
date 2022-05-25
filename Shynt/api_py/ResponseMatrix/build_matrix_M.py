@@ -23,8 +23,8 @@ def getM_matrix(coarse_nodes_map, coarse_nodes, surfaces, type_system):
             for surf_id in surfaces_node:
                 if not surface_checked[surf_id]:
                     surface_checked[surf_id] = True
-                    direction = surface_directions[surf_id]
-                    twin_surf = twin_surface(
+                    direction = surface_directions[surf_id] # direction is top, right, bottom etc, so change from here fpr direccions abcdef in hexagon
+                    twin_surf = twin_surface_squared_lattice(
                         n_id, coarse_nodes_map, 
                         coarse_nodes, direction, 
                         x, y, numRows, numCols
@@ -37,7 +37,7 @@ def getM_matrix(coarse_nodes_map, coarse_nodes, surfaces, type_system):
     return matrixM
 
 
-def twin_surface(n_id, coarse_node_map, coarse_nodes, direction, x, y, numRows, numCols):
+def twin_surface_squared_lattice(n_id, coarse_node_map, coarse_nodes, direction, x, y, numRows, numCols):
     if direction == "top":
         topwards_pos = (y - 1, x) # position format (row, col)
         new_y, new_x = topwards_pos
@@ -88,6 +88,8 @@ def twin_surface(n_id, coarse_node_map, coarse_nodes, direction, x, y, numRows, 
         else:
             return None # is boundary
     
+def twin_surface_hexagonal_lattice():
+    pass
 
 def position_valid(pos, numRows, numCols):
     y, x = pos
@@ -98,7 +100,6 @@ def position_valid(pos, numRows, numCols):
         return False
     return True
     
-
 def write_one(surf, twin_surf, surfaces_indexes, mM):
     if twin_surf:
         surf_index = surfaces_indexes[surf]

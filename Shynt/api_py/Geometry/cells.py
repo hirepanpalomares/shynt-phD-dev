@@ -5,7 +5,7 @@ from Shynt.api_py.Geometry.surfaces import Surface
 from Shynt.api_py.materials import Material
 
 
-from Shynt.api_py.Geometry.regions import Region, destructure_region
+from Shynt.api_py.Geometry.regions import Region
 from Shynt.api_py.Geometry.regions import SurfaceSide
 from .universes import HexagonalLatticeTypeX, Pin, Universe
 from .cell_counter import cell_ids
@@ -198,11 +198,11 @@ class Cell:
         self.__universe_name_for_gcu[1] = str(int(self.__universe_name_for_gcu[1]) + 1)
 
         syntax += f"\ncell {gcu_id} {univ_4gcu} {simple_cell.__content.name}"
-        syntax += self.serpent_syntax_region(simple_cell.region)
+        syntax += simple_cell.region.serpent_syntax()
 
         filled_id = self.calculateId()
         syntax += f"\ncell {filled_id} {self.__content.name} fill {univ_4gcu}"
-        syntax += self.serpent_syntax_region(simple_cell.region) + "\n"
+        syntax += simple_cell.region.serpent_syntax() + "\n"
         return syntax
 
     def serpent_syntax_gcu(self):
@@ -226,13 +226,9 @@ class Cell:
             syntax += "\n"
             main_id = self.calculateId()
             syntax += f"cell {main_id} {self.__universe} fill {uni.name} "
-            syntax += self.serpent_syntax_region(self.__region)
+            syntax += self.__region.serpent_syntax()
             syntax += "\n"
 
-            # outside_id = self.calculateId()
-            # outside_reg = self.__region.invert()
-            # syntax += f"cell {outside_id} {self.__universe} outside"
-            # syntax += self.serpent_syntax_region(outside_reg)
             syntax += "\n\nset gcu "
             for gcu in self.__gcu_universes:
                 syntax += f"{gcu} "
@@ -240,9 +236,9 @@ class Cell:
             syntax += f"outside" 
         return syntax
 
-    def serpent_syntax(self):
+    def serpent_syntax(self): 
         """
-            Method to print the cell in the serpent syntax 
+            Method to print the cell in the serpent syntax
             It will be printed by material found in the cell
 
             This is a recursive function the base cases are when
@@ -255,35 +251,20 @@ class Cell:
             syntax += f"{self.__content.name} "
         elif isinstance(self.__content, Universe):
             syntax += f"fill {self.__content.name}" 
-        elif self.__content == "outside":
+        elif self.__content == "outside": 
             syntax += f"outside" 
 
         
-        syntax += self.serpent_syntax_region(self.__region)
+        syntax += self.__region.serpent_syntax()
 
-        # checking if the content is a universe to declare that universe' cells
-        # if isinstance(self.__content, Universe):
-        #     universe = self.__content
-        #     for cell in universe.cells.values():
-        #         syntax += cell.serpent_syntax()
+        # checking if the content is a universe to write that universe' cells
+        if isinstance(self.__content, Universe):
+            universe = self.__content
+            for cell in universe.cells.values():
+                syntax += cell.serpent_syntax()
     
         return syntax
-
-    def serpent_syntax_region(self, reg):
-        syntax = ""
-        side = lambda s: s if s == "-" else ""
-        # For the regions:
-        if isinstance(reg, SurfaceSide):
-            syntax += f" {side(reg.side)}{reg.surface.id}"
-        elif isinstance(reg, Region):
-            # find the surfaces sides of the Region
-            surfaces_sides = destructure_region(reg, surfaces_sides=[])
-            for surf_side in surfaces_sides:
-                syntax += f" {side(surf_side.side)}{surf_side.surface.id}"
-        syntax += ""
-        return syntax
-
-    
+ 
     def serpent_syntax_pin_cell_inside(self):
         """
             This is used when we want to extract the flux from each cell
@@ -298,13 +279,9 @@ class Cell:
 
         return syntax
 
-        
-  
-    
     def __eq__(self, other) -> bool:
         """
             Method to determine if a cell is equal or different to other
-
         """
         pass
 
@@ -382,15 +359,4 @@ class Cell:
 def reset_cell_counter():
     cell_ids = []
     return 0
-        
 
-def materials_in_cell(cell, materials={}):
-    if isinstance(cell.content, Material):
-        mat_name = cell.content.name
-        materials[mat_name] = cell.content
-        return materials
-    elif isinstance(cell.content, Universe):
-        universe_cells = cell.content.cells
-        for c_id, cell in universe_cells.items():
-            materials = materials_in_cell(cell, materials=materials)
-        return materials

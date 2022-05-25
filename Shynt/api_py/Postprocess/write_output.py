@@ -48,7 +48,7 @@ class OutputFile:
             file_.write("-------------------------------------------- \n")
             file_.write(f"Keff: {self.keff}")
 
-        with open(self.output_dir+f"/{self.input_file_name}_rmm_flux.out", "w") as file_:
+        with open(self.output_dir+f"/{self.input_file_name}_rmm_flux.csv", "w") as file_:
             file_.write(self.__write_flux())
     
 

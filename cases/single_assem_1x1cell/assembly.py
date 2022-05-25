@@ -3,8 +3,6 @@ from logging import root
 import numpy as np
 
 import Shynt
-from Shynt.api_py.Postprocess.process_flux import plot_flux
-
 
 # Defining isotopes ----------------------------------------------------
 u235 = Shynt.materials.Isotope("92235.09c")
@@ -120,7 +118,6 @@ model_universe = Shynt.universes.Root(
     libraries=libraries
 )
 
-# Shynt.run(model_universe)
-serp_root_input_file = Shynt.file_generator.generate_root_serpent_file(model_universe)
-
+Shynt.run(model_universe)
+# serp_root_input_file = Shynt.file_generator.generate_root_serpent_file(model_universe)
 

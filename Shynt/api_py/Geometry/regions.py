@@ -75,14 +75,13 @@ class Region:
         
         return inverted
         
-
+    
     def destructure_region(self, surfaces_sides=[]):
         """
             Recursive function to destructurate a region in its surfaces sides
 
             returns:
                 Array(<SurfaceSide class>)
-            #TODO Complete this function such that it is a method of the class
         """
         if isinstance(self, SurfaceSide):
             # Base case
@@ -90,32 +89,52 @@ class Region:
                 surfaces_sides.append(self)
             return surfaces_sides
         elif isinstance(self, Region):
-            surfaces_sides = destructure_region(self.child1, surfaces_sides)
-            surfaces_sides =  destructure_region(self.child2, surfaces_sides)
-        
+            surfaces_sides = self.child1.destructure_region(surfaces_sides)
+            surfaces_sides = self.child2.destructure_region(surfaces_sides)
             return surfaces_sides
 
     def translate(self, trans_vector):
         self.child1.translate(trans_vector)
         self.child2.translate(trans_vector)
         
-    def surfaces_of_region(self, surfaces):
+    def surfaces_of_region(self, surfaces={}):
         if isinstance(self, SurfaceSide):
             # base case
             surf = self.surface
-            surfaces.append(surf)
-            # print("surf after", surfaces)
+            surfaces.update({
+                surf.id: surf
+            })
             return surfaces
         elif isinstance(self, Region):
-            # print("reg")
             reg1 = self.child1
             reg2 = self.child2
-            new_surf_reg1 = reg1.surfaces_of_region(surfaces=surfaces[:]) # [:] To copy properly the array
-            surfaces += new_surf_reg1 
-            new_surf_reg2 = reg1.surfaces_of_region(surfaces=surfaces[:])
-            surfaces += new_surf_reg2 
-
+            new_surf_reg1 = reg1.surfaces_of_region(surfaces=surfaces) 
+            surfaces.update(new_surf_reg1)
+            new_surf_reg2 = reg2.surfaces_of_region(surfaces=surfaces)
+            surfaces.update(new_surf_reg2)
             return surfaces
+
+    def serpent_syntax(self):
+        """
+            It returns the region using serpent syntax for boolean geometry:
+
+            If the region is comprised between the outside of a cylinder->id=2 and 
+            the inside of a square->id=3 it will return the following:
+
+            return: "2 -3"
+        """
+        syntax = ""
+        side = lambda s: s if s == "-" else ""
+        # For the regions:
+        if isinstance(self, SurfaceSide):
+            syntax += f" {side(self.side)}{self.surface.id}"
+        elif isinstance(self, Region):
+            # find the surfaces sides of the Region
+            surfaces_sides = self.destructure_region(surfaces_sides=[])
+            for surf_side in surfaces_sides:
+                syntax += f" {side(surf_side.side)}{surf_side.surface.id}"
+        syntax += ""
+        return syntax
 
     @property
     def operation(self):
@@ -127,10 +146,6 @@ class SurfaceSide(Region):
     def __init__(self, surface, side):
         self.surface = surface
         self.side = side
-
-        #print(f'Surface side: {side}')
-        #print(surface)
-    
 
     def __and__(self, other):
         """Class overloading operator __and__
@@ -153,15 +168,6 @@ class SurfaceSide(Region):
         
         return Region(self, other, operation="and")
     
-    # def __str__(self):
-    #     # return_string = """
-    #     # # Surface side:  (%s)
-    #     # # Surface: 
-    #     # # %s
-    #     # # """%(self.side, self.surface)
-    #     # return return_string
-    #     return ""
-    
     def encloses(self, other):
         others_vertex = other.surface.vertex_points
         for point in others_vertex:
@@ -172,24 +178,3 @@ class SurfaceSide(Region):
     def translate(self, trans_vector):
         self.surface.translate(trans_vector)
         
-    
-
-def destructure_region(region, surfaces_sides=[]):
-    """
-    Recursive function to destructurate a region in its surfaces sides
-
-    returns:
-        Array(<SurfaceSide class>)
-    """
-    if isinstance(region, SurfaceSide):
-        # Base case
-        if region not in surfaces_sides:
-            surfaces_sides.append(region)
-        return surfaces_sides
-    elif isinstance(region, Region):
-        surfaces_sides = destructure_region(region.child1, surfaces_sides)
-        surfaces_sides =  destructure_region(region.child2, surfaces_sides)
-    
-        return surfaces_sides
-
-

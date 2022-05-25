@@ -7,7 +7,7 @@ from .surf_counter import surf_ids
 
 class Surface:
 
-    def __init__(self, type_surface="",  name=""):
+    def __init__(self, type_surface="",  name="", fictional=False):
         """
             Init method of the class
 
@@ -15,12 +15,21 @@ class Surface:
             ----------------------------------------------------------------
             name        :       String to name the surface
             id          :       Integer numering the surface
+            fictional   :       Parameter that is used when writing the surfaces
+                                for a detector if it is the case to avoid messing
+                                up with the geometry and ids of the original 
+                                surfaces. see <CoarseNode class>
             ----------------------------------------------------------------
         """
         
         self.__name = name
         self.__type = type_surface
-        self.__id = self.calculateId()
+        self.__fictional = fictional
+        if self.__fictional:
+            self.__id = None
+        else:
+            self.__id = self.calculateId()
+        
     
     def calculateId(self):
         """
@@ -74,8 +83,8 @@ class PlaneX(Surface):
     Surface equation: S(x) = x - x0
     """
 
-    def __init__(self, x0, name="", boundary=None):
-        super().__init__(type_surface="plane_x", name=name)
+    def __init__(self, x0, name="", boundary=None, fictional=False):
+        super().__init__(type_surface="plane_x", name=name, fictional=fictional)
         self.__x0 = x0
         self.__function = lambda x: x - self.__x0
         self.__lineParameters = {
@@ -177,12 +186,13 @@ class PlaneX(Surface):
         except AssertionError:
             return True
     
+    
     @property
-    def serpent_syntax_for_detector(self):
+    def serpent_syntax_exact_position(self):
         return f"surf {self.id} px {format(self.x0, '.4f')}\n"
     
     @property
-    def serpent_syntax_for_lattice(self):
+    def serpent_syntax_standard_position(self):
         return f"surf {self.id} px {0.0000}\n"
 
     @property
@@ -205,8 +215,8 @@ class PlaneY(Surface):
     Surface equation: S(y) = y - y0
     """
 
-    def __init__(self, y0, name="", boundary=None):
-        super().__init__(type_surface="plane_y", name=name)
+    def __init__(self, y0, name="", boundary=None, fictional=False):
+        super().__init__(type_surface="plane_y", name=name, fictional=fictional)
         self.__y0 = y0
         self.__function = lambda y: y - self.__y0
         self.__lineParameters = {
@@ -311,11 +321,11 @@ class PlaneY(Surface):
             self.__y0 += y_t
     
     @property
-    def serpent_syntax_for_detector(self):
+    def serpent_syntax_exact_position(self):
         return f"surf {self.id} py {format(self.y0, '.4f')}\n"
     
     @property
-    def serpent_syntax_for_lattice(self):
+    def serpent_syntax_standard_position(self):
         return f"surf {self.id} py {0.0000}\n"
 
     @property
@@ -361,8 +371,8 @@ class InfiniteCylinderZ(Surface):
     Surface equation: S(x, y) =  (y - y0)**2 + (x - x0)**2 - r**2
     """
 
-    def __init__(self, center_x, center_y, radius, name="", boundary=None):
-        super().__init__(type_surface="cylinder_z", name=name)
+    def __init__(self, center_x, center_y, radius, name="", boundary=None, fictional=False):
+        super().__init__(type_surface="cylinder_z", name=name, fictional=fictional)
         self.__center_x = center_x
         self.__center_y = center_y
         self.__radius = radius
@@ -426,7 +436,7 @@ class InfiniteCylinderZ(Surface):
         return self.__radius
     
     @property
-    def serpent_syntax_for_detector(self):
+    def serpent_syntax_exact_position(self):
         serpent_syntax = f"surf {self.id} " 
         serpent_syntax += f"cyl {format(self.__center_x, '.4f')} " 
         serpent_syntax += f"{format(self.__center_y, '.4f')} "
@@ -434,10 +444,8 @@ class InfiniteCylinderZ(Surface):
         return serpent_syntax
 
     @property
-    def serpent_syntax_for_lattice(self):
-        serpent_syntax = f"surf {self.id} " 
-        serpent_syntax += f"cyl {0.0000} " 
-        serpent_syntax += f"{0.0000} "
+    def serpent_syntax_standard_position(self):
+        serpent_syntax = f"surf {self.id} cyl 0.0000 0.0000 " 
         serpent_syntax += f"{format(self.__radius, '.4f')}\n"
         return serpent_syntax
 
@@ -472,9 +480,7 @@ class InfiniteCylinderY(Surface):
         self.__center_z = center_z
         self.__radius = radius
         self.__function = lambda x, z: (x - self.__center_x)**2 + (z - self.__center_z)**2 - self.__radius**2
-        self.serpent_syntax = f"surf {self.id} cyly {center_x} {center_z} {radius}\n"
         
-
     def eval_point(self, x, z):
         return self.__function(x, z)
 
@@ -515,8 +521,6 @@ class InfiniteCylinderX(Surface):
         self.__center_z = center_z
         self.__radius = radius
         self.__function = lambda z, y: (z - self.__center_z)**2 + (y - self.__center_y)**2 - self.__radius**2
-        self.serpent_syntax = f"surf {self.id} cylx {center_y} {center_z} {radius}\n"
-
 
     def eval_point(self, z, y):
         return self.__function(z, y)
@@ -557,12 +561,13 @@ class InfiniteSquareCylinderZ(Surface):
     surf_left   --> cell in + side
 
     """
-    def __init__(self, center_x, center_y, half_width, name="", boundary=None):
+    def __init__(self, center_x, center_y, half_width, name="", boundary=None, fictional=False):
         super().__init__(type_surface="infinite square", name=name)
         self.__boundary = boundary
         self.__center_x = center_x
         self.__center_y = center_y
         self.__half_width = half_width
+        self.__fictional = fictional
         self.__surf_left, self.__surf_top, self.__surf_right, self.__surf_bottom = self.__generate_surfaces()
         
     def __generate_surfaces(self):
@@ -633,6 +638,28 @@ class InfiniteSquareCylinderZ(Surface):
             self.__surf_left.id: {"inward": "1", "outward": "-1"},
         }
 
+    def get_fictional_surfaces(self):
+        
+        fict_left = PlaneX(-self.__half_width, fictional=True)
+        fict_left.id = self.__surf_left.id
+
+        fict_top = PlaneY(self.__half_width, fictional=True)
+        fict_top.id = self.__surf_top.id
+
+        fict_bottom = PlaneY(-self.__half_width, fictional=True)
+        fict_bottom.id = self.__surf_bottom.id
+
+        fict_right = PlaneX(self.__half_width, fictional=True)
+        fict_right.id = self.__surf_right.id
+
+        return {
+            fict_left.id: fict_left,
+            fict_right.id: fict_right,
+            fict_top.id: fict_top,
+            fict_bottom.id: fict_bottom
+        }
+        
+
     # def __str__(self):    
     #     return """Surface of infinite square cylinder in z-axis:
     #         - name: %s
@@ -642,7 +669,7 @@ class InfiniteSquareCylinderZ(Surface):
     #     """%(self.name, self.__center_x, self.__center_y, self.__half_width, 2*self.__half_width)
 
     @property
-    def serpent_syntax_for_detector(self):
+    def serpent_syntax_exact_position(self):
         serpent_syntax = f"surf {self.id} " 
         serpent_syntax += f"sqc {format(self.__center_x, '.4f')} " 
         serpent_syntax += f"{format(self.__center_y, '.4f')} "
@@ -650,10 +677,8 @@ class InfiniteSquareCylinderZ(Surface):
         return serpent_syntax
 
     @property
-    def serpent_syntax_for_lattice(self):
-        serpent_syntax = f"surf {self.id} " 
-        serpent_syntax += f"sqc {0.0000} " 
-        serpent_syntax += f"{0.0000} "
+    def serpent_syntax_standard_position(self):
+        serpent_syntax = f"surf {self.id} sqc {0.0000} {0.0000} "
         serpent_syntax += f"{format(self.__half_width, '.4f')}\n"
         return serpent_syntax
 
@@ -728,8 +753,6 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
         self.__radius = 2 * self.__half_width / math.sqrt(3)
         self.__side = self.__radius
         self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
-        self.serpent_syntax = f"surf {self.id} hexxc {center_x} {center_y} {half_width}\n"
-        # self.serpent_syntax = f"surf {self.id} hexyc {center_x} {center_y} {half_width}\n"
 
     def __generate_surfaces(self):
         """
@@ -870,6 +893,14 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
         return points
 
     @property
+    def serpent_syntax_exact_position(self):
+        return f"surf {self.id} hexxc {self.__center_x} {self.__center_y} {self.__half_width}\n"
+
+    @property
+    def serpent_syntax_standard_position(self):
+        return f"surf {self.id} hexxc {0.0000} {0.0000} {self.__half_width}\n"
+
+    @property
     def radius(self):
         return self.__radius
 
@@ -932,9 +963,7 @@ class InfiniteHexagonalCylinderYtype(Hexagon):
         self.__radius = 2 * self.__half_width / math.sqrt(3)
         self.__side = self.__radius
         # self.__radius = self.__half_width * math.sqrt(5) / 2
-        
         self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
-        self.serpent_syntax = f"surf {self.id} hexyc {center_x} {center_y} {half_width}\n"
 
     def __generate_surfaces(self):
         """
@@ -1070,8 +1099,15 @@ class InfiniteHexagonalCylinderYtype(Hexagon):
             (self.__center_x - sx, self.__center_y - sy),   # E
             (self.__center_x - sx, self.__center_y + sy),   # F
         ]
-
         return points
+
+    @property
+    def serpent_syntax_exact_position(self):
+        return f"surf {self.id} hexyc {self.__center_x} {self.__center_y} {self.__half_width}\n"
+
+    @property
+    def serpent_syntax_standard_position(self):
+        return f"surf {self.id} hexyc {0.0000} {0.0000} {self.__half_width}\n"
 
     @property
     def radius(self):

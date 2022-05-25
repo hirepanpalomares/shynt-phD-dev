@@ -1,5 +1,6 @@
 
 
+from Shynt.api_py.Geometry.regions import SurfaceSide
 from Shynt.api_py.materials import Material
 from builtins import isinstance, list
 from Shynt.api_py.Geometry.surfaces import Hexagon, InfiniteSquareCylinderZ
@@ -100,22 +101,32 @@ def get_surface_equality(node, node_base):
         }
 
 
-def get_all_surfaces_in_a_cell(cell):
+def get_all_surfaces_in_a_cell(cell, surfaces={}):
     if isinstance(cell.content, Material):
         # base case
-        region = cell.region
-        surfaces_in_cell = region.surfaces_of_region([])
-        return surfaces_in_cell
+        surfaces_enclosing_cell = cell.region.surfaces_of_region()
+        return surfaces_enclosing_cell
     if isinstance(cell.content, Universe):
         print(cell.content)
-        region = cell.region
-        new_surf_in_cell = region.surfaces_of_region([])
-        surfaces_in_cell = new_surf_in_cell
-        cells_uni = list(cell.content.cells.values())
-        for c in cells_uni:
-            new_surfs = get_all_surfaces_in_a_cell(c)
-            for s in new_surfs:
-                if s not in surfaces_in_cell:
-                    surfaces_in_cell.append(s)
+        # surface senclosing the cell
+        surfaces_enclosing_cell = cell.region.surfaces_of_region()
+        surfaces.update(surfaces_enclosing_cell)
 
-        return surfaces_in_cell
+        # surfaces in the cells of the universe
+        universe = cell.content
+        for c_id, cell in universe.cells.items():
+            new_surfs = get_all_surfaces_in_a_cell(cell, surfaces=surfaces)
+            surfaces.update(new_surfs)
+        return surfaces
+
+
+def get_materials_in_cell(cell, materials={}):
+    if isinstance(cell.content, Material):
+        mat_name = cell.content.name
+        materials[mat_name] = cell.content
+        return materials
+    elif isinstance(cell.content, Universe):
+        universe_cells = cell.content.cells
+        for c_id, cell in universe_cells.items():
+            materials = get_materials_in_cell(cell, materials=materials)
+        return materials

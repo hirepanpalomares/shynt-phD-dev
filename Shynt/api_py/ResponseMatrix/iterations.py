@@ -14,6 +14,7 @@ from Shynt.api_py.ResponseMatrix.build_Phi_Source import buildPhiSource
 from Shynt.api_py.ResponseMatrix.build_source_Q import SourceQ
 
 
+
 def solveKeff(coarse_nodes, energy_g, xs, probabilities, mesh_info):
 
     # Useful mesh information ----------------------------------------------------
@@ -98,6 +99,7 @@ def solveKeff(coarse_nodes, energy_g, xs, probabilities, mesh_info):
     plt.plot(k_array)
     plt.savefig("k_convergence.png")
 
+    normalize_flux()
 
     return  {
         "keff": keff_new, 

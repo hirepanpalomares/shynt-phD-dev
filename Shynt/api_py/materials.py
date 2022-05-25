@@ -85,7 +85,6 @@ class Material:
         syntax += "\n"
         for isotope in self.__isotopes:
             syntax += isotope.serpent_syntax()
-        syntax += "\n\n"
 
         return syntax
 

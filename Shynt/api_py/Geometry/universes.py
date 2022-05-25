@@ -1,4 +1,3 @@
-from matplotlib.pyplot import xlabel
 from Shynt.api_py.Geometry.regions import Region
 from collections import namedtuple
 
@@ -14,10 +13,6 @@ class Universe(object):
     def __init__(self, name="") :
         self.__name = name
         self.__cells = {}        
-        
-        # Following lines changed to cells.py including the getter and setters methods
-        # self.__global_mesh = None
-        # self.__local_mesh = None
     
     def mark_cells(self):
         for id,cell in self.__cells.items():
@@ -31,20 +26,6 @@ class Universe(object):
         for id, cell in self.__cells.items():
             cell.translate(trans_vector)
     
-    def get_universe_materials(self):
-        universe_materials = {}
-        for id_, cell in self.__cells.items():
-            cell_materials = cell.get_cell_materials()
-            universe_materials.update(cell_materials)
-        return universe_materials
-    
-    def get_universe_surfaces(self):
-        surfaces_uni = []
-        for c in self.__cells.values():
-            cell_region = c.region
-            surfaces_uni = self.__surface_searcher_in_region(cell_region, surfaces=[])
-        return surfaces_uni
-        
     @property
     def name(self):
         return self.__name
@@ -65,7 +46,6 @@ class Universe(object):
 
 
 class Root(Universe):
-
 
     def __init__(self, model, outside, energy_grid=None, mcparams=None, libraries=""):
         super().__init__(name="0")
@@ -321,9 +301,8 @@ class Pin(Universe):
 
     @property
     def materials(self):
-        return self.__materials
+        return super().get_universe_materials()
         
-
     def __eq__(self, other) -> bool:
         """
             A pin is only equal to other when they have the same number
@@ -438,7 +417,6 @@ class SquareLattice(Lattice):
                     types.append(pin.name)
         return types
 
-
     def serpent_syntax_pin_by_cell(self):
         # pin_cells_syntax = []
         pin_cells_syntax = ""
@@ -465,8 +443,6 @@ class SquareLattice(Lattice):
         
 
         return pin_cells_syntax + lattice_syntax, cells
-
-
 
     @property
     def array(self):

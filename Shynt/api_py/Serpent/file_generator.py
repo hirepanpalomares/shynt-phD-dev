@@ -1,5 +1,5 @@
 from Shynt.api_py.Geometry.regions import Region
-from Shynt.api_py.Serpent.input_file import SerpentInputFile, SerpentInputFileRmm
+from Shynt.api_py.Serpent.input_file import SerpentInputFileReferenceFlux, SerpentInputFileRmmDetectors
 import os
 import sys
 from pathlib import Path
@@ -22,6 +22,12 @@ def generate_serpent_files(root, different_node_bins):
     
     cells_to_files = {bin_[0] : global_cells[bin_[0]] for bin_ in different_node_bins}
     # print(cells_to_files)
+    """
+        The cells in cells_to_files are generated with a new geometry, i.e. 
+        new surfaces with new coordinates. 
+        This is to avoid problems with the surfaces that are used in the 
+        detectors
+    """
     
     det_files, xs_files = input_generator(cells_to_files, local_cells, root)
 
@@ -67,8 +73,12 @@ def input_generator(coarse_nodes, regions, root):
             os.mkdir(global_cell_dir)
         
         for reg_id, reg in regions[id_].items():
-            # Loop for local cells (a different file for every material or, 
-            # in this case, each local cell to write the detectors)
+            # Loop for local cells (a different file for every 
+            # material or, in this case, each local cell to write 
+            # the detectors.
+            # The detectors for each local cell hasve to be defined
+            # in different serpent files to avoid calculation error 
+            # with the flags
             cell = reg.cell
             material = cell.content.name
             name_file = f"{global_cell_dir}/det_local_problem_{material}.serp"
@@ -76,8 +86,8 @@ def input_generator(coarse_nodes, regions, root):
             if cell.content.isFuel:
                 type_reg = "fuel"
             else:
-                type_reg = "coolant"
-            serpent_input = SerpentInputFileRmm(
+                type_reg = "coolant" # TODO change this part to "other" and change specific parameter in SerpentFile
+            serpent_input = SerpentInputFileRmmDetectors(
                 global_cell, 
                 id_, 
                 regions[id_], 
@@ -94,7 +104,7 @@ def input_generator(coarse_nodes, regions, root):
 
         # Additional file for the surfaces
         name_surfaces_file = f"{global_cell_dir}/det_local_problem_surfaces.serp"
-        surf_serpent_input = SerpentInputFileRmm(
+        surf_serpent_input = SerpentInputFileRmmDetectors(
                 global_cell, 
                 id_, 
                 regions[id_], 
@@ -108,7 +118,7 @@ def input_generator(coarse_nodes, regions, root):
         det_files[id_].append(surf_serpent_input)
         # Additional file for cross section generation
         name_file = f"{global_cell_dir}/XS_generation.serp"
-        xs_serpent_input = SerpentInputFileRmm(
+        xs_serpent_input = SerpentInputFileRmmDetectors(
             global_cell, 
             id_, 
             regions[id_], 
@@ -143,11 +153,7 @@ def generate_root_serpent_file(root, ask_flux="cell"):
         os.mkdir(serpent_root_dir)
     
     name_file = f"{serpent_root_dir}/root_universe.serp"
-    serp_file = SerpentInputFileRmm(
-        root,
-        name_file,
-        type_detectors="flux",
-    )
+    serp_file = SerpentInputFileReferenceFlux(root, name_file)
 
     return serp_file
 

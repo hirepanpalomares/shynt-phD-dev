@@ -66,13 +66,6 @@ def run(root):
         root, keff, phi, iterations, (keff_convergence, flux_convergence), mesh_info
     )
 
-
-
-    
-    
-
-
-    
     return keff, phi
 
 
