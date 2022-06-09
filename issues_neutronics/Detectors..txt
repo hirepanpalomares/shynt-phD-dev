@@ -1,8 +1,0 @@
-November 2nd, 2021 ----------------------------------------------------------------
-
-1. A working directory inside the serpent files was created to test if the results
-   from the detectors in Huaiqian files are about the same order of my results 
-
-2. The detector for the total rate is more or less the same counts that huaiqian had
-
-3. 
