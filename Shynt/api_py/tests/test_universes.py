@@ -3,10 +3,10 @@ import unittest
 import Shynt
 from Shynt.api_py.Geometry.cells import Cell
 from Shynt.api_py.Geometry.surfaces import InfiniteHexagonalCylinderYtype
-from Shynt.api_py.Geometry.universes import HexagonalLatticeTypeX
+from Shynt.api_py.Geometry.universes import HexagonalLatticeTypeX, SquareLattice
 from Shynt.api_py.tests.printing_statements import test_did_not_passed, test_did_passed
 
-
+import materials_testing
 
 class TestUniverses(unittest.TestCase):
 
@@ -46,11 +46,26 @@ class TestUniverses(unittest.TestCase):
         # Main problem cell
         assembly_cell = Cell("hex_assembly_problem", region=-hex_wrap, fill=hex_lattice)
 
+    def test_square_lattice(self):
+        p1 = Shynt.universes.Pin("pin_fuel1")
+        p1.add_pin_levels(
+            [materials_testing.inner_fuel, materials_testing.na_coolant],
+            [0.4335, None]
+        )
+
+        lat_array = [
+            [p1, p1, p1],
+            [p1, p1, p1],
+            [p1, p1, p1]
+        ]
+        
+        lat = SquareLattice("assembly", (0.0, 0.0), 1.295, lat_array)
 
 
 if __name__ == "__main__":
     # unittest.main()
     t = TestUniverses()
-    t.test_hexagonal_lattice()
+    # t.test_hexagonal_lattice()
+    t.test_square_lattice()
 
     

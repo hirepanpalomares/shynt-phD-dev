@@ -1,8 +1,14 @@
+
 from Shynt.api_py.Geometry.regions import Region
 from collections import namedtuple
 
+from Shynt.api_py.Geometry.utilities_geometry import get_all_surfaces_in_a_cell, get_all_surfaces_in_a_universe
+from Shynt.api_py.Geometry.utilities_geometry import declaring_pin_by_cells
+
 from .surfaces import *
 from Shynt.api_py.materials import Material
+
+from Shynt.api_py.Geometry import surfaces
 
 
 
@@ -15,16 +21,44 @@ class Universe(object):
         self.__cells = {}        
     
     def mark_cells(self):
-        for id,cell in self.__cells.items():
+        for id_, cell in self.__cells.items():
             cell.universe = self.__name
 
-    def add_cells(self, *args):
-        for cell in args:
-            self.__cells[cell.id] = cell
+    def add_cell(self, cell):
+        self.__cells[cell.id] = cell
     
     def translate(self, trans_vector):
-        for id, cell in self.__cells.items():
-            cell.translate(trans_vector)
+        surfaces_universe = get_all_surfaces_in_a_universe(self)
+        for id_, surf in surfaces_universe.items():
+            surf.translate(trans_vector)
+            
+    def __eq__(self, __o: object) -> bool:
+        """
+            Comparaison of a universe:
+
+            1.- It compares first the number of cells
+            2.- It compares each of the cells
+
+            Criteria:
+            For a universe to be equal:
+            1. Number of cells should be the same
+            2. Each cell has to be equal to at least one of the cells in "__o" param
+        """
+        try:
+            assert isinstance(__o, Universe)
+            assert len(self.__cells) == len(__o.cells)
+            compare_ = {c_id:False for c_id in self.__cells.keys()}
+            for c_id, cell in self.__cells.items():
+                for cell_other in __o.cells.values():
+                    if cell == cell_other:
+                        compare_[c_id] = True
+            for key_, hasEqual in compare_.items():
+                assert(hasEqual)
+            return True
+        except AssertionError:
+            return False
+
+    
     
     @property
     def name(self):
@@ -49,7 +83,8 @@ class Root(Universe):
 
     def __init__(self, model, outside, energy_grid=None, mcparams=None, libraries=""):
         super().__init__(name="0")
-        self.add_cells(model, outside)
+        self.add_cell(model)
+        self.add_cell(outside)
         self.model_cell = model
         self.outside_cell = outside
         self.energy_grid = energy_grid  # Grid type
@@ -69,7 +104,7 @@ class Pin(Universe):
         its respective materials
 
     """
-    def __init__(self, name="", material=None, radius=None, surroundings=None):
+    def __init__(self, name=""):#material=None, radius=None, surroundings=None):
         """
             Init method of the class
 
@@ -87,12 +122,23 @@ class Pin(Universe):
         """
         super().__init__(name)
         self.__pin_levels = [] # These are the cells of the universe Pin
-        self.__materials = []
+        self.__clone = False
         self.__outer_most_surface = None
         self.__last_region = None
-        self.__check_init_levels(material, radius, surroundings)
+        # self.__check_init_levels(material, radius, surroundings)
         
     def __check_init_levels(self, mat, radius, surroundings):
+        """
+            Checks the first material and radius given to the pin
+
+            --------------------------------------------------------
+
+            It has a bug: generates more cells than expected
+
+            cancelled on May 27 2022
+
+            If restored fix the bug!!!!
+        """
         if mat and radius: # both are not None
             # single level is declared
             if isinstance(mat, Material) and (isinstance(radius, float) or isinstance(radius, int)):
@@ -164,7 +210,7 @@ class Pin(Universe):
             )
             
             level = Level(cell.id, radius)
-            super().add_cells(cell)
+            super().add_cell(cell)
             self.__pin_levels.append(level)
         else:
             #surroundings
@@ -188,7 +234,7 @@ class Pin(Universe):
                     universe=self.name
                 )
                 level = Level(cell.id, None)
-                super().add_cells(cell)
+                super().add_cell(cell)
                 self.__pin_levels.append(level)
 
     def close_last_level(self, region): #region
@@ -216,7 +262,7 @@ class Pin(Universe):
                 ll_region = super().cells[ll_id].region & region
                 super().cells[ll_id].region = ll_region
     
-    def add_pin_levels(self, materials, radius):
+    def add_pin_levels(self, materials, radius, clone=False):
         """
             Setter method for attribute self.__pin_levels
 
@@ -224,6 +270,7 @@ class Pin(Universe):
             -------------------
             levels      |   
         """
+        self.__clone = clone
         try:
             assert len(materials) == len(radius)
             for i in range(len(materials)):
@@ -232,7 +279,11 @@ class Pin(Universe):
             print("**** Error in adding levels, materials and radius arrays must have the same length ****")
             raise SystemExit
 
-    def replicate(self):
+    def copy(self):
+        """
+            It makes a copy of the pin with new surfaces,
+            new cells, different ids
+        """
         materials = []
         radius = []
         first_level = self.__pin_levels[0]
@@ -245,12 +296,29 @@ class Pin(Universe):
                 content = super().cells[level.cell_id].content
                 materials.append(content)
                 radius.append(level.radius)
-            replica = Pin(self.name, material=materials, radius=radius)
-            return replica
+            pin_copy = Pin(self.name)
+            pin_copy.add_pin_levels(materials, radius)
+            return pin_copy
 
-    def translate(self, trans_vector):
-        return super().translate(trans_vector)
-                
+    def clone(self, new_center_x, new_center_y):
+        """
+            It makes a copy of the pin with surfaces and cells with
+            same ids
+        """
+        pin_cells = super().cells
+
+        pin_clone = Pin(super().name)
+        pin_clone.pin_levels = self.__pin_levels
+
+        clone_pin_cells = {}
+        for c_id, cell in pin_cells.items():
+            clone_level_cell = cell.clone(new_center_x, new_center_y)
+            clone_pin_cells[c_id] = clone_level_cell
+        
+        pin_clone.cells = clone_pin_cells
+
+        return pin_clone
+
     def get_center(self):
         first_level = self.__pin_levels[0]
         cell = super().cells[first_level.cell_id]
@@ -294,10 +362,18 @@ class Pin(Universe):
             Getter method for attribute self.__pin_levels
         """
         return self.__pin_levels
+    
+    @pin_levels.setter
+    def pin_levels(self, pin_levels):
+        """
+            Getter method for attribute self.__pin_levels
+        """
+        self.__pin_levels = pin_levels
 
-    @property
-    def cells(self):
-        return super().cells
+    # @property
+    # def cells(self):
+    #     return super().cells
+
 
     @property
     def materials(self):
@@ -382,29 +458,53 @@ class SquareLattice(Lattice):
         x0, y0 = top_left
         top_left_center_x = x0 + self.__pitch/2
         top_left_center_y = y0 - self.__pitch/2
-        
+        pin_replacement = None
         for r in range(num_cols):
             new_center_y = top_left_center_y - self.__pitch * r
             for p in range(num_cols):
                 new_center_x = top_left_center_x + self.__pitch * p
+                # print(f"({r},{p}) ---> center: ({new_center_x},{new_center_y})")
                 pin = self.__array[r][p]
                 # create a pin with the same characteristics to move the cell
-                pin_replacement = pin.replicate()
-                if pin_replacement.pin_levels[0].radius is not None:
-                    # assuring that is not a void pin
-                    # moving the pin
-                    trans_vector = (
-                        new_center_x - pin_replacement.get_center()[0],
-                        new_center_y - pin_replacement.get_center()[1]
-                    )
-                    pin_replacement.translate(trans_vector)
+                # pin_replacement = pin.copy()
+                materials = []
+                radius = []
+                for level in pin.pin_levels:
+                    mat = pin.cells[level.cell_id].content
+                    materials.append(mat)
+                    radius.append(level.radius)
+                # pin_replacement = Pin(pin.name)
+                # pin_replacement.add_pin_levels(materials, radius)
+
+                # if pin_replacement.pin_levels[0].radius is not None:
+                #     # assuring that is not a void pin
+                #     # moving the pin
+                #     center_pin_repl = pin_replacement.get_center()
+                #     trans_vector = (
+                #         new_center_x - center_pin_repl[0],
+                #         new_center_y - center_pin_repl[1]
+                #     )
+                #     translate_universe(pin_replacement, trans_vector) 
+                # -----------------------------------------------------------------------------
+                # When this method is applied it changes the other previous pins as well
+                # There is a problem with translate method for this case. This case
+                # apparently keeps changing the previous pins even though they are in 
+                # different memory locations
+                # -----------------------------------------------------------------------------
                 
-                # new_center
     
                 closing_surface = InfiniteSquareCylinderZ(new_center_x, new_center_y, self.__pitch*0.5)
+                pin_replacement = declaring_pin_by_cells(
+                    materials, radius, new_center_x, new_center_y, pin.name, closing_surface
+                )
                 new_pin = Cell(region=-closing_surface, fill=pin_replacement, universe=self.name)
-                self.add_cells(new_pin)
+                super().add_cell(new_pin)
                 new_array[r][p] = new_pin.id # order of the cells from column by column
+                pin_replacement = None
+                # del pin
+                # del pin_replacement
+                # del new_pin
+                # del Cell
 
 
         self.array = new_array
@@ -424,13 +524,23 @@ class SquareLattice(Lattice):
         pin_cells = super().cells
         array = self.__array
         
-        for id_, cell_ in pin_cells.items():
+        # pin cells by separate --> probably for gcu or flux generation
+        for id_, pin_cell in pin_cells.items():
             # The id_ variable is the id of the cell that was created
             # for the pin in the lattice in the specific position
-            pin_uni = cell_.content
+            pin_uni = pin_cell.content
             cells.update(pin_uni.cells)
             pin_uni.name = pin_uni.name + f"_{id_}"
-            pin_cells_syntax += cell_.serpent_syntax_pin_cell_inside()
+            # pin_cells_syntax += cell_.serpent_syntax()
+            cells_in_pin = pin_uni.cells
+            pin_cells_syntax += "\n"
+            for c_id, cell in pin_uni.cells.items():
+                try:
+                    assert isinstance(cell.content, Material)
+                    region_syntax = cell.region.serpent_syntax()
+                    pin_cells_syntax += f"cell {c_id} {pin_uni.name} {cell.content.name} {region_syntax}\n"
+                except AssertionError:
+                    raise SystemError
 
         x_lb, y_lb = self.__left_bottom
 
@@ -622,3 +732,11 @@ class HexagonalLatticeTypeX(Lattice):
     @property
     def cells(self):
         return super().cells
+
+
+def translate_universe(universe, trans_vector):
+    # return super().translate(trans_vector)
+    surfaces_universe = get_all_surfaces_in_a_universe(universe)
+    for id_, surf in surfaces_universe.items():
+        surf.translate(trans_vector)
+

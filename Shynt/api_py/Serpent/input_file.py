@@ -3,7 +3,7 @@ from Shynt.api_py.Geometry.surfaces import Hexagon, InfiniteSquareCylinderZ, Sur
 from Shynt.api_py.Geometry.regions import Region, SurfaceSide
 from Shynt.api_py.Geometry.cells import Cell
 from Shynt.api_py.Geometry.universes import Lattice, Pin, SquareLattice, Universe
-from Shynt.api_py.Geometry.utilities import get_all_surfaces_in_a_cell, get_materials_in_cell
+from Shynt.api_py.Geometry.utilities_geometry import get_all_surfaces_in_a_cell, get_materials_in_cell
 from Shynt.api_py.materials import Material
 
 
@@ -51,6 +51,7 @@ class Detector():
         syn += f" {self.__response} "
 
         if len(self.__cells) > 1:
+            syn += "\n"
             for cell in self.__cells:
                 syn += f"dc {cell}\n"
         else: 
@@ -114,7 +115,7 @@ class SerpentInputFileRmmDetectors():
     ):
         self.coarse_node = coarse_node
         self.cell = coarse_node.cell
-        self.fictional_surfaces = coarse_node.fictional_surfaces
+        # self.fictional_surfaces = coarse_node.fictional_surfaces
         self.name = name
         self.libraries = libraries
         self.energy_grid = energyGrid
@@ -142,6 +143,7 @@ class SerpentInputFileRmmDetectors():
             "regions": {},
             "surfaces": {}
         }
+        self.xs_gcu = {}
 
         with open(name, "w") as self.__file:
             self.__write_title()
@@ -162,22 +164,18 @@ class SerpentInputFileRmmDetectors():
 
     
     def __write_title(self):
-        print(f"set title \"{self.cell.name}\"\n")
         self.__file.write(f"set title \"{self.cell.name}\"\n\n")
 
     def __write_material(self):
         materials = get_materials_in_cell(self.cell)
         for mat_name, material in materials.items():
             syntax = material.serpent_syntax
-            print(syntax)
             self.__file.write(syntax+"\n")
 
     def __write_libraries(self):
-        print(self.libraries.serpent_syntax)
         self.__file.write(self.libraries.serpent_syntax)
  
     def __write_mc_params(self):
-        print(self.mcparams.serpent_syntax)
         self.__file.write("\n")
         self.__file.write(self.mcparams.serpent_syntax)
         self.__file.write("\n")
@@ -185,10 +183,8 @@ class SerpentInputFileRmmDetectors():
     def __write_energy_grid(self, syntax="complete"):
         if syntax == "by_bin":
             self.__file.write(self.energy_grid.serpent_syntax_by_bins())
-            print(self.energy_grid.serpent_syntax_by_bins())
         elif syntax == "complete":
             self.__file.write(self.energy_grid.serpent_syntax())
-            print(self.energy_grid.serpent_syntax())
 
     def __write_geometry(self):
         """
@@ -197,20 +193,21 @@ class SerpentInputFileRmmDetectors():
    
         # Looking for the surfaces in the cell  ---------------------------------
         surfaces = get_all_surfaces_in_a_cell(self.cell)
+
         self.surfaces.update(surfaces)
         
         self.__file.write("\n\n")
         for s_id, surf in self.surfaces.items():
-            print(surf.serpent_syntax_standard_position)
-            self.__file.write(surf.serpent_syntax_standard_position)
+            self.__file.write(surf.serpent_syntax_exact_position)
+            self.surfaces_ids.append(s_id)
         
         # Write all cells inside the cell
         cell_syntax = ""
         if self.type_detectors == "xs_generation":
-            cell_syntax = self.cell.serpent_syntax_gcu()
+            cell_syntax, gcu_rel = self.cell.serpent_syntax_gcu()
+            self.xs_gcu = gcu_rel
         elif self.type_detectors is not None:
             cell_syntax = self.cell.serpent_syntax()
-        print(cell_syntax)
         self.__file.write(cell_syntax)
     
     def __write_outside_cell(self):
@@ -222,14 +219,12 @@ class SerpentInputFileRmmDetectors():
             outside_cell = Cell(fill="outside", region=outside_reg, universe=self.cell.universe)
             
             self.__file.write(outside_cell.serpent_syntax())
-            print(outside_cell.serpent_syntax())
         except AssertionError:
             # then it is SurfaceSide class
             out_surf = self.cell.region.surface
             outside_cell = Cell(fill="outside", region=+out_surf, universe=self.cell.universe)
             self.__file.write(outside_cell.serpent_syntax())
             self.__file.write("\n\n")
-            print(outside_cell.serpent_syntax())
 
     def __write_detectors(self):
         # Getting surfaces for detectors -----------------------------------------
@@ -256,11 +251,8 @@ class SerpentInputFileRmmDetectors():
         
         # Writing detectors in the serpent file --------------------------------
         self.__file.write("\n% ----- Detectors ------\n")
-        print("\n% ----- Detectors ------\n")
         for det in self.detectors:
-            
             self.__file.write(det.syntax())
-
         # Checking flag number to not exceed 64 --------------------------------
         try:
             assert(self.flag_counter < 64)
@@ -273,7 +265,8 @@ class SerpentInputFileRmmDetectors():
         surface_for_detectors = ""
         closing_surf = self.cell.region.surface 
 
-        surfaces_in_closing = self.coarse_node.fictional_surfaces
+        # surfaces_in_closing = self.coarse_node.fictional_surfaces
+        surfaces_in_closing = closing_surf.get_surface_relation()
         self.closing_surface_ids = list(surfaces_in_closing.keys())
 
         self.surface_direction = closing_surf.get_neutron_current_directions()
@@ -289,13 +282,16 @@ class SerpentInputFileRmmDetectors():
                 if cell.content.isFuel:
                     surf = cell.region.surface
                     if surf.id not in self.surfaces_ids:
-                        surface_for_detectors += surf.serpent_syntax_standard_position
+                        surface_for_detectors += surf.serpent_syntax_exact_position
                     self.surface_direction[surf.id] = {"inward": "-1", "outward": "1"}
                     self.isFuel_relation[cell.id] = (cell.content.name, True)
                 else:
                     self.isFuel_relation[cell.id] = (cell.content.name, False)
         return surface_for_detectors
-        
+    
+    def __add_surfaces(self, surfaces):
+        pass
+
     def __helper_fuel_detectors(self, regions_dict):
         energy_bins = self.energy_grid.bins_names_relation
         groups = self.energy_grid.energy_groups
@@ -618,9 +614,9 @@ class SerpentInputFileReferenceFlux():
 
     def __write_surfaces(self):
         main_cell_surfaces = get_all_surfaces_in_a_cell(self.cell)
-        self.__add_surfaces(main_cell_surfaces)
+        surfaces_syntax = self.__add_surfaces(main_cell_surfaces)
         self.__file.write("\n\n")
-        for surf in self.surfaces_syntax:
+        for surf in surfaces_syntax:
             self.__file.write(surf)
         
     def __write_system_cells(self):
@@ -636,13 +632,21 @@ class SerpentInputFileReferenceFlux():
 
     def __write_main_cell(self):
         main_cell = self.cell
-        self.__file.write(main_cell.serpent_syntax())
+        syntax = f"\ncell {main_cell.id} {main_cell.universe} "
+        
+        if isinstance(main_cell.content, Material):
+            syntax += f"{main_cell.content.name} "
+        elif isinstance(main_cell.content, Universe):
+            syntax += f"fill {main_cell.content.name}" 
+        
+        syntax += main_cell.region.serpent_syntax()
+        self.__file.write(syntax)
 
     def __write_outside_cell(self):
         self.__file.write(self.outside_cell.serpent_syntax())
         
     def __write_material(self):
-        materials = self.cell.get_cell_materials()
+        materials = get_materials_in_cell(self.cell)
         for mat_name, mat in materials.items():
             syntax = mat.serpent_syntax
             self.__file.write(syntax)
@@ -678,10 +682,13 @@ class SerpentInputFileReferenceFlux():
             self.__file.write(det.syntax())
 
     def __add_surfaces(self, surfaces):
-        for surf in surfaces:
-            if surf.id not in self.surfaces_ids:
-                self.surfaces_ids.append(surf.id)
-                self.surfaces_syntax.append(surf.serpent_syntax_for_lattice)
+        for id_s, surf in surfaces.items():
+            if id_s not in self.surfaces_ids:
+                self.surfaces_ids.append(id_s)
+                self.surfaces_syntax.append(surf.serpent_syntax_standard_position)
+        return self.surfaces_syntax
+    
+    
 
 
 

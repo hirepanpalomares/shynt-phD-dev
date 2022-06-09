@@ -1,10 +1,14 @@
 
 class Material:
 
-    def __init__(self, name, atom_density=None, mass_density=None, moder="", composition={"fractions":[], "type":""}, options=""):
+    def __init__(self, name, atom_density=None, mass_density=None, moder="", composition=None, options=""):
         self.__name = name
-        self.__isotopes = []
-        self.__composition = composition
+        if composition is None:
+            self.__composition = {"fractions":[], "type":""}
+        else:
+            self.__composition = composition
+        self.__isotopes = {}
+        self.__fractions = {}
         self.__options = options
         self.__mass_density = mass_density
         self.__atom_density = atom_density
@@ -20,30 +24,34 @@ class Material:
             for item in array_isos:
                 iso, density = item
                 assert (isinstance(iso, Isotope))
-                new_isotope = Isotope(iso.name)
-                if type_dens == "atomic_density":
-                    new_isotope.atom_density = density
-                self.__isotopes.append(new_isotope)
+                self.__isotopes[iso.name] = iso
+                self.__fractions[iso.name] = density
         except AssertionError:
             print(" **** Error ***** Parameter 'isotope' must be of class Isotope")
             raise SystemExit
 
-
-
-
-
-    def addIsotope(self, isotope, mass_fraction=None, atom_fraction=None,
-        ):
+    def addIsotope(self, isotope, mass_fraction=None, atom_fraction=None, atom_density=None):
         try:
             assert (isinstance(isotope, Isotope))
-            new_isotope = Isotope(isotope.name)
-            new_isotope.mass_fraction = mass_fraction
-            new_isotope.atom_fraction = atom_fraction
-            self.__isotopes.append(new_isotope)
+            self.__isotopes[isotope.name] = isotope
+            if mass_fraction is not None:
+                if self.__composition["type"] == "":
+                    self.__composition["type"] = "mass_fraction"
+                assert self.__composition["type"] == "mass_fraction"
+                self.__fractions[isotope.name] = mass_fraction
+            elif atom_fraction is not None:
+                if self.__composition["type"] == "":
+                    self.__composition["type"] = "atom_fraction"
+                assert self.__composition["type"] == "atom_fraction"
+                self.__fractions[isotope.name] = atom_fraction
+            elif atom_density is not None:
+                if self.__composition["type"] == "":
+                    self.__composition["type"] = "atom_density"
+                assert self.__composition["type"] == "atom_density"
+                self.__fractions[isotope.name] = atom_fraction
         except AssertionError:
             print(" **** Error ***** Parameter 'isotope' must be of class Isotope")
             raise SystemExit
-    
     
     def __str__(self):
         return_statement = "%s\n"%self.__name
@@ -55,15 +63,21 @@ class Material:
         return return_statement
     
     def __eq__(self, other) -> bool:
-        if self.__name == other.name:
+        try:
+            assert self.__name == other.name
+            for iso, density in self.__fractions.items():
+                assert density == other.fractions[iso]
             return True
-        return False
+        except AssertionError:
+            return False
+        except KeyError:
+            return False
 
 
     @property
     def isFuel(self):
-        for iso in self.__isotopes:
-            serpent_id = iso.name
+        for iso_name, iso in self.__isotopes.items():
+            serpent_id = iso_name
             zaid = serpent_id.split(".")[0]
             if zaid.isnumeric():
                 if int(zaid) >= 90000:
@@ -83,14 +97,24 @@ class Material:
             syntax += f"moder {self.__moderLibrary}"
         
         syntax += "\n"
-        for isotope in self.__isotopes:
-            syntax += isotope.serpent_syntax()
-
+        for iso, number in self.__fractions.items():
+            syntax += iso
+            if self.__composition["type"] == "atom_density":
+                syntax += f" {number}"
+            elif self.__composition["type"] == "atom_fraction":
+                syntax += f" {number}"
+            elif self.__composition["type"] == "mass_fraction":
+                syntax += f" -{number}"
+            syntax += "\n"
         return syntax
 
     @property
     def name(self):
         return self.__name
+
+    @property
+    def fractions(self):
+        return self.__fractions
 
     @property
     def mass_density(self):
@@ -134,21 +158,18 @@ class Isotope:
         except AssertionError:
             print(" **** Error **** Isotope must have valid parameter name")
             raise SystemExit
-        self.__mass_fraction = None
-        self.__atom_fraction = None
         self.__temperature = None
-        self.__atom_density = None
 
     def serpent_syntax(self):
         syntax = f"{self.name} "
-        if self.__atom_fraction:
-            syntax += f"{self.__atom_fraction}\n"
-        elif self.__atom_density:
-            syntax += f"{self.__atom_density}\n"
-        elif self.__mass_fraction:
-            syntax += f"-{self.__mass_fraction}\n"
+        
         return syntax
 
+    def __eq__(self, __o: object) -> bool:
+        try:
+            assert self.name == __o.name
+        except AssertionError:
+            return False
     
     def __str__(self):
         return "%s"%self.name

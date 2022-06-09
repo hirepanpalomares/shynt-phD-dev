@@ -72,7 +72,7 @@ class GlobalMesh(StructuredMesh):
     #     return self.__mesh_type
 
 
-class LocalMesh(StructuredMesh):
+class FineMesh(StructuredMesh):
 
     def __init__(self, coarse_nodes, local_mesh_type):
         super().__init__()
@@ -106,15 +106,14 @@ class LocalMesh(StructuredMesh):
         """
         fill = coarse_node.cell.content
         if isinstance(fill, Universe):
-            if isinstance(fill, Pin):
-                # get a cell for each level of the pin
-                fine_nodes = {}
-                universe_cells = fill.cells
-                for l in fill.pin_levels:
-                    material_cell = universe_cells[l.cell_id]
-                    fine_node = FineNode(material_cell)
-                    fine_nodes[l.cell_id] = fine_node
-                return fine_nodes
+            # if isinstance(fill, Pin):
+            # get a cell for each level of the pin
+            fine_nodes = {}
+            universe_cells = fill.cells
+            for c_id, cell in universe_cells.items():
+                fine_node = FineNode(cell)
+                fine_nodes[c_id] = fine_node
+            return fine_nodes
         elif isinstance(fill, Material):
             print("Material here")
             fine_node = FineNode(coarse_node.cell)
@@ -134,31 +133,3 @@ class LocalMesh(StructuredMesh):
     
 
 
-def make_mesh(cell, global_mesh_type="", local_mesh_type=""):
-    """
-    Helper method to construct the global and local meshes
-
-    Probabbly the right way to get the GLOBAL MESH  and LOCAL MESH 
-    is the following:
-        1. Build the coarse nodes by getting the coordinates of the surfaces,
-            being these circles, rectangles, squares or triangles, etc, etc.
-        2. Now that you have the coordinates of all of these nodes we make for 
-            each of these refine the space (pin, region etc) i.e. local mesh
-        3. Once you refine (local meshes) of every corse node, determine which 
-            are different to be able to compute the probabilities in serpent
-
-    """
-    
-    global_mesh = GlobalMesh(cell, global_mesh_type)
-    # print(global_mesh.coarse_nodes)
-    local_mesh = LocalMesh(global_mesh.coarse_nodes, local_mesh_type)
-    # print(local_mesh.fine_nodes)
-    
-    
-
-    cell.global_mesh = global_mesh
-    # print(global_mesh.surface_relation)
-    # print(cell.surface_relation)
-    cell.local_mesh = local_mesh
-
-    return cell

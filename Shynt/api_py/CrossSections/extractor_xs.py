@@ -21,7 +21,8 @@ def get_cross_sections(energy_g, xs_inputs, fine_nodes):
         xs[id_coarse] = {}
         for node in fine_nodes[id_coarse].values():
             cell = node.cell
-            universe = res.getUniv(cell.gcuName, burnup=0)
+            gcu_name = xs_inp.xs_gcu[cell.id]
+            universe = res.getUniv(gcu_name, burnup=0)
 
             xs_total = universe["infTot"]
             xs_nuFiss = universe["infNsf"]

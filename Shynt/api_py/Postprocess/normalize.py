@@ -23,17 +23,19 @@ def normalize_hybrid_flux(flux, energy_g):
         Normalizes flux obtained from the Response Matrix Method
 
     """
-    fast_flux = flux[0]
     thermal_flux = flux[1]
+    fast_flux = flux[0]
 
     normalization_factor = np.max(np.array(list(fast_flux.values())))
 
     normalized_flux = {
-        0: {}, 1: {}
+        0: {}, # thermal
+        1: {}  # fast
     }
 
     for r_id, flux_value in thermal_flux.items():
         normalized_flux[0][r_id] = flux_value / normalization_factor
+        
     for r_id, flux_value in fast_flux.items():
         normalized_flux[1][r_id] = flux_value / normalization_factor
 

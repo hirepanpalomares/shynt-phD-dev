@@ -3,6 +3,7 @@ import os
 import sys
 
 import Shynt
+from Shynt.api_py.Geometry.mesh_helpers import make_mesh
 
 
 
@@ -18,7 +19,7 @@ helium06 = Shynt.materials.Isotope("2004.06c")
 zyrconium = Shynt.materials.Isotope("40000.06")
 
 # Montecarlo params and libraries --------------------------------------
-mc_params = Shynt.montecarlo.MontecarloParams(2000, 500, 50, seed=1474468046)
+mc_params = Shynt.montecarlo.MontecarloParams(20000, 500, 50)
 libraries = Shynt.libraries.SerpentLibraries(acelib='"jeff311/sss_jeff311u.xsdata"', therm="therm lwtr lwj3.11t")
 energy_grid = Shynt.energy.Grid([0, 0.625E-06, 20], name="2groups_grid") # MeV
 
@@ -57,7 +58,7 @@ model_cell = Shynt.cells.Cell("pin_problem", region=-outer_boundary, fill=pin_fu
 
 
 # still a cell
-meshed_model_cell = Shynt.mesh.make_mesh(model_cell, global_mesh_type="pin_cell", local_mesh_type="material")
+meshed_model_cell = make_mesh(model_cell, global_mesh_type="pin_cell", local_mesh_type="material")
 
 
 # Outside world
@@ -77,3 +78,4 @@ model_universe = Shynt.universes.Root(
 
 
 Shynt.run(model_universe)
+# serp_root_input_file = Shynt.file_generator.generate_root_serpent_file(model_universe)

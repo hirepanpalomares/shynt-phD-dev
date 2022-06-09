@@ -7,7 +7,7 @@ from .surf_counter import surf_ids
 
 class Surface:
 
-    def __init__(self, type_surface="",  name="", fictional=False):
+    def __init__(self, type_surface="",  name="", isClone=False):
         """
             Init method of the class
 
@@ -15,22 +15,21 @@ class Surface:
             ----------------------------------------------------------------
             name        :       String to name the surface
             id          :       Integer numering the surface
-            fictional   :       Parameter that is used when writing the surfaces
+            isClone     :       Parameter that is used when writing the surfaces
                                 for a detector if it is the case to avoid messing
                                 up with the geometry and ids of the original 
-                                surfaces. see <CoarseNode class>
+                                surfaces.
             ----------------------------------------------------------------
         """
         
         self.__name = name
         self.__type = type_surface
-        self.__fictional = fictional
-        if self.__fictional:
+        self.__isClone = isClone
+        if self.__isClone:
             self.__id = None
         else:
             self.__id = self.calculateId()
-        
-    
+          
     def calculateId(self):
         """
             Class method to calculate the consecutive id of the surface
@@ -67,7 +66,13 @@ class Surface:
 
     @id.setter
     def id(self, id):
-        self.__id = id
+        try:
+            assert(self.__isClone)
+            self.__id = id
+        except AssertionError:
+            print("Id of non clone surface can not be asigned")
+            raise SystemExit
+
             
     def __neg__(self):
         return SurfaceSide(self, "-")
@@ -83,9 +88,10 @@ class PlaneX(Surface):
     Surface equation: S(x) = x - x0
     """
 
-    def __init__(self, x0, name="", boundary=None, fictional=False):
-        super().__init__(type_surface="plane_x", name=name, fictional=fictional)
+    def __init__(self, x0, name="", boundary=None, isClone=False):
+        super().__init__(type_surface="plane_x", name=name, isClone=isClone)
         self.__x0 = x0
+        self.__isClone = isClone
         self.__function = lambda x: x - self.__x0
         self.__lineParameters = {
             "b": None,
@@ -215,9 +221,10 @@ class PlaneY(Surface):
     Surface equation: S(y) = y - y0
     """
 
-    def __init__(self, y0, name="", boundary=None, fictional=False):
-        super().__init__(type_surface="plane_y", name=name, fictional=fictional)
+    def __init__(self, y0, name="", boundary=None, isClone=False):
+        super().__init__(type_surface="plane_y", name=name, isClone=isClone)
         self.__y0 = y0
+        self.__isClone = isClone
         self.__function = lambda y: y - self.__y0
         self.__lineParameters = {
             "b": None,
@@ -371,14 +378,15 @@ class InfiniteCylinderZ(Surface):
     Surface equation: S(x, y) =  (y - y0)**2 + (x - x0)**2 - r**2
     """
 
-    def __init__(self, center_x, center_y, radius, name="", boundary=None, fictional=False):
-        super().__init__(type_surface="cylinder_z", name=name, fictional=fictional)
+    def __init__(self, center_x, center_y, radius, name="", boundary=None, isClone=False):
+        super().__init__(type_surface="cylinder_z", name=name, isClone=isClone)
         self.__center_x = center_x
         self.__center_y = center_y
         self.__radius = radius
+        self.__isClone = isClone
         self.__function = lambda x, y: (x - self.__center_x)**2 + (y - self.__center_y)**2 - self.__radius**2
         
-        
+    
     def translate_to(self, new_x, new_y):
         trans_vector = (
             new_x - self.__center_x,
@@ -391,6 +399,10 @@ class InfiniteCylinderZ(Surface):
         self.__center_x += t_x
         self.__center_y += t_y
 
+    def clone(self, new_center_x, new_center_y):
+        surf_clone = InfiniteCylinderZ(new_center_x, new_center_y, self.__radius, isClone=True)
+        surf_clone.id = super().id
+        return surf_clone
 
     def eval_point(self, x, y):
         return self.__function(x, y)
@@ -425,7 +437,6 @@ class InfiniteCylinderZ(Surface):
         return {
             self.id: 2 * np.pi * self.__radius
         }
-        
 
     @property
     def center(self):
@@ -561,21 +572,38 @@ class InfiniteSquareCylinderZ(Surface):
     surf_left   --> cell in + side
 
     """
-    def __init__(self, center_x, center_y, half_width, name="", boundary=None, fictional=False):
-        super().__init__(type_surface="infinite square", name=name)
+    def __init__(self, center_x, center_y, half_width, name="", boundary=None, isClone=False):
+        super().__init__(type_surface="infinite square", name=name, isClone=isClone)
         self.__boundary = boundary
         self.__center_x = center_x
         self.__center_y = center_y
         self.__half_width = half_width
-        self.__fictional = fictional
+        self.__isClone = isClone
+        
         self.__surf_left, self.__surf_top, self.__surf_right, self.__surf_bottom = self.__generate_surfaces()
         
     def __generate_surfaces(self):
         surfaces = [
-            PlaneX(self.__center_x - self.__half_width, boundary=self.__boundary), # Left
-            PlaneY(self.__center_y + self.__half_width, boundary=self.__boundary), # Top
-            PlaneX(self.__center_x + self.__half_width, boundary=self.__boundary), # Right
-            PlaneY(self.__center_y - self.__half_width, boundary=self.__boundary), # Bottom
+            PlaneX(
+                self.__center_x - self.__half_width, 
+                boundary=self.__boundary,
+                isClone=self.__isClone
+            ), # Left
+            PlaneY(
+                self.__center_y + self.__half_width, 
+                boundary=self.__boundary,
+                isClone=self.__isClone
+            ), # Top
+            PlaneX(
+                self.__center_x + self.__half_width, 
+                boundary=self.__boundary,
+                isClone=self.__isClone
+            ), # Right
+            PlaneY(
+                self.__center_y - self.__half_width, 
+                boundary=self.__boundary,
+                isClone=self.__isClone
+            ), # Bottom
         ]
         return surfaces
 
@@ -638,27 +666,18 @@ class InfiniteSquareCylinderZ(Surface):
             self.__surf_left.id: {"inward": "1", "outward": "-1"},
         }
 
-    def get_fictional_surfaces(self):
-        
-        fict_left = PlaneX(-self.__half_width, fictional=True)
-        fict_left.id = self.__surf_left.id
+    def clone(self, center_x, center_y):
+        """
+            It clones the surface: same id, but in a new center
+        """
+        clone_square = InfiniteSquareCylinderZ(center_x, center_y, self.__half_width, isClone=True)
+        clone_square.surf_left.id = self.__surf_left.id
+        clone_square.surf_right.id = self.__surf_right.id
+        clone_square.surf_top.id = self.__surf_top.id
+        clone_square.surf_bottom.id = self.__surf_bottom.id
+        clone_square.id = super().id
 
-        fict_top = PlaneY(self.__half_width, fictional=True)
-        fict_top.id = self.__surf_top.id
-
-        fict_bottom = PlaneY(-self.__half_width, fictional=True)
-        fict_bottom.id = self.__surf_bottom.id
-
-        fict_right = PlaneX(self.__half_width, fictional=True)
-        fict_right.id = self.__surf_right.id
-
-        return {
-            fict_left.id: fict_left,
-            fict_right.id: fict_right,
-            fict_top.id: fict_top,
-            fict_bottom.id: fict_bottom
-        }
-        
+        return clone_square
 
     # def __str__(self):    
     #     return """Surface of infinite square cylinder in z-axis:

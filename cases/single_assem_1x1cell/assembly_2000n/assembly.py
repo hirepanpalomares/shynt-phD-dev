@@ -1,11 +1,7 @@
-
 import numpy as np
-import os 
-import sys
 
 import Shynt
 from Shynt.api_py.Geometry.mesh_helpers import make_mesh
-
 
 # Defining isotopes ----------------------------------------------------
 u235 = Shynt.materials.Isotope("92235.09c")
@@ -58,10 +54,7 @@ coolant = Shynt.materials.Material("coolant", moder="lwtr 1001", mass_density=0.
 coolant.addIsotope(oxygen06, atom_fraction=0.33333)
 coolant.addIsotope(hydrogen, atom_fraction=0.66667)
 
-
-
 # -------------------------------------------------------------
-
 pin1 = Shynt.universes.Pin("pin_fuel1")
 pin1.add_pin_levels([fuel1, coolant],[0.4335, None])
 
@@ -80,24 +73,33 @@ pin5.add_pin_levels([fuel5, coolant],[0.4335, None])
 pin6 = Shynt.universes.Pin("pin_fuel6")
 pin6.add_pin_levels([fuel6, coolant],[0.4335, None])
 
-lattice_3x3 =  [
-    [pin1, pin1, pin1],
-    [pin1, pin2, pin1],
-    [pin1, pin1, pin1],
+
+lattice_10x10 =  [
+    [pin2, pin2, pin3, pin5, pin5, pin5, pin5, pin3, pin2, pin2],
+    [pin2, pin3, pin5, pin6, pin6, pin6, pin6, pin5, pin3, pin2],
+    [pin3, pin5, pin6, pin6, pin6, pin6, pin6, pin6, pin5, pin3],
+    [pin5, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin5],
+    [pin5, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin5],
+    [pin5, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin5],
+    [pin5, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin6, pin5],
+    [pin3, pin5, pin6, pin6, pin6, pin6, pin6, pin6, pin5, pin3],
+    [pin2, pin3, pin5, pin6, pin6, pin6, pin6, pin5, pin3, pin2],
+    [pin2, pin2, pin3, pin5, pin5, pin5, pin5, pin3, pin2, pin2]
 ]
 
-assembly_3x3 = Shynt.universes.SquareLattice("assembly", (0.0, 0.0), 1.295, lattice_3x3)
+assembly_10x10 = Shynt.universes.SquareLattice("assembly", (0.0, 0.0), 1.295, lattice_10x10)
 
-outer_boundary = Shynt.surfaces.InfiniteSquareCylinderZ(0, 0, 1.2950*1.5, boundary="reflective")
+outer_boundary = Shynt.surfaces.InfiniteSquareCylinderZ(0, 0, 1.2950*5, boundary="reflective")
 
 # Main problem cell
-model_cell = Shynt.cells.Cell("assembly_problem", region=-outer_boundary, fill=assembly_3x3)
+model_cell = Shynt.cells.Cell("assembly_problem", region=-outer_boundary, fill=assembly_10x10)
 
 # meshed cell
 model_cell_meshed = make_mesh(model_cell, global_mesh_type="pin_cell", local_mesh_type="material")
 
+
 # Outside world
-outside_cell = Shynt.cells.Cell("outside_world", region=+outer_boundary)
+outside_cell = Shynt.cells.Cell("outside_world", fill="outside", region=+outer_boundary)
 
 # Total Universe (root)
 model_universe = Shynt.universes.Root(
@@ -107,11 +109,6 @@ model_universe = Shynt.universes.Root(
     libraries=libraries
 )
 
-
-Shynt.run(model_universe)
-# serp_root_input_file = Shynt.file_generator.generate_root_serpent_file(model_universe)
-
-
-
-
+# Shynt.run(model_universe)
+serp_root_input_file = Shynt.file_generator.generate_root_serpent_file(model_universe)
 

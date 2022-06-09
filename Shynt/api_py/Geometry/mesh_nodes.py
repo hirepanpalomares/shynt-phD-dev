@@ -4,6 +4,7 @@ import numpy as np
 from Shynt.api_py.Geometry.universes import Pin
 from Shynt.api_py.Geometry.regions import SurfaceSide
 from Shynt.api_py.Geometry.surfaces import InfiniteHexagonalCylinderXtype, InfiniteHexagonalCylinderYtype, InfiniteSquareCylinderZ
+from Shynt.api_py.Geometry.utilities_geometry import get_all_surfaces_in_a_cell
 
 class Node:
 
@@ -18,7 +19,7 @@ class CoarseNode(Node):
         
         
         self.__surfaces = self.__getSurfaces()                      # Dictionary of surface classes {id: <Surface class>}
-        self.fictional_surfaces = self.__getFictionalSurfaces()
+        # self.fictional_surfaces = self.__getFictionalSurfaces()
         self.__surface_ids = list(self.__surfaces.keys())           # Array with surface ids
         self.__surface_areas = self.__getSurfaceAreas()             # Dictionary of surfaces areas {id: area}
         self.__surface_directions = self.__getSurfaceDirections()   # Dictionary with the direction of the surfaces
@@ -83,6 +84,10 @@ class CoarseNode(Node):
     @property
     def cell(self):
         return self.__cell
+
+    @cell.setter
+    def cell(self, new_cell):
+        self.__cell = new_cell
 
     @property
     def surfaces(self):

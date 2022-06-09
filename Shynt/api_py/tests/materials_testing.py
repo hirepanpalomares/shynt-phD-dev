@@ -52,14 +52,14 @@ composition_inner_fuel = {
         (pu239_03, 2.45592e-03), (pu240_03, 7.32245e-04), (pu241_03, 1.96866e-04),
         (pu242_03, 6.83261e-05), (am241_03, 4.81830e-05), (oxygen_03, 4.65070e-02),
     ],
-    "type": "atomic_density"
+    "type": "atom_density"
 }
 
 inner_fuel = Material("inner_fuel", composition=composition_inner_fuel, options="sum tmp 453")
 
-helium_gas = Material("helium_gas", composition={"fractions":[(helium_03, 1.0E-05)],"type":"atomic_density"}, options="sum tmp 453")
+helium_gas = Material("helium_gas", composition={"fractions":[(helium_03, 1.0E-05)],"type":"atom_density"}, options="sum tmp 453")
 
-na_coolant = Material("na_coolant", composition={"fractions":[(na, 2.37718e-02)],"type":"atomic_density"}, options="sum tmp 453")
+na_coolant = Material("na_coolant", composition={"fractions":[(na, 2.37718e-02)],"type":"atom_density"}, options="sum tmp 453")
 
 composition_cladding = {
     "fractions": [
@@ -72,7 +72,7 @@ composition_cladding = {
         (mo_92, 1.87735e-04), (mo_94, 1.15707e-04), (mo_95, 1.98193e-04), (mo_96, 2.06406e-04),
         (mo_97, 1.17638e-04), (mo_98, 2.95822e-04), (mo_100, 1.16718e-04)
     ],
-    "type": "atomic_density"
+    "type": "atom_density"
 }
 
 cladding = Material("cladding", composition=composition_cladding, options="sum tmp 453")

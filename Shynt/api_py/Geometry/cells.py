@@ -1,7 +1,7 @@
-from builtins import isinstance, property
 import os
 
 from Shynt.api_py.Geometry.surfaces import Surface
+from Shynt.api_py.Geometry.utilities_geometry import get_all_surfaces_in_a_cell
 from Shynt.api_py.materials import Material
 
 
@@ -13,7 +13,7 @@ from .cell_counter import cell_ids
 
 class Cell:
 
-    def __init__(self, name="", fill=None, region=None, universe=None):
+    def __init__(self, name="", fill=None, region=None, universe=None, isClone=False):
         """
             Init method of the class
 
@@ -30,17 +30,21 @@ class Cell:
         self.__region = self.check_region(region)
         self.__content = self.check_fill(fill)        
         self.__universe = universe
+        self.__isClone = isClone
         
         
         self.__global_mesh = None
         self.__local_mesh = None
         
+        if self.__isClone:
+            self.__id = None
+        else:
+            self.__id = self.calculateId()
 
-        self.__id = self.calculateId()
         self.__volume = None
 
         self.__universe_name_for_gcu = ["u4gcu_", "1"]
-        self.__gcu_universes = []
+        self.__gcu_universes = {}
         
         self.__gcuName = None
 
@@ -97,7 +101,7 @@ class Cell:
                 elif child2.encloses(child1)                :
                     return vol2 - vol1
             except AssertionError:
-                raise SystemExit                
+                raise SystemError             
 
     def calculate_surface_area_relation(self):
         relation = {}
@@ -153,11 +157,10 @@ class Cell:
     
     def translate(self, trans_vector):
         # translating the surface delimitting the cell 
-        self.__region.translate(trans_vector)
-        if isinstance(self.__content, Universe):
-            # and the content of the cell
-            self.__content.translate(trans_vector)
-
+        surfaces = get_all_surfaces_in_a_cell(self)
+        for id_, surf in surfaces.items():
+            surf.translate(trans_vector)
+        
     def has_global_mesh(self):
         return self.__global_mesh
 
@@ -174,15 +177,12 @@ class Cell:
             return True
         return False
     
-    def get_cell_materials(self):
-        if self.content_is_material():
-            return {
-                self.__content.name: self.__content
-            }
-        elif self.content_is_universe():
-            universe = self.__content
-            uni_materials = universe.get_universe_materials()
-            return uni_materials
+    #             self.__content.name: self.__content
+    #         }
+    #     elif self.content_is_universe():
+    #         universe = self.__content
+    #         uni_materials = universe.get_universe_materials()
+    #         return uni_materials
 
     def serpent_syntax_cell_with_material_gcu(self, simple_cell):
         """
@@ -192,7 +192,7 @@ class Cell:
         syntax = ""
         gcu_id = self.calculateId()
         univ_4gcu = "".join(self.__universe_name_for_gcu)
-        self.__gcu_universes.append(univ_4gcu)
+        self.__gcu_universes[simple_cell.id] = univ_4gcu
         simple_cell.gcuName = univ_4gcu
         # print(univ_4gcu)
         self.__universe_name_for_gcu[1] = str(int(self.__universe_name_for_gcu[1]) + 1)
@@ -230,11 +230,11 @@ class Cell:
             syntax += "\n"
 
             syntax += "\n\nset gcu "
-            for gcu in self.__gcu_universes:
+            for c_id, gcu in self.__gcu_universes.items():
                 syntax += f"{gcu} "
         elif self.__content == "outside":
             syntax += f"outside" 
-        return syntax
+        return syntax, self.__gcu_universes
 
     def serpent_syntax(self): 
         """
@@ -279,15 +279,75 @@ class Cell:
 
         return syntax
 
+    def clone(self, new_center_x, new_center_y):
+        """
+            It makes a copy of the cell with surfaces and cells with
+            same ids
+        """
+
+        clone_cell = None
+        if isinstance(self.__content, Material):
+            material = self.__content
+            region_clone = self.__region.clone(new_center_x, new_center_y)
+            clone_cell = Cell(self.__name, region=region_clone, fill=material, isClone=True)
+            clone_cell.id = self.__id
+            clone_cell.universe = self.__universe
+            return clone_cell
+        elif isinstance(self.__content, Universe):
+            # cloning region -------------------------------------------------------------------
+            closing_surface_clone = self.__region.surface.clone(new_center_x, new_center_y)
+            closing_region_clone = -closing_surface_clone
+
+            # cloning cells of the universe ----------------------------------------------------
+            uni_cells = self.__content.cells
+            uni_clone = Universe(name=self.__content.name)
+            for c_id, cell in uni_cells.items():
+                cell_clone = cell.clone(new_center_x, new_center_y)
+                cell_clone.id = c_id
+                uni_clone.add_cell(cell_clone)
+
+            # generating new clone cell
+            clone_cell = Cell(region=closing_region_clone, fill=uni_clone, isClone=True)
+            clone_cell.id = self.__id
+            clone_cell.universe = self.__universe
+        else:
+            raise SystemError
+        return clone_cell
+
     def __eq__(self, other) -> bool:
         """
             Method to determine if a cell is equal or different to other
+
+            At the moment it only compares the volumes are the same and it has the same material
+
+            #TODO Compare also shape of surfaces and position perhaps
         """
-        pass
+        try:
+            assert self.content_is_material
+            assert other.content_is_material
+        except AssertionError:
+            print("It is not possible to compare a cell with universe content")
+            raise SystemExit
+
+        try:
+            assert self.volume == other.volume
+            assert self.content == other.content
+            return True
+        except AssertionError:
+            return False
 
     @property
     def id(self):
         return self.__id
+
+    @id.setter
+    def id(self, id):
+        try:
+            assert(self.__isClone)
+            self.__id = id
+        except AssertionError:
+            print("Id of non clone cell can not be asigned")
+            raise SystemExit
 
     @property
     def name(self):
@@ -354,6 +414,13 @@ class Cell:
     @gcuName.setter
     def gcuName(self, gcu):
         self.__gcuName = gcu
+
+
+
+class CloneCell(Cell):
+
+    def __init__(self, name="", fill=None, region=None, universe=None):
+        super().__init__(name, fill, region, universe)
 
 
 def reset_cell_counter():

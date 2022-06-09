@@ -2,8 +2,13 @@
 
 cases/temp
 
-**/serpent_files/
+**/serpent_files/*
 
 **/__pycache__/
 **/id-counter
+
+
+**/*.m
+**/*.out
+**/*.seed
 

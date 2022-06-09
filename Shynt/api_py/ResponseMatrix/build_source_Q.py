@@ -99,14 +99,13 @@ class SourceQ:
         """
             It returns a dictionary with the source terms in it:
 
-            sourceQ_byNode_byEnergy = {
-                coarseNode_id: {
-                    g_0: array([q_region_1_g0, q_region_2_g0, ..., q_region_I_g0]),
-                    g_1: array([q_region_1_g1, q_region_2_g0, ..., q_region_I_g0]),
-                    ...
-                    ...
-                    g_G:
-                }
+            sourceQ_byNode_byEnergy = { 
+                g_0: array([q_region_1_g0, q_region_2_g0, ..., q_region_I_g0]),
+                g_1: array([q_region_1_g1, q_region_2_g1, ..., q_region_I_g1]),
+                ...
+                ...
+                g_G: array([q_region_1_gG, q_region_2_gG, ..., q_region_I_gG]),
+            
             }
         """
 

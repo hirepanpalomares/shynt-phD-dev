@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+
 from Shynt.api_py import energy
+
+from Shynt.api_py.ResponseMatrix.global_problem import solveGlobalProblem
+from Shynt.api_py.ResponseMatrix.local_problem import solveLocalProblem
 from Shynt.api_py.ResponseMatrix.matrix_utilities import getInitializedPhi_system_byGroup
-
-
 from Shynt.api_py.ResponseMatrix.build_J_source import buildJsource
 from Shynt.api_py.ResponseMatrix.build_matrix_M import getM_matrix
 from Shynt.api_py.ResponseMatrix.build_matrix_R import getResponseMatrix_byGroup
@@ -72,7 +74,7 @@ def solveKeff(coarse_nodes, energy_g, xs, probabilities, mesh_info):
         j_in = solveGlobalProblem(energy_g, inverse_IMR, matrixM, j_source) 
 
         # Solving local problem:
-        phi_new = solveLocalProblem(matrixS, j_in, phi_source, energy_g, all_regions_order, coarse_nodes_regions)
+        phi_new = solveLocalProblem(matrixS, j_in, phi_source, energy_g)
         
         
         # power iteration
@@ -85,6 +87,7 @@ def solveKeff(coarse_nodes, energy_g, xs, probabilities, mesh_info):
         print("keff converge:", k_converge)
         print("phi converge:", phi_converge)
         print("iteration:", iteration)
+        print(f"fuel: {phi_new[0][0]}, cool: {phi_new[0][1]}")
 
         
         # update for the next iteration
@@ -93,17 +96,11 @@ def solveKeff(coarse_nodes, energy_g, xs, probabilities, mesh_info):
         
         iteration += 1
         
-        
 
-    
-    plt.plot(k_array)
-    plt.savefig("k_convergence.png")
-
-    normalize_flux()
-
+    phi_output = order_flux_output(phi_new, mesh_info, energy_g)
     return  {
         "keff": keff_new, 
-        "phi": order_flux_output(phi_new, mesh_info, energy_g),
+        "phi": phi_output,
         "keff_convergence": k_converge,
         "flux_convergence": phi_converge, 
         "iterations": iteration
@@ -138,68 +135,6 @@ def calculate_inverseIMR(matrixM, matrixR, energy_g):
         inverse = np.linalg.inv(matrix_to_invert)
         inv[g] = inverse
     return inv
-
-
-def solveGlobalProblem(energy_g, inverse_IMR, mM, j_source_byGroup):
-    
-    j_in = {}
-    for g in range(energy_g):
-        j_source = j_source_byGroup[g]
-        inverse = inverse_IMR[g]
-        inverse_x_mM = np.matmul(inverse, mM)
-        j_in_vector = np.matmul(inverse_x_mM, j_source)
-        j_in[g] = j_in_vector
-
-    return j_in
-
-
-def solveLocalProblem(matrixS_n, jin_system, phi_source_n, energy_g, regions_order, coarse_nodes_regions):
-    """
-        It gives the solution of the flux by enery group
-
-        phi = {
-            g0: array([]),
-            g1: array([]),
-            .
-            .
-            gG: array([])
-        }
-
-        Each array contains the scalar flux for all the regions 
-        in the system
-    """
-    
-    phi = {}
-    
-    
-    for g in range(energy_g):
-        mS = matrixS_n[g]
-        phi_source = phi_source_n[g]
-        jin = jin_system[g]
-        mS_x_jin = np.matmul(mS, jin)
-
-        local_solution = mS_x_jin + phi_source
-        phi[g] = local_solution
-    
-    # order phi in a dictionary
-    # region_phi = {}
-    # numRegions = len(regions_order)
-    # for r in range(numRegions):
-    #     reg_id = regions_order[r]
-    #     region_phi[reg_id] = []
-    #     array = np.zeros(energy_g)
-    #     for g in range(energy_g):
-    #         array[g] = phi[g][r]    
-    #     region_phi[reg_id] = array
-    
-    # ordered_phi = {
-    #     n_id: {} for n_id in coarse_nodes_regions.keys()
-    # }
-    # for n_id, regions in coarse_nodes_regions.items():
-    #     for r in regions:
-    #         ordered_phi[n_id][r] = region_phi[r]
-
-    return phi
 
 
 def power_iteration(phi_new, phi_prev, keff_prev, fission_source, all_regions, energy_g):

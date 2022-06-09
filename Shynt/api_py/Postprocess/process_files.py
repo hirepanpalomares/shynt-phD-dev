@@ -7,7 +7,7 @@ import serpentTools
 import csv
 
 
-def regions_to_plot(root_universe, line=""):
+def regions_to_plot(root_universe, line="", code=""):
     # Extracting cells from root model
     model_cell = root_universe.model_cell
     outside_cell = root_universe.outside_cell
@@ -35,9 +35,15 @@ def regions_to_plot(root_universe, line=""):
     regions_to_plot = []
     for c_id in coarse_nodes_to_plot:
         regions_mat_rel = mesh_info.region_type_rel[c_id]
-        regions_to_plot.append(regions_mat_rel["other"])
-        regions_to_plot.append(regions_mat_rel["fuel"])
-        regions_to_plot.append(regions_mat_rel["other"])
+        if code == "serp":
+            regions_to_plot.append(regions_mat_rel["other"])
+            regions_to_plot.append(regions_mat_rel["fuel"])
+            regions_to_plot.append(regions_mat_rel["other"])
+        elif code == "hybrid":
+            regions_to_plot.append(regions_mat_rel["fuel"])
+            regions_to_plot.append(regions_mat_rel["other"])
+            regions_to_plot.append(regions_mat_rel["fuel"])
+
     return regions_to_plot
 
 
@@ -59,7 +65,8 @@ def get_flux_from_shynt_output(out_file):
                 energ = int(row[0].split()[0]) - 1
                 coarse_id = int(row[1].split()[0])
                 reg_id = int(row[2].split()[0])
-                scalar_flux = float(row[3].split()[0])    
+                material = row[3].split()[0]
+                scalar_flux = float(row[4].split()[0])    
                 if energ not in flux:
                     flux[energ] = {
                         reg_id: scalar_flux

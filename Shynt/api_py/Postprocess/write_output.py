@@ -62,13 +62,15 @@ class OutputFile:
 
     def __write_flux(self):
         numEner = self.root.energy_grid.energy_groups
-        coarse_nodes = self.mesh_info.coarse_order
+        coarse_nodes_ids = self.mesh_info.coarse_order
+        fine_nodes = self.root.model_cell.local_mesh.fine_nodes
 
-        statement = "Energy_group, coarse_node_id, region_id, scalar_flux\n"
+        statement = "Energy_group, coarse_node_id, region_id, material, scalar_flux\n"
         for g in range(numEner):
-            for n_id in coarse_nodes:
+            for n_id in coarse_nodes_ids:
                 for reg_id, flux in self.flux[g][n_id].items():
-                    statement += f"{g+1}, {n_id}, {reg_id}, {flux}\n"
+                    mat = fine_nodes[n_id][reg_id].cell.content.name
+                    statement += f"{g+1}, {n_id}, {reg_id}, {mat}, {flux}\n"
         return statement
 
 

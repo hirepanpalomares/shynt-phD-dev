@@ -20,7 +20,7 @@ def generate_serpent_files(root, different_node_bins):
 
 
     
-    cells_to_files = {bin_[0] : global_cells[bin_[0]] for bin_ in different_node_bins}
+    coarse_nodes_to_files = {bin_[0] : global_cells[bin_[0]] for bin_ in different_node_bins}
     # print(cells_to_files)
     """
         The cells in cells_to_files are generated with a new geometry, i.e. 
@@ -28,13 +28,20 @@ def generate_serpent_files(root, different_node_bins):
         This is to avoid problems with the surfaces that are used in the 
         detectors
     """
-    
-    det_files, xs_files = input_generator(cells_to_files, local_cells, root)
+    coarse_nodes_clones = {}
+    new_center_x, new_center_y = 0.0, 0.0
+    for coarse_id, coarse_node in coarse_nodes_to_files.items():
+        cell_clone = coarse_node.cell.clone(new_center_x, new_center_y)
+        coarse_node.cell = cell_clone
+        coarse_nodes_clones[coarse_id] = coarse_node
+        
+
+    det_files, xs_files = input_generator(coarse_nodes_to_files, local_cells, root)
 
     return det_files, xs_files
 
 
-def input_generator(coarse_nodes, regions, root):
+def input_generator(coarse_nodes, fine_nodes, root):
     """
     
     Function to generate the input files from a given set of cells,
@@ -59,24 +66,24 @@ def input_generator(coarse_nodes, regions, root):
     det_files = {}
     xs_files = {}
     
-    for id_, global_cell in coarse_nodes.items():
-        # Loop for every global_cell
+    for coarse_id, coarse_node in coarse_nodes.items():
+        # Loop for every coarse_node
         # print("-"*100)
-        det_files[id_] = []
-        # print("", id_)
+        det_files[coarse_id] = []
+        # print("", coarse_id)
 
-        global_cell.cell.universe = 0 # To adjust the root universe to the cell under study
-        global_cell_dir = f"{serpent_dir}/global_cell_type{id_}"
+        coarse_node.cell.universe = 0 # To adjust the root universe to the cell under study
+        global_cell_dir = f"{serpent_dir}/global_cell_type{coarse_id}"
         try:
             assert(os.path.isdir(global_cell_dir))
         except AssertionError:
             os.mkdir(global_cell_dir)
         
-        for reg_id, reg in regions[id_].items():
+        for reg_id, reg in fine_nodes[coarse_id].items():
             # Loop for local cells (a different file for every 
             # material or, in this case, each local cell to write 
             # the detectors.
-            # The detectors for each local cell hasve to be defined
+            # The detectors for each local cell have to be defined
             # in different serpent files to avoid calculation error 
             # with the flags
             cell = reg.cell
@@ -88,9 +95,9 @@ def input_generator(coarse_nodes, regions, root):
             else:
                 type_reg = "coolant" # TODO change this part to "other" and change specific parameter in SerpentFile
             serpent_input = SerpentInputFileRmmDetectors(
-                global_cell, 
-                id_, 
-                regions[id_], 
+                coarse_node, 
+                coarse_id, 
+                fine_nodes[coarse_id], 
                 name_file,
                 root.libraries, 
                 root.energy_grid, 
@@ -100,14 +107,14 @@ def input_generator(coarse_nodes, regions, root):
                 specific=f"region_{type_reg}"
 
             )
-            det_files[id_].append(serpent_input)
+            det_files[coarse_id].append(serpent_input)
 
         # Additional file for the surfaces
         name_surfaces_file = f"{global_cell_dir}/det_local_problem_surfaces.serp"
         surf_serpent_input = SerpentInputFileRmmDetectors(
-                global_cell, 
-                id_, 
-                regions[id_], 
+                coarse_node, 
+                coarse_id, 
+                fine_nodes[coarse_id], 
                 name_surfaces_file,
                 root.libraries, 
                 root.energy_grid, 
@@ -115,13 +122,13 @@ def input_generator(coarse_nodes, regions, root):
                 type_detectors="surfaces",
                 specific="surfaces"
             )
-        det_files[id_].append(surf_serpent_input)
+        det_files[coarse_id].append(surf_serpent_input)
         # Additional file for cross section generation
         name_file = f"{global_cell_dir}/XS_generation.serp"
         xs_serpent_input = SerpentInputFileRmmDetectors(
-            global_cell, 
-            id_, 
-            regions[id_], 
+            coarse_node, 
+            coarse_id, 
+            fine_nodes[coarse_id], 
             name_file,
             root.libraries, 
             root.energy_grid, 
@@ -129,7 +136,7 @@ def input_generator(coarse_nodes, regions, root):
             type_detectors="xs_generation",
         )
     
-        xs_files[id_] = xs_serpent_input
+        xs_files[coarse_id] = xs_serpent_input
     
     return det_files, xs_files
 

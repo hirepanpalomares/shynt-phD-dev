@@ -1,5 +1,7 @@
 
 
+
+
 class Region:
     """ Class used to represent the euclidean space generated
     by the intersection of two SurfaceSides.
@@ -48,7 +50,7 @@ class Region:
         ----------
         
         """
-        return Region(self, other, operation="and")
+        return Region(child1=self, child2=other, operation="and")
 
     def __neg__(self):
         pass
@@ -75,8 +77,17 @@ class Region:
         
         return inverted
         
-    
-    def destructure_region(self, surfaces_sides=[]):
+    def clone(self, new_center_x, new_center_y):
+        try: 
+            assert isinstance(self.child1, SurfaceSide)
+            assert isinstance(self.child2, SurfaceSide)
+            child1_clone = self.child1.clone(new_center_x, new_center_y)
+            child2_clone = self.child2.clone(new_center_x, new_center_y)
+            return child1_clone & child2_clone
+        except AssertionError:
+            raise SystemError
+
+    def destructure_region(self, surfaces_sides={}):
         """
             Recursive function to destructurate a region in its surfaces sides
 
@@ -85,12 +96,14 @@ class Region:
         """
         if isinstance(self, SurfaceSide):
             # Base case
-            if self not in surfaces_sides:
-                surfaces_sides.append(self)
+            surfaces_sides.update({
+                self.surface.id: self
+            })
+
             return surfaces_sides
         elif isinstance(self, Region):
-            surfaces_sides = self.child1.destructure_region(surfaces_sides)
-            surfaces_sides = self.child2.destructure_region(surfaces_sides)
+            surfaces_sides.update(self.child1.destructure_region({}))
+            surfaces_sides.update(self.child2.destructure_region({}))
             return surfaces_sides
 
     def translate(self, trans_vector):
@@ -125,16 +138,20 @@ class Region:
         """
         syntax = ""
         side = lambda s: s if s == "-" else ""
-        # For the regions:
-        if isinstance(self, SurfaceSide):
-            syntax += f" {side(self.side)}{self.surface.id}"
-        elif isinstance(self, Region):
-            # find the surfaces sides of the Region
-            surfaces_sides = self.destructure_region(surfaces_sides=[])
-            for surf_side in surfaces_sides:
-                syntax += f" {side(surf_side.side)}{surf_side.surface.id}"
-        syntax += ""
+        # # For the regions:
+        # if isinstance(self, SurfaceSide):
+        #     syntax += f" {side(self.side)}{self.surface.id}"
+        # elif isinstance(self, Region):
+        #     # find the surfaces sides of the Region
+        #     surfaces_sides = self.destructure_region()
+        #     for s_id, surf_side in surfaces_sides.items():
+        #         syntax += f" {side(surf_side.side)}{surf_side.surface.id}"
+        # syntax += ""
+        surface_sides = self.destructure_region({})
+        for s_id, ss in surface_sides.items():
+            syntax += f" {side(ss.side)}{s_id} "
         return syntax
+
 
     @property
     def operation(self):
@@ -147,8 +164,18 @@ class SurfaceSide(Region):
         self.surface = surface
         self.side = side
 
+    def clone(self, new_center_x, new_center_y):
+        surface_clone = self.surface.clone(new_center_x, new_center_y)
+        if self.side == "-":
+            return -surface_clone
+        elif self.side == "+":
+            return +surface_clone
+        else:
+            raise SystemError
+
     def __and__(self, other):
-        """Class overloading operator __and__
+        """
+        Class overloading operator __and__
 
         This overwrites the parent class method so it performs the
         boolean addition between two SurfaceSide classes.

@@ -1,5 +1,5 @@
-from .utilities import get_equal_nodes
-from .utilities import get_surface_equality
+from .utilities_geometry import get_equal_nodes
+from .utilities_geometry import get_surface_equality
 
 
 
