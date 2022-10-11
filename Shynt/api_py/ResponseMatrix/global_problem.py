@@ -11,3 +11,9 @@ def solveGlobalProblem(energy_g, inverse_IMR, mM, j_source_byGroup):
         j_in[g] = j_in_vector
 
     return j_in
+
+def solveGlobalProblem_sys(energy_g, inverse_IMR, mM, j_source):
+    inverse_x_mM = np.matmul(inverse_IMR, mM)
+    j_in_vector = np.matmul(inverse_x_mM, j_source)
+
+    return j_in_vector

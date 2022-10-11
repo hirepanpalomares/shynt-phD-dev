@@ -1,0 +1,487 @@
+set title ""
+
+mat inner_fuel sum tmp 453
+92235.03c 0.000101116
+92238.03c 0.019868
+94238.03c 1.78056e-05
+94239.03c 0.00245592
+94240.03c 0.000732245
+94241.03c 0.000196866
+94242.03c 6.83261e-05
+95241.03c 4.8183e-05
+8016.03c 0.046507
+
+mat na_coolant sum tmp 453
+Na-23.03c 0.0237718
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+
+
+set bc 2
+
+set pop 2000 500 250
+
+ene fast_ene_str_0 1 1.00000000E-10 7.49000000E-04
+ene fast_ene_str_1 1 7.49000000E-04 1.50000000E-02
+ene fast_ene_str_2 1 1.50000000E-02 4.09000000E-02
+ene fast_ene_str_3 1 4.09000000E-02 1.11000000E-01
+ene fast_ene_str_4 1 1.11000000E-01 3.02000000E-01
+ene fast_ene_str_5 1 3.02000000E-01 8.21000000E-01
+ene fast_ene_str_6 1 8.21000000E-01 2.23000000E+00
+ene fast_ene_str_7 1 2.23000000E+00 2.00000000E+01
+
+
+surf 2 hexxc 0.00000000  0.00000000 0.49129500
+surf 1 cyl 0.00000000 0.00000000 0.35700000
+
+cell 4 0 fill pin_inner -2 
+cell 1 pin_inner inner_fuel  -1 
+cell 2 pin_inner na_coolant  1  -2 
+cell 8 0 outside 2 
+
+% ----- Surface for detectors
+surf 3 py 0.49129500
+trans s 3 0.0 0.0 0.0 0.0 0.0 30
+surf 4 px 0.49129500
+surf 5 py -0.49129500
+trans s 5 0.0 0.0 0.0 0.0 0.0 -30
+surf 6 py -0.49129500
+trans s 6 0.0 0.0 0.0 0.0 0.0 30
+surf 7 px -0.49129500
+surf 8 py 0.49129500
+trans s 8 0.0 0.0 0.0 0.0 0.0 -30
+
+% ----- Detectors ------
+det surface_3_jin_g0 ds 3 -1 de fast_ene_str_0   dfl 1 1 
+det surface_4_jin_g0 ds 4 -1 de fast_ene_str_0   dfl 2 1 
+det surface_5_jin_g0 ds 5 1 de fast_ene_str_0   dfl 3 1 
+det surface_6_jin_g0 ds 6 1 de fast_ene_str_0   dfl 4 1 
+det surface_7_jin_g0 ds 7 1 de fast_ene_str_0   dfl 5 1 
+det surface_8_jin_g0 ds 8 -1 de fast_ene_str_0   dfl 6 1 
+det surface_3_jin_g1 ds 3 -1 de fast_ene_str_1   dfl 7 1 
+det surface_4_jin_g1 ds 4 -1 de fast_ene_str_1   dfl 8 1 
+det surface_5_jin_g1 ds 5 1 de fast_ene_str_1   dfl 9 1 
+det surface_6_jin_g1 ds 6 1 de fast_ene_str_1   dfl 10 1 
+det surface_7_jin_g1 ds 7 1 de fast_ene_str_1   dfl 11 1 
+det surface_8_jin_g1 ds 8 -1 de fast_ene_str_1   dfl 12 1 
+det surface_3_jin_g2 ds 3 -1 de fast_ene_str_2   dfl 13 1 
+det surface_4_jin_g2 ds 4 -1 de fast_ene_str_2   dfl 14 1 
+det surface_5_jin_g2 ds 5 1 de fast_ene_str_2   dfl 15 1 
+det surface_6_jin_g2 ds 6 1 de fast_ene_str_2   dfl 16 1 
+det surface_7_jin_g2 ds 7 1 de fast_ene_str_2   dfl 17 1 
+det surface_8_jin_g2 ds 8 -1 de fast_ene_str_2   dfl 18 1 
+det surface_3_jin_g3 ds 3 -1 de fast_ene_str_3   dfl 19 1 
+det surface_4_jin_g3 ds 4 -1 de fast_ene_str_3   dfl 20 1 
+det surface_5_jin_g3 ds 5 1 de fast_ene_str_3   dfl 21 1 
+det surface_6_jin_g3 ds 6 1 de fast_ene_str_3   dfl 22 1 
+det surface_7_jin_g3 ds 7 1 de fast_ene_str_3   dfl 23 1 
+det surface_8_jin_g3 ds 8 -1 de fast_ene_str_3   dfl 24 1 
+det surface_3_jin_g4 ds 3 -1 de fast_ene_str_4   dfl 25 1 
+det surface_4_jin_g4 ds 4 -1 de fast_ene_str_4   dfl 26 1 
+det surface_5_jin_g4 ds 5 1 de fast_ene_str_4   dfl 27 1 
+det surface_6_jin_g4 ds 6 1 de fast_ene_str_4   dfl 28 1 
+det surface_7_jin_g4 ds 7 1 de fast_ene_str_4   dfl 29 1 
+det surface_8_jin_g4 ds 8 -1 de fast_ene_str_4   dfl 30 1 
+det surface_3_jin_g5 ds 3 -1 de fast_ene_str_5   dfl 31 1 
+det surface_4_jin_g5 ds 4 -1 de fast_ene_str_5   dfl 32 1 
+det surface_5_jin_g5 ds 5 1 de fast_ene_str_5   dfl 33 1 
+det surface_6_jin_g5 ds 6 1 de fast_ene_str_5   dfl 34 1 
+det surface_7_jin_g5 ds 7 1 de fast_ene_str_5   dfl 35 1 
+det surface_8_jin_g5 ds 8 -1 de fast_ene_str_5   dfl 36 1 
+det surface_3_jin_g6 ds 3 -1 de fast_ene_str_6   dfl 37 1 
+det surface_4_jin_g6 ds 4 -1 de fast_ene_str_6   dfl 38 1 
+det surface_5_jin_g6 ds 5 1 de fast_ene_str_6   dfl 39 1 
+det surface_6_jin_g6 ds 6 1 de fast_ene_str_6   dfl 40 1 
+det surface_7_jin_g6 ds 7 1 de fast_ene_str_6   dfl 41 1 
+det surface_8_jin_g6 ds 8 -1 de fast_ene_str_6   dfl 42 1 
+det surface_3_jin_g7 ds 3 -1 de fast_ene_str_7   dfl 43 1 
+det surface_4_jin_g7 ds 4 -1 de fast_ene_str_7   dfl 44 1 
+det surface_5_jin_g7 ds 5 1 de fast_ene_str_7   dfl 45 1 
+det surface_6_jin_g7 ds 6 1 de fast_ene_str_7   dfl 46 1 
+det surface_7_jin_g7 ds 7 1 de fast_ene_str_7   dfl 47 1 
+det surface_8_jin_g7 ds 8 -1 de fast_ene_str_7   dfl 48 1 
+det surface_3_to_reg1_g0  de fast_ene_str_0 dr -1 inner_fuel dc 1   dfl 1 2  dfl 1 0 
+det surface_4_to_reg1_g0  de fast_ene_str_0 dr -1 inner_fuel dc 1   dfl 2 2  dfl 2 0 
+det surface_5_to_reg1_g0  de fast_ene_str_0 dr -1 inner_fuel dc 1   dfl 3 2  dfl 3 0 
+det surface_6_to_reg1_g0  de fast_ene_str_0 dr -1 inner_fuel dc 1   dfl 4 2  dfl 4 0 
+det surface_7_to_reg1_g0  de fast_ene_str_0 dr -1 inner_fuel dc 1   dfl 5 2  dfl 5 0 
+det surface_8_to_reg1_g0  de fast_ene_str_0 dr -1 inner_fuel dc 1   dfl 6 2  dfl 6 0 
+det surface_3_to_reg1_g1  de fast_ene_str_1 dr -1 inner_fuel dc 1   dfl 7 2  dfl 7 0 
+det surface_4_to_reg1_g1  de fast_ene_str_1 dr -1 inner_fuel dc 1   dfl 8 2  dfl 8 0 
+det surface_5_to_reg1_g1  de fast_ene_str_1 dr -1 inner_fuel dc 1   dfl 9 2  dfl 9 0 
+det surface_6_to_reg1_g1  de fast_ene_str_1 dr -1 inner_fuel dc 1   dfl 10 2  dfl 10 0 
+det surface_7_to_reg1_g1  de fast_ene_str_1 dr -1 inner_fuel dc 1   dfl 11 2  dfl 11 0 
+det surface_8_to_reg1_g1  de fast_ene_str_1 dr -1 inner_fuel dc 1   dfl 12 2  dfl 12 0 
+det surface_3_to_reg1_g2  de fast_ene_str_2 dr -1 inner_fuel dc 1   dfl 13 2  dfl 13 0 
+det surface_4_to_reg1_g2  de fast_ene_str_2 dr -1 inner_fuel dc 1   dfl 14 2  dfl 14 0 
+det surface_5_to_reg1_g2  de fast_ene_str_2 dr -1 inner_fuel dc 1   dfl 15 2  dfl 15 0 
+det surface_6_to_reg1_g2  de fast_ene_str_2 dr -1 inner_fuel dc 1   dfl 16 2  dfl 16 0 
+det surface_7_to_reg1_g2  de fast_ene_str_2 dr -1 inner_fuel dc 1   dfl 17 2  dfl 17 0 
+det surface_8_to_reg1_g2  de fast_ene_str_2 dr -1 inner_fuel dc 1   dfl 18 2  dfl 18 0 
+det surface_3_to_reg1_g3  de fast_ene_str_3 dr -1 inner_fuel dc 1   dfl 19 2  dfl 19 0 
+det surface_4_to_reg1_g3  de fast_ene_str_3 dr -1 inner_fuel dc 1   dfl 20 2  dfl 20 0 
+det surface_5_to_reg1_g3  de fast_ene_str_3 dr -1 inner_fuel dc 1   dfl 21 2  dfl 21 0 
+det surface_6_to_reg1_g3  de fast_ene_str_3 dr -1 inner_fuel dc 1   dfl 22 2  dfl 22 0 
+det surface_7_to_reg1_g3  de fast_ene_str_3 dr -1 inner_fuel dc 1   dfl 23 2  dfl 23 0 
+det surface_8_to_reg1_g3  de fast_ene_str_3 dr -1 inner_fuel dc 1   dfl 24 2  dfl 24 0 
+det surface_3_to_reg1_g4  de fast_ene_str_4 dr -1 inner_fuel dc 1   dfl 25 2  dfl 25 0 
+det surface_4_to_reg1_g4  de fast_ene_str_4 dr -1 inner_fuel dc 1   dfl 26 2  dfl 26 0 
+det surface_5_to_reg1_g4  de fast_ene_str_4 dr -1 inner_fuel dc 1   dfl 27 2  dfl 27 0 
+det surface_6_to_reg1_g4  de fast_ene_str_4 dr -1 inner_fuel dc 1   dfl 28 2  dfl 28 0 
+det surface_7_to_reg1_g4  de fast_ene_str_4 dr -1 inner_fuel dc 1   dfl 29 2  dfl 29 0 
+det surface_8_to_reg1_g4  de fast_ene_str_4 dr -1 inner_fuel dc 1   dfl 30 2  dfl 30 0 
+det surface_3_to_reg1_g5  de fast_ene_str_5 dr -1 inner_fuel dc 1   dfl 31 2  dfl 31 0 
+det surface_4_to_reg1_g5  de fast_ene_str_5 dr -1 inner_fuel dc 1   dfl 32 2  dfl 32 0 
+det surface_5_to_reg1_g5  de fast_ene_str_5 dr -1 inner_fuel dc 1   dfl 33 2  dfl 33 0 
+det surface_6_to_reg1_g5  de fast_ene_str_5 dr -1 inner_fuel dc 1   dfl 34 2  dfl 34 0 
+det surface_7_to_reg1_g5  de fast_ene_str_5 dr -1 inner_fuel dc 1   dfl 35 2  dfl 35 0 
+det surface_8_to_reg1_g5  de fast_ene_str_5 dr -1 inner_fuel dc 1   dfl 36 2  dfl 36 0 
+det surface_3_to_reg1_g6  de fast_ene_str_6 dr -1 inner_fuel dc 1   dfl 37 2  dfl 37 0 
+det surface_4_to_reg1_g6  de fast_ene_str_6 dr -1 inner_fuel dc 1   dfl 38 2  dfl 38 0 
+det surface_5_to_reg1_g6  de fast_ene_str_6 dr -1 inner_fuel dc 1   dfl 39 2  dfl 39 0 
+det surface_6_to_reg1_g6  de fast_ene_str_6 dr -1 inner_fuel dc 1   dfl 40 2  dfl 40 0 
+det surface_7_to_reg1_g6  de fast_ene_str_6 dr -1 inner_fuel dc 1   dfl 41 2  dfl 41 0 
+det surface_8_to_reg1_g6  de fast_ene_str_6 dr -1 inner_fuel dc 1   dfl 42 2  dfl 42 0 
+det surface_3_to_reg1_g7  de fast_ene_str_7 dr -1 inner_fuel dc 1   dfl 43 2  dfl 43 0 
+det surface_4_to_reg1_g7  de fast_ene_str_7 dr -1 inner_fuel dc 1   dfl 44 2  dfl 44 0 
+det surface_5_to_reg1_g7  de fast_ene_str_7 dr -1 inner_fuel dc 1   dfl 45 2  dfl 45 0 
+det surface_6_to_reg1_g7  de fast_ene_str_7 dr -1 inner_fuel dc 1   dfl 46 2  dfl 46 0 
+det surface_7_to_reg1_g7  de fast_ene_str_7 dr -1 inner_fuel dc 1   dfl 47 2  dfl 47 0 
+det surface_8_to_reg1_g7  de fast_ene_str_7 dr -1 inner_fuel dc 1   dfl 48 2  dfl 48 0 
+det surface_3_to_reg2_g0  de fast_ene_str_0 dr -1 na_coolant dc 2   dfl 1 2  dfl 1 0 
+det surface_4_to_reg2_g0  de fast_ene_str_0 dr -1 na_coolant dc 2   dfl 2 2  dfl 2 0 
+det surface_5_to_reg2_g0  de fast_ene_str_0 dr -1 na_coolant dc 2   dfl 3 2  dfl 3 0 
+det surface_6_to_reg2_g0  de fast_ene_str_0 dr -1 na_coolant dc 2   dfl 4 2  dfl 4 0 
+det surface_7_to_reg2_g0  de fast_ene_str_0 dr -1 na_coolant dc 2   dfl 5 2  dfl 5 0 
+det surface_8_to_reg2_g0  de fast_ene_str_0 dr -1 na_coolant dc 2   dfl 6 2  dfl 6 0 
+det surface_3_to_reg2_g1  de fast_ene_str_1 dr -1 na_coolant dc 2   dfl 7 2  dfl 7 0 
+det surface_4_to_reg2_g1  de fast_ene_str_1 dr -1 na_coolant dc 2   dfl 8 2  dfl 8 0 
+det surface_5_to_reg2_g1  de fast_ene_str_1 dr -1 na_coolant dc 2   dfl 9 2  dfl 9 0 
+det surface_6_to_reg2_g1  de fast_ene_str_1 dr -1 na_coolant dc 2   dfl 10 2  dfl 10 0 
+det surface_7_to_reg2_g1  de fast_ene_str_1 dr -1 na_coolant dc 2   dfl 11 2  dfl 11 0 
+det surface_8_to_reg2_g1  de fast_ene_str_1 dr -1 na_coolant dc 2   dfl 12 2  dfl 12 0 
+det surface_3_to_reg2_g2  de fast_ene_str_2 dr -1 na_coolant dc 2   dfl 13 2  dfl 13 0 
+det surface_4_to_reg2_g2  de fast_ene_str_2 dr -1 na_coolant dc 2   dfl 14 2  dfl 14 0 
+det surface_5_to_reg2_g2  de fast_ene_str_2 dr -1 na_coolant dc 2   dfl 15 2  dfl 15 0 
+det surface_6_to_reg2_g2  de fast_ene_str_2 dr -1 na_coolant dc 2   dfl 16 2  dfl 16 0 
+det surface_7_to_reg2_g2  de fast_ene_str_2 dr -1 na_coolant dc 2   dfl 17 2  dfl 17 0 
+det surface_8_to_reg2_g2  de fast_ene_str_2 dr -1 na_coolant dc 2   dfl 18 2  dfl 18 0 
+det surface_3_to_reg2_g3  de fast_ene_str_3 dr -1 na_coolant dc 2   dfl 19 2  dfl 19 0 
+det surface_4_to_reg2_g3  de fast_ene_str_3 dr -1 na_coolant dc 2   dfl 20 2  dfl 20 0 
+det surface_5_to_reg2_g3  de fast_ene_str_3 dr -1 na_coolant dc 2   dfl 21 2  dfl 21 0 
+det surface_6_to_reg2_g3  de fast_ene_str_3 dr -1 na_coolant dc 2   dfl 22 2  dfl 22 0 
+det surface_7_to_reg2_g3  de fast_ene_str_3 dr -1 na_coolant dc 2   dfl 23 2  dfl 23 0 
+det surface_8_to_reg2_g3  de fast_ene_str_3 dr -1 na_coolant dc 2   dfl 24 2  dfl 24 0 
+det surface_3_to_reg2_g4  de fast_ene_str_4 dr -1 na_coolant dc 2   dfl 25 2  dfl 25 0 
+det surface_4_to_reg2_g4  de fast_ene_str_4 dr -1 na_coolant dc 2   dfl 26 2  dfl 26 0 
+det surface_5_to_reg2_g4  de fast_ene_str_4 dr -1 na_coolant dc 2   dfl 27 2  dfl 27 0 
+det surface_6_to_reg2_g4  de fast_ene_str_4 dr -1 na_coolant dc 2   dfl 28 2  dfl 28 0 
+det surface_7_to_reg2_g4  de fast_ene_str_4 dr -1 na_coolant dc 2   dfl 29 2  dfl 29 0 
+det surface_8_to_reg2_g4  de fast_ene_str_4 dr -1 na_coolant dc 2   dfl 30 2  dfl 30 0 
+det surface_3_to_reg2_g5  de fast_ene_str_5 dr -1 na_coolant dc 2   dfl 31 2  dfl 31 0 
+det surface_4_to_reg2_g5  de fast_ene_str_5 dr -1 na_coolant dc 2   dfl 32 2  dfl 32 0 
+det surface_5_to_reg2_g5  de fast_ene_str_5 dr -1 na_coolant dc 2   dfl 33 2  dfl 33 0 
+det surface_6_to_reg2_g5  de fast_ene_str_5 dr -1 na_coolant dc 2   dfl 34 2  dfl 34 0 
+det surface_7_to_reg2_g5  de fast_ene_str_5 dr -1 na_coolant dc 2   dfl 35 2  dfl 35 0 
+det surface_8_to_reg2_g5  de fast_ene_str_5 dr -1 na_coolant dc 2   dfl 36 2  dfl 36 0 
+det surface_3_to_reg2_g6  de fast_ene_str_6 dr -1 na_coolant dc 2   dfl 37 2  dfl 37 0 
+det surface_4_to_reg2_g6  de fast_ene_str_6 dr -1 na_coolant dc 2   dfl 38 2  dfl 38 0 
+det surface_5_to_reg2_g6  de fast_ene_str_6 dr -1 na_coolant dc 2   dfl 39 2  dfl 39 0 
+det surface_6_to_reg2_g6  de fast_ene_str_6 dr -1 na_coolant dc 2   dfl 40 2  dfl 40 0 
+det surface_7_to_reg2_g6  de fast_ene_str_6 dr -1 na_coolant dc 2   dfl 41 2  dfl 41 0 
+det surface_8_to_reg2_g6  de fast_ene_str_6 dr -1 na_coolant dc 2   dfl 42 2  dfl 42 0 
+det surface_3_to_reg2_g7  de fast_ene_str_7 dr -1 na_coolant dc 2   dfl 43 2  dfl 43 0 
+det surface_4_to_reg2_g7  de fast_ene_str_7 dr -1 na_coolant dc 2   dfl 44 2  dfl 44 0 
+det surface_5_to_reg2_g7  de fast_ene_str_7 dr -1 na_coolant dc 2   dfl 45 2  dfl 45 0 
+det surface_6_to_reg2_g7  de fast_ene_str_7 dr -1 na_coolant dc 2   dfl 46 2  dfl 46 0 
+det surface_7_to_reg2_g7  de fast_ene_str_7 dr -1 na_coolant dc 2   dfl 47 2  dfl 47 0 
+det surface_8_to_reg2_g7  de fast_ene_str_7 dr -1 na_coolant dc 2   dfl 48 2  dfl 48 0 
+det surface_3_to_surf3_g0 ds 3 1 de fast_ene_str_0   dfl 1 2  dfl 1 0 
+det surface_3_to_surf4_g0 ds 4 1 de fast_ene_str_0   dfl 1 2  dfl 1 0 
+det surface_3_to_surf5_g0 ds 5 -1 de fast_ene_str_0   dfl 1 2  dfl 1 0 
+det surface_3_to_surf6_g0 ds 6 -1 de fast_ene_str_0   dfl 1 2  dfl 1 0 
+det surface_3_to_surf7_g0 ds 7 -1 de fast_ene_str_0   dfl 1 2  dfl 1 0 
+det surface_3_to_surf8_g0 ds 8 1 de fast_ene_str_0   dfl 1 2  dfl 1 0 
+det surface_4_to_surf3_g0 ds 3 1 de fast_ene_str_0   dfl 2 2  dfl 2 0 
+det surface_4_to_surf4_g0 ds 4 1 de fast_ene_str_0   dfl 2 2  dfl 2 0 
+det surface_4_to_surf5_g0 ds 5 -1 de fast_ene_str_0   dfl 2 2  dfl 2 0 
+det surface_4_to_surf6_g0 ds 6 -1 de fast_ene_str_0   dfl 2 2  dfl 2 0 
+det surface_4_to_surf7_g0 ds 7 -1 de fast_ene_str_0   dfl 2 2  dfl 2 0 
+det surface_4_to_surf8_g0 ds 8 1 de fast_ene_str_0   dfl 2 2  dfl 2 0 
+det surface_5_to_surf3_g0 ds 3 1 de fast_ene_str_0   dfl 3 2  dfl 3 0 
+det surface_5_to_surf4_g0 ds 4 1 de fast_ene_str_0   dfl 3 2  dfl 3 0 
+det surface_5_to_surf5_g0 ds 5 -1 de fast_ene_str_0   dfl 3 2  dfl 3 0 
+det surface_5_to_surf6_g0 ds 6 -1 de fast_ene_str_0   dfl 3 2  dfl 3 0 
+det surface_5_to_surf7_g0 ds 7 -1 de fast_ene_str_0   dfl 3 2  dfl 3 0 
+det surface_5_to_surf8_g0 ds 8 1 de fast_ene_str_0   dfl 3 2  dfl 3 0 
+det surface_6_to_surf3_g0 ds 3 1 de fast_ene_str_0   dfl 4 2  dfl 4 0 
+det surface_6_to_surf4_g0 ds 4 1 de fast_ene_str_0   dfl 4 2  dfl 4 0 
+det surface_6_to_surf5_g0 ds 5 -1 de fast_ene_str_0   dfl 4 2  dfl 4 0 
+det surface_6_to_surf6_g0 ds 6 -1 de fast_ene_str_0   dfl 4 2  dfl 4 0 
+det surface_6_to_surf7_g0 ds 7 -1 de fast_ene_str_0   dfl 4 2  dfl 4 0 
+det surface_6_to_surf8_g0 ds 8 1 de fast_ene_str_0   dfl 4 2  dfl 4 0 
+det surface_7_to_surf3_g0 ds 3 1 de fast_ene_str_0   dfl 5 2  dfl 5 0 
+det surface_7_to_surf4_g0 ds 4 1 de fast_ene_str_0   dfl 5 2  dfl 5 0 
+det surface_7_to_surf5_g0 ds 5 -1 de fast_ene_str_0   dfl 5 2  dfl 5 0 
+det surface_7_to_surf6_g0 ds 6 -1 de fast_ene_str_0   dfl 5 2  dfl 5 0 
+det surface_7_to_surf7_g0 ds 7 -1 de fast_ene_str_0   dfl 5 2  dfl 5 0 
+det surface_7_to_surf8_g0 ds 8 1 de fast_ene_str_0   dfl 5 2  dfl 5 0 
+det surface_8_to_surf3_g0 ds 3 1 de fast_ene_str_0   dfl 6 2  dfl 6 0 
+det surface_8_to_surf4_g0 ds 4 1 de fast_ene_str_0   dfl 6 2  dfl 6 0 
+det surface_8_to_surf5_g0 ds 5 -1 de fast_ene_str_0   dfl 6 2  dfl 6 0 
+det surface_8_to_surf6_g0 ds 6 -1 de fast_ene_str_0   dfl 6 2  dfl 6 0 
+det surface_8_to_surf7_g0 ds 7 -1 de fast_ene_str_0   dfl 6 2  dfl 6 0 
+det surface_8_to_surf8_g0 ds 8 1 de fast_ene_str_0   dfl 6 2  dfl 6 0 
+det surface_3_to_surf3_g1 ds 3 1 de fast_ene_str_1   dfl 7 2  dfl 7 0 
+det surface_3_to_surf4_g1 ds 4 1 de fast_ene_str_1   dfl 7 2  dfl 7 0 
+det surface_3_to_surf5_g1 ds 5 -1 de fast_ene_str_1   dfl 7 2  dfl 7 0 
+det surface_3_to_surf6_g1 ds 6 -1 de fast_ene_str_1   dfl 7 2  dfl 7 0 
+det surface_3_to_surf7_g1 ds 7 -1 de fast_ene_str_1   dfl 7 2  dfl 7 0 
+det surface_3_to_surf8_g1 ds 8 1 de fast_ene_str_1   dfl 7 2  dfl 7 0 
+det surface_4_to_surf3_g1 ds 3 1 de fast_ene_str_1   dfl 8 2  dfl 8 0 
+det surface_4_to_surf4_g1 ds 4 1 de fast_ene_str_1   dfl 8 2  dfl 8 0 
+det surface_4_to_surf5_g1 ds 5 -1 de fast_ene_str_1   dfl 8 2  dfl 8 0 
+det surface_4_to_surf6_g1 ds 6 -1 de fast_ene_str_1   dfl 8 2  dfl 8 0 
+det surface_4_to_surf7_g1 ds 7 -1 de fast_ene_str_1   dfl 8 2  dfl 8 0 
+det surface_4_to_surf8_g1 ds 8 1 de fast_ene_str_1   dfl 8 2  dfl 8 0 
+det surface_5_to_surf3_g1 ds 3 1 de fast_ene_str_1   dfl 9 2  dfl 9 0 
+det surface_5_to_surf4_g1 ds 4 1 de fast_ene_str_1   dfl 9 2  dfl 9 0 
+det surface_5_to_surf5_g1 ds 5 -1 de fast_ene_str_1   dfl 9 2  dfl 9 0 
+det surface_5_to_surf6_g1 ds 6 -1 de fast_ene_str_1   dfl 9 2  dfl 9 0 
+det surface_5_to_surf7_g1 ds 7 -1 de fast_ene_str_1   dfl 9 2  dfl 9 0 
+det surface_5_to_surf8_g1 ds 8 1 de fast_ene_str_1   dfl 9 2  dfl 9 0 
+det surface_6_to_surf3_g1 ds 3 1 de fast_ene_str_1   dfl 10 2  dfl 10 0 
+det surface_6_to_surf4_g1 ds 4 1 de fast_ene_str_1   dfl 10 2  dfl 10 0 
+det surface_6_to_surf5_g1 ds 5 -1 de fast_ene_str_1   dfl 10 2  dfl 10 0 
+det surface_6_to_surf6_g1 ds 6 -1 de fast_ene_str_1   dfl 10 2  dfl 10 0 
+det surface_6_to_surf7_g1 ds 7 -1 de fast_ene_str_1   dfl 10 2  dfl 10 0 
+det surface_6_to_surf8_g1 ds 8 1 de fast_ene_str_1   dfl 10 2  dfl 10 0 
+det surface_7_to_surf3_g1 ds 3 1 de fast_ene_str_1   dfl 11 2  dfl 11 0 
+det surface_7_to_surf4_g1 ds 4 1 de fast_ene_str_1   dfl 11 2  dfl 11 0 
+det surface_7_to_surf5_g1 ds 5 -1 de fast_ene_str_1   dfl 11 2  dfl 11 0 
+det surface_7_to_surf6_g1 ds 6 -1 de fast_ene_str_1   dfl 11 2  dfl 11 0 
+det surface_7_to_surf7_g1 ds 7 -1 de fast_ene_str_1   dfl 11 2  dfl 11 0 
+det surface_7_to_surf8_g1 ds 8 1 de fast_ene_str_1   dfl 11 2  dfl 11 0 
+det surface_8_to_surf3_g1 ds 3 1 de fast_ene_str_1   dfl 12 2  dfl 12 0 
+det surface_8_to_surf4_g1 ds 4 1 de fast_ene_str_1   dfl 12 2  dfl 12 0 
+det surface_8_to_surf5_g1 ds 5 -1 de fast_ene_str_1   dfl 12 2  dfl 12 0 
+det surface_8_to_surf6_g1 ds 6 -1 de fast_ene_str_1   dfl 12 2  dfl 12 0 
+det surface_8_to_surf7_g1 ds 7 -1 de fast_ene_str_1   dfl 12 2  dfl 12 0 
+det surface_8_to_surf8_g1 ds 8 1 de fast_ene_str_1   dfl 12 2  dfl 12 0 
+det surface_3_to_surf3_g2 ds 3 1 de fast_ene_str_2   dfl 13 2  dfl 13 0 
+det surface_3_to_surf4_g2 ds 4 1 de fast_ene_str_2   dfl 13 2  dfl 13 0 
+det surface_3_to_surf5_g2 ds 5 -1 de fast_ene_str_2   dfl 13 2  dfl 13 0 
+det surface_3_to_surf6_g2 ds 6 -1 de fast_ene_str_2   dfl 13 2  dfl 13 0 
+det surface_3_to_surf7_g2 ds 7 -1 de fast_ene_str_2   dfl 13 2  dfl 13 0 
+det surface_3_to_surf8_g2 ds 8 1 de fast_ene_str_2   dfl 13 2  dfl 13 0 
+det surface_4_to_surf3_g2 ds 3 1 de fast_ene_str_2   dfl 14 2  dfl 14 0 
+det surface_4_to_surf4_g2 ds 4 1 de fast_ene_str_2   dfl 14 2  dfl 14 0 
+det surface_4_to_surf5_g2 ds 5 -1 de fast_ene_str_2   dfl 14 2  dfl 14 0 
+det surface_4_to_surf6_g2 ds 6 -1 de fast_ene_str_2   dfl 14 2  dfl 14 0 
+det surface_4_to_surf7_g2 ds 7 -1 de fast_ene_str_2   dfl 14 2  dfl 14 0 
+det surface_4_to_surf8_g2 ds 8 1 de fast_ene_str_2   dfl 14 2  dfl 14 0 
+det surface_5_to_surf3_g2 ds 3 1 de fast_ene_str_2   dfl 15 2  dfl 15 0 
+det surface_5_to_surf4_g2 ds 4 1 de fast_ene_str_2   dfl 15 2  dfl 15 0 
+det surface_5_to_surf5_g2 ds 5 -1 de fast_ene_str_2   dfl 15 2  dfl 15 0 
+det surface_5_to_surf6_g2 ds 6 -1 de fast_ene_str_2   dfl 15 2  dfl 15 0 
+det surface_5_to_surf7_g2 ds 7 -1 de fast_ene_str_2   dfl 15 2  dfl 15 0 
+det surface_5_to_surf8_g2 ds 8 1 de fast_ene_str_2   dfl 15 2  dfl 15 0 
+det surface_6_to_surf3_g2 ds 3 1 de fast_ene_str_2   dfl 16 2  dfl 16 0 
+det surface_6_to_surf4_g2 ds 4 1 de fast_ene_str_2   dfl 16 2  dfl 16 0 
+det surface_6_to_surf5_g2 ds 5 -1 de fast_ene_str_2   dfl 16 2  dfl 16 0 
+det surface_6_to_surf6_g2 ds 6 -1 de fast_ene_str_2   dfl 16 2  dfl 16 0 
+det surface_6_to_surf7_g2 ds 7 -1 de fast_ene_str_2   dfl 16 2  dfl 16 0 
+det surface_6_to_surf8_g2 ds 8 1 de fast_ene_str_2   dfl 16 2  dfl 16 0 
+det surface_7_to_surf3_g2 ds 3 1 de fast_ene_str_2   dfl 17 2  dfl 17 0 
+det surface_7_to_surf4_g2 ds 4 1 de fast_ene_str_2   dfl 17 2  dfl 17 0 
+det surface_7_to_surf5_g2 ds 5 -1 de fast_ene_str_2   dfl 17 2  dfl 17 0 
+det surface_7_to_surf6_g2 ds 6 -1 de fast_ene_str_2   dfl 17 2  dfl 17 0 
+det surface_7_to_surf7_g2 ds 7 -1 de fast_ene_str_2   dfl 17 2  dfl 17 0 
+det surface_7_to_surf8_g2 ds 8 1 de fast_ene_str_2   dfl 17 2  dfl 17 0 
+det surface_8_to_surf3_g2 ds 3 1 de fast_ene_str_2   dfl 18 2  dfl 18 0 
+det surface_8_to_surf4_g2 ds 4 1 de fast_ene_str_2   dfl 18 2  dfl 18 0 
+det surface_8_to_surf5_g2 ds 5 -1 de fast_ene_str_2   dfl 18 2  dfl 18 0 
+det surface_8_to_surf6_g2 ds 6 -1 de fast_ene_str_2   dfl 18 2  dfl 18 0 
+det surface_8_to_surf7_g2 ds 7 -1 de fast_ene_str_2   dfl 18 2  dfl 18 0 
+det surface_8_to_surf8_g2 ds 8 1 de fast_ene_str_2   dfl 18 2  dfl 18 0 
+det surface_3_to_surf3_g3 ds 3 1 de fast_ene_str_3   dfl 19 2  dfl 19 0 
+det surface_3_to_surf4_g3 ds 4 1 de fast_ene_str_3   dfl 19 2  dfl 19 0 
+det surface_3_to_surf5_g3 ds 5 -1 de fast_ene_str_3   dfl 19 2  dfl 19 0 
+det surface_3_to_surf6_g3 ds 6 -1 de fast_ene_str_3   dfl 19 2  dfl 19 0 
+det surface_3_to_surf7_g3 ds 7 -1 de fast_ene_str_3   dfl 19 2  dfl 19 0 
+det surface_3_to_surf8_g3 ds 8 1 de fast_ene_str_3   dfl 19 2  dfl 19 0 
+det surface_4_to_surf3_g3 ds 3 1 de fast_ene_str_3   dfl 20 2  dfl 20 0 
+det surface_4_to_surf4_g3 ds 4 1 de fast_ene_str_3   dfl 20 2  dfl 20 0 
+det surface_4_to_surf5_g3 ds 5 -1 de fast_ene_str_3   dfl 20 2  dfl 20 0 
+det surface_4_to_surf6_g3 ds 6 -1 de fast_ene_str_3   dfl 20 2  dfl 20 0 
+det surface_4_to_surf7_g3 ds 7 -1 de fast_ene_str_3   dfl 20 2  dfl 20 0 
+det surface_4_to_surf8_g3 ds 8 1 de fast_ene_str_3   dfl 20 2  dfl 20 0 
+det surface_5_to_surf3_g3 ds 3 1 de fast_ene_str_3   dfl 21 2  dfl 21 0 
+det surface_5_to_surf4_g3 ds 4 1 de fast_ene_str_3   dfl 21 2  dfl 21 0 
+det surface_5_to_surf5_g3 ds 5 -1 de fast_ene_str_3   dfl 21 2  dfl 21 0 
+det surface_5_to_surf6_g3 ds 6 -1 de fast_ene_str_3   dfl 21 2  dfl 21 0 
+det surface_5_to_surf7_g3 ds 7 -1 de fast_ene_str_3   dfl 21 2  dfl 21 0 
+det surface_5_to_surf8_g3 ds 8 1 de fast_ene_str_3   dfl 21 2  dfl 21 0 
+det surface_6_to_surf3_g3 ds 3 1 de fast_ene_str_3   dfl 22 2  dfl 22 0 
+det surface_6_to_surf4_g3 ds 4 1 de fast_ene_str_3   dfl 22 2  dfl 22 0 
+det surface_6_to_surf5_g3 ds 5 -1 de fast_ene_str_3   dfl 22 2  dfl 22 0 
+det surface_6_to_surf6_g3 ds 6 -1 de fast_ene_str_3   dfl 22 2  dfl 22 0 
+det surface_6_to_surf7_g3 ds 7 -1 de fast_ene_str_3   dfl 22 2  dfl 22 0 
+det surface_6_to_surf8_g3 ds 8 1 de fast_ene_str_3   dfl 22 2  dfl 22 0 
+det surface_7_to_surf3_g3 ds 3 1 de fast_ene_str_3   dfl 23 2  dfl 23 0 
+det surface_7_to_surf4_g3 ds 4 1 de fast_ene_str_3   dfl 23 2  dfl 23 0 
+det surface_7_to_surf5_g3 ds 5 -1 de fast_ene_str_3   dfl 23 2  dfl 23 0 
+det surface_7_to_surf6_g3 ds 6 -1 de fast_ene_str_3   dfl 23 2  dfl 23 0 
+det surface_7_to_surf7_g3 ds 7 -1 de fast_ene_str_3   dfl 23 2  dfl 23 0 
+det surface_7_to_surf8_g3 ds 8 1 de fast_ene_str_3   dfl 23 2  dfl 23 0 
+det surface_8_to_surf3_g3 ds 3 1 de fast_ene_str_3   dfl 24 2  dfl 24 0 
+det surface_8_to_surf4_g3 ds 4 1 de fast_ene_str_3   dfl 24 2  dfl 24 0 
+det surface_8_to_surf5_g3 ds 5 -1 de fast_ene_str_3   dfl 24 2  dfl 24 0 
+det surface_8_to_surf6_g3 ds 6 -1 de fast_ene_str_3   dfl 24 2  dfl 24 0 
+det surface_8_to_surf7_g3 ds 7 -1 de fast_ene_str_3   dfl 24 2  dfl 24 0 
+det surface_8_to_surf8_g3 ds 8 1 de fast_ene_str_3   dfl 24 2  dfl 24 0 
+det surface_3_to_surf3_g4 ds 3 1 de fast_ene_str_4   dfl 25 2  dfl 25 0 
+det surface_3_to_surf4_g4 ds 4 1 de fast_ene_str_4   dfl 25 2  dfl 25 0 
+det surface_3_to_surf5_g4 ds 5 -1 de fast_ene_str_4   dfl 25 2  dfl 25 0 
+det surface_3_to_surf6_g4 ds 6 -1 de fast_ene_str_4   dfl 25 2  dfl 25 0 
+det surface_3_to_surf7_g4 ds 7 -1 de fast_ene_str_4   dfl 25 2  dfl 25 0 
+det surface_3_to_surf8_g4 ds 8 1 de fast_ene_str_4   dfl 25 2  dfl 25 0 
+det surface_4_to_surf3_g4 ds 3 1 de fast_ene_str_4   dfl 26 2  dfl 26 0 
+det surface_4_to_surf4_g4 ds 4 1 de fast_ene_str_4   dfl 26 2  dfl 26 0 
+det surface_4_to_surf5_g4 ds 5 -1 de fast_ene_str_4   dfl 26 2  dfl 26 0 
+det surface_4_to_surf6_g4 ds 6 -1 de fast_ene_str_4   dfl 26 2  dfl 26 0 
+det surface_4_to_surf7_g4 ds 7 -1 de fast_ene_str_4   dfl 26 2  dfl 26 0 
+det surface_4_to_surf8_g4 ds 8 1 de fast_ene_str_4   dfl 26 2  dfl 26 0 
+det surface_5_to_surf3_g4 ds 3 1 de fast_ene_str_4   dfl 27 2  dfl 27 0 
+det surface_5_to_surf4_g4 ds 4 1 de fast_ene_str_4   dfl 27 2  dfl 27 0 
+det surface_5_to_surf5_g4 ds 5 -1 de fast_ene_str_4   dfl 27 2  dfl 27 0 
+det surface_5_to_surf6_g4 ds 6 -1 de fast_ene_str_4   dfl 27 2  dfl 27 0 
+det surface_5_to_surf7_g4 ds 7 -1 de fast_ene_str_4   dfl 27 2  dfl 27 0 
+det surface_5_to_surf8_g4 ds 8 1 de fast_ene_str_4   dfl 27 2  dfl 27 0 
+det surface_6_to_surf3_g4 ds 3 1 de fast_ene_str_4   dfl 28 2  dfl 28 0 
+det surface_6_to_surf4_g4 ds 4 1 de fast_ene_str_4   dfl 28 2  dfl 28 0 
+det surface_6_to_surf5_g4 ds 5 -1 de fast_ene_str_4   dfl 28 2  dfl 28 0 
+det surface_6_to_surf6_g4 ds 6 -1 de fast_ene_str_4   dfl 28 2  dfl 28 0 
+det surface_6_to_surf7_g4 ds 7 -1 de fast_ene_str_4   dfl 28 2  dfl 28 0 
+det surface_6_to_surf8_g4 ds 8 1 de fast_ene_str_4   dfl 28 2  dfl 28 0 
+det surface_7_to_surf3_g4 ds 3 1 de fast_ene_str_4   dfl 29 2  dfl 29 0 
+det surface_7_to_surf4_g4 ds 4 1 de fast_ene_str_4   dfl 29 2  dfl 29 0 
+det surface_7_to_surf5_g4 ds 5 -1 de fast_ene_str_4   dfl 29 2  dfl 29 0 
+det surface_7_to_surf6_g4 ds 6 -1 de fast_ene_str_4   dfl 29 2  dfl 29 0 
+det surface_7_to_surf7_g4 ds 7 -1 de fast_ene_str_4   dfl 29 2  dfl 29 0 
+det surface_7_to_surf8_g4 ds 8 1 de fast_ene_str_4   dfl 29 2  dfl 29 0 
+det surface_8_to_surf3_g4 ds 3 1 de fast_ene_str_4   dfl 30 2  dfl 30 0 
+det surface_8_to_surf4_g4 ds 4 1 de fast_ene_str_4   dfl 30 2  dfl 30 0 
+det surface_8_to_surf5_g4 ds 5 -1 de fast_ene_str_4   dfl 30 2  dfl 30 0 
+det surface_8_to_surf6_g4 ds 6 -1 de fast_ene_str_4   dfl 30 2  dfl 30 0 
+det surface_8_to_surf7_g4 ds 7 -1 de fast_ene_str_4   dfl 30 2  dfl 30 0 
+det surface_8_to_surf8_g4 ds 8 1 de fast_ene_str_4   dfl 30 2  dfl 30 0 
+det surface_3_to_surf3_g5 ds 3 1 de fast_ene_str_5   dfl 31 2  dfl 31 0 
+det surface_3_to_surf4_g5 ds 4 1 de fast_ene_str_5   dfl 31 2  dfl 31 0 
+det surface_3_to_surf5_g5 ds 5 -1 de fast_ene_str_5   dfl 31 2  dfl 31 0 
+det surface_3_to_surf6_g5 ds 6 -1 de fast_ene_str_5   dfl 31 2  dfl 31 0 
+det surface_3_to_surf7_g5 ds 7 -1 de fast_ene_str_5   dfl 31 2  dfl 31 0 
+det surface_3_to_surf8_g5 ds 8 1 de fast_ene_str_5   dfl 31 2  dfl 31 0 
+det surface_4_to_surf3_g5 ds 3 1 de fast_ene_str_5   dfl 32 2  dfl 32 0 
+det surface_4_to_surf4_g5 ds 4 1 de fast_ene_str_5   dfl 32 2  dfl 32 0 
+det surface_4_to_surf5_g5 ds 5 -1 de fast_ene_str_5   dfl 32 2  dfl 32 0 
+det surface_4_to_surf6_g5 ds 6 -1 de fast_ene_str_5   dfl 32 2  dfl 32 0 
+det surface_4_to_surf7_g5 ds 7 -1 de fast_ene_str_5   dfl 32 2  dfl 32 0 
+det surface_4_to_surf8_g5 ds 8 1 de fast_ene_str_5   dfl 32 2  dfl 32 0 
+det surface_5_to_surf3_g5 ds 3 1 de fast_ene_str_5   dfl 33 2  dfl 33 0 
+det surface_5_to_surf4_g5 ds 4 1 de fast_ene_str_5   dfl 33 2  dfl 33 0 
+det surface_5_to_surf5_g5 ds 5 -1 de fast_ene_str_5   dfl 33 2  dfl 33 0 
+det surface_5_to_surf6_g5 ds 6 -1 de fast_ene_str_5   dfl 33 2  dfl 33 0 
+det surface_5_to_surf7_g5 ds 7 -1 de fast_ene_str_5   dfl 33 2  dfl 33 0 
+det surface_5_to_surf8_g5 ds 8 1 de fast_ene_str_5   dfl 33 2  dfl 33 0 
+det surface_6_to_surf3_g5 ds 3 1 de fast_ene_str_5   dfl 34 2  dfl 34 0 
+det surface_6_to_surf4_g5 ds 4 1 de fast_ene_str_5   dfl 34 2  dfl 34 0 
+det surface_6_to_surf5_g5 ds 5 -1 de fast_ene_str_5   dfl 34 2  dfl 34 0 
+det surface_6_to_surf6_g5 ds 6 -1 de fast_ene_str_5   dfl 34 2  dfl 34 0 
+det surface_6_to_surf7_g5 ds 7 -1 de fast_ene_str_5   dfl 34 2  dfl 34 0 
+det surface_6_to_surf8_g5 ds 8 1 de fast_ene_str_5   dfl 34 2  dfl 34 0 
+det surface_7_to_surf3_g5 ds 3 1 de fast_ene_str_5   dfl 35 2  dfl 35 0 
+det surface_7_to_surf4_g5 ds 4 1 de fast_ene_str_5   dfl 35 2  dfl 35 0 
+det surface_7_to_surf5_g5 ds 5 -1 de fast_ene_str_5   dfl 35 2  dfl 35 0 
+det surface_7_to_surf6_g5 ds 6 -1 de fast_ene_str_5   dfl 35 2  dfl 35 0 
+det surface_7_to_surf7_g5 ds 7 -1 de fast_ene_str_5   dfl 35 2  dfl 35 0 
+det surface_7_to_surf8_g5 ds 8 1 de fast_ene_str_5   dfl 35 2  dfl 35 0 
+det surface_8_to_surf3_g5 ds 3 1 de fast_ene_str_5   dfl 36 2  dfl 36 0 
+det surface_8_to_surf4_g5 ds 4 1 de fast_ene_str_5   dfl 36 2  dfl 36 0 
+det surface_8_to_surf5_g5 ds 5 -1 de fast_ene_str_5   dfl 36 2  dfl 36 0 
+det surface_8_to_surf6_g5 ds 6 -1 de fast_ene_str_5   dfl 36 2  dfl 36 0 
+det surface_8_to_surf7_g5 ds 7 -1 de fast_ene_str_5   dfl 36 2  dfl 36 0 
+det surface_8_to_surf8_g5 ds 8 1 de fast_ene_str_5   dfl 36 2  dfl 36 0 
+det surface_3_to_surf3_g6 ds 3 1 de fast_ene_str_6   dfl 37 2  dfl 37 0 
+det surface_3_to_surf4_g6 ds 4 1 de fast_ene_str_6   dfl 37 2  dfl 37 0 
+det surface_3_to_surf5_g6 ds 5 -1 de fast_ene_str_6   dfl 37 2  dfl 37 0 
+det surface_3_to_surf6_g6 ds 6 -1 de fast_ene_str_6   dfl 37 2  dfl 37 0 
+det surface_3_to_surf7_g6 ds 7 -1 de fast_ene_str_6   dfl 37 2  dfl 37 0 
+det surface_3_to_surf8_g6 ds 8 1 de fast_ene_str_6   dfl 37 2  dfl 37 0 
+det surface_4_to_surf3_g6 ds 3 1 de fast_ene_str_6   dfl 38 2  dfl 38 0 
+det surface_4_to_surf4_g6 ds 4 1 de fast_ene_str_6   dfl 38 2  dfl 38 0 
+det surface_4_to_surf5_g6 ds 5 -1 de fast_ene_str_6   dfl 38 2  dfl 38 0 
+det surface_4_to_surf6_g6 ds 6 -1 de fast_ene_str_6   dfl 38 2  dfl 38 0 
+det surface_4_to_surf7_g6 ds 7 -1 de fast_ene_str_6   dfl 38 2  dfl 38 0 
+det surface_4_to_surf8_g6 ds 8 1 de fast_ene_str_6   dfl 38 2  dfl 38 0 
+det surface_5_to_surf3_g6 ds 3 1 de fast_ene_str_6   dfl 39 2  dfl 39 0 
+det surface_5_to_surf4_g6 ds 4 1 de fast_ene_str_6   dfl 39 2  dfl 39 0 
+det surface_5_to_surf5_g6 ds 5 -1 de fast_ene_str_6   dfl 39 2  dfl 39 0 
+det surface_5_to_surf6_g6 ds 6 -1 de fast_ene_str_6   dfl 39 2  dfl 39 0 
+det surface_5_to_surf7_g6 ds 7 -1 de fast_ene_str_6   dfl 39 2  dfl 39 0 
+det surface_5_to_surf8_g6 ds 8 1 de fast_ene_str_6   dfl 39 2  dfl 39 0 
+det surface_6_to_surf3_g6 ds 3 1 de fast_ene_str_6   dfl 40 2  dfl 40 0 
+det surface_6_to_surf4_g6 ds 4 1 de fast_ene_str_6   dfl 40 2  dfl 40 0 
+det surface_6_to_surf5_g6 ds 5 -1 de fast_ene_str_6   dfl 40 2  dfl 40 0 
+det surface_6_to_surf6_g6 ds 6 -1 de fast_ene_str_6   dfl 40 2  dfl 40 0 
+det surface_6_to_surf7_g6 ds 7 -1 de fast_ene_str_6   dfl 40 2  dfl 40 0 
+det surface_6_to_surf8_g6 ds 8 1 de fast_ene_str_6   dfl 40 2  dfl 40 0 
+det surface_7_to_surf3_g6 ds 3 1 de fast_ene_str_6   dfl 41 2  dfl 41 0 
+det surface_7_to_surf4_g6 ds 4 1 de fast_ene_str_6   dfl 41 2  dfl 41 0 
+det surface_7_to_surf5_g6 ds 5 -1 de fast_ene_str_6   dfl 41 2  dfl 41 0 
+det surface_7_to_surf6_g6 ds 6 -1 de fast_ene_str_6   dfl 41 2  dfl 41 0 
+det surface_7_to_surf7_g6 ds 7 -1 de fast_ene_str_6   dfl 41 2  dfl 41 0 
+det surface_7_to_surf8_g6 ds 8 1 de fast_ene_str_6   dfl 41 2  dfl 41 0 
+det surface_8_to_surf3_g6 ds 3 1 de fast_ene_str_6   dfl 42 2  dfl 42 0 
+det surface_8_to_surf4_g6 ds 4 1 de fast_ene_str_6   dfl 42 2  dfl 42 0 
+det surface_8_to_surf5_g6 ds 5 -1 de fast_ene_str_6   dfl 42 2  dfl 42 0 
+det surface_8_to_surf6_g6 ds 6 -1 de fast_ene_str_6   dfl 42 2  dfl 42 0 
+det surface_8_to_surf7_g6 ds 7 -1 de fast_ene_str_6   dfl 42 2  dfl 42 0 
+det surface_8_to_surf8_g6 ds 8 1 de fast_ene_str_6   dfl 42 2  dfl 42 0 
+det surface_3_to_surf3_g7 ds 3 1 de fast_ene_str_7   dfl 43 2  dfl 43 0 
+det surface_3_to_surf4_g7 ds 4 1 de fast_ene_str_7   dfl 43 2  dfl 43 0 
+det surface_3_to_surf5_g7 ds 5 -1 de fast_ene_str_7   dfl 43 2  dfl 43 0 
+det surface_3_to_surf6_g7 ds 6 -1 de fast_ene_str_7   dfl 43 2  dfl 43 0 
+det surface_3_to_surf7_g7 ds 7 -1 de fast_ene_str_7   dfl 43 2  dfl 43 0 
+det surface_3_to_surf8_g7 ds 8 1 de fast_ene_str_7   dfl 43 2  dfl 43 0 
+det surface_4_to_surf3_g7 ds 3 1 de fast_ene_str_7   dfl 44 2  dfl 44 0 
+det surface_4_to_surf4_g7 ds 4 1 de fast_ene_str_7   dfl 44 2  dfl 44 0 
+det surface_4_to_surf5_g7 ds 5 -1 de fast_ene_str_7   dfl 44 2  dfl 44 0 
+det surface_4_to_surf6_g7 ds 6 -1 de fast_ene_str_7   dfl 44 2  dfl 44 0 
+det surface_4_to_surf7_g7 ds 7 -1 de fast_ene_str_7   dfl 44 2  dfl 44 0 
+det surface_4_to_surf8_g7 ds 8 1 de fast_ene_str_7   dfl 44 2  dfl 44 0 
+det surface_5_to_surf3_g7 ds 3 1 de fast_ene_str_7   dfl 45 2  dfl 45 0 
+det surface_5_to_surf4_g7 ds 4 1 de fast_ene_str_7   dfl 45 2  dfl 45 0 
+det surface_5_to_surf5_g7 ds 5 -1 de fast_ene_str_7   dfl 45 2  dfl 45 0 
+det surface_5_to_surf6_g7 ds 6 -1 de fast_ene_str_7   dfl 45 2  dfl 45 0 
+det surface_5_to_surf7_g7 ds 7 -1 de fast_ene_str_7   dfl 45 2  dfl 45 0 
+det surface_5_to_surf8_g7 ds 8 1 de fast_ene_str_7   dfl 45 2  dfl 45 0 
+det surface_6_to_surf3_g7 ds 3 1 de fast_ene_str_7   dfl 46 2  dfl 46 0 
+det surface_6_to_surf4_g7 ds 4 1 de fast_ene_str_7   dfl 46 2  dfl 46 0 
+det surface_6_to_surf5_g7 ds 5 -1 de fast_ene_str_7   dfl 46 2  dfl 46 0 
+det surface_6_to_surf6_g7 ds 6 -1 de fast_ene_str_7   dfl 46 2  dfl 46 0 
+det surface_6_to_surf7_g7 ds 7 -1 de fast_ene_str_7   dfl 46 2  dfl 46 0 
+det surface_6_to_surf8_g7 ds 8 1 de fast_ene_str_7   dfl 46 2  dfl 46 0 
+det surface_7_to_surf3_g7 ds 3 1 de fast_ene_str_7   dfl 47 2  dfl 47 0 
+det surface_7_to_surf4_g7 ds 4 1 de fast_ene_str_7   dfl 47 2  dfl 47 0 
+det surface_7_to_surf5_g7 ds 5 -1 de fast_ene_str_7   dfl 47 2  dfl 47 0 
+det surface_7_to_surf6_g7 ds 6 -1 de fast_ene_str_7   dfl 47 2  dfl 47 0 
+det surface_7_to_surf7_g7 ds 7 -1 de fast_ene_str_7   dfl 47 2  dfl 47 0 
+det surface_7_to_surf8_g7 ds 8 1 de fast_ene_str_7   dfl 47 2  dfl 47 0 
+det surface_8_to_surf3_g7 ds 3 1 de fast_ene_str_7   dfl 48 2  dfl 48 0 
+det surface_8_to_surf4_g7 ds 4 1 de fast_ene_str_7   dfl 48 2  dfl 48 0 
+det surface_8_to_surf5_g7 ds 5 -1 de fast_ene_str_7   dfl 48 2  dfl 48 0 
+det surface_8_to_surf6_g7 ds 6 -1 de fast_ene_str_7   dfl 48 2  dfl 48 0 
+det surface_8_to_surf7_g7 ds 7 -1 de fast_ene_str_7   dfl 48 2  dfl 48 0 
+det surface_8_to_surf8_g7 ds 8 1 de fast_ene_str_7   dfl 48 2  dfl 48 0 

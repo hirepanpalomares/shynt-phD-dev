@@ -58,8 +58,8 @@ model_cell = Shynt.cells.Cell("pin_problem", region=-outer_boundary, fill=pin_fu
 
 
 # still a cell
+# meshed_model_cell = make_mesh(model_cell, global_mesh_type="pin_cell", local_mesh_type="material")
 meshed_model_cell = make_mesh(model_cell, global_mesh_type="pin_cell", local_mesh_type="material")
-
 
 # Outside world
 outside_cell = Shynt.cells.Cell("outside_world", region=+outer_boundary)

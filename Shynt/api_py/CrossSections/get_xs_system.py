@@ -1,6 +1,11 @@
 from .extractor_xs import get_cross_sections
 
-def get_xs_data(mesh_info, coarse_nodes, fine_nodes, energy_g, xs_inputs):
+def get_xs_data(mesh_info, root, xs_inputs):
+    energy_g = root.energy_grid.energy_groups
+    model_cell = root.model_cell
+    coarse_nodes = model_cell.global_mesh.coarse_nodes
+    fine_nodes = model_cell.local_mesh.fine_nodes
+
     xs = get_cross_sections(energy_g, xs_inputs, fine_nodes)
 
     # filling probabilities to every similar node

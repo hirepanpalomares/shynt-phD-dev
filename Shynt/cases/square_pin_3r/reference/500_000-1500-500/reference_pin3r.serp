@@ -1,0 +1,49 @@
+set title ""
+
+mat fuel1 -10.424 
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c -0.1185
+
+mat clading -7.5 
+40090.06c 0.507061
+40091.06c 0.111809
+40092.06c 0.172781
+40094.06c 0.178911
+40096.06c 0.0294379
+
+mat coolant -0.44376 moder lwtr 1001
+8016.06c 0.33333
+1001.06c 0.66667
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+therm lwtr lwj3.11t
+
+set bc 2
+
+set pop 500000 1500 500
+
+ene 2groups_grid 1 0 6.25e-07 20 
+
+
+surf 3 sqc 0.00000000 0.00000000 0.64750000
+surf 1 cyl 0.00000000 0.00000000 0.43350000
+surf 2 cyl 0.00000000 0.00000000 0.55000000
+
+cell 4 0 fill pin_fuel1 -3 
+cell 1 pin_fuel1 fuel1  -1 
+cell 2 pin_fuel1 clading  1  -2 
+cell 3 pin_fuel1 coolant  2  -3 
+cell 7 0 outside 3 
+
+% ----- Surface for detectors
+
+
+% ----- Detectors ------
+det 1 dm fuel1    dc 1  de 2groups_grid dv 0.59037516
+det 2 dm clading  dc 2  de 2groups_grid dv 0.3599466177
+det 3 dm coolant  dc 3  de 2groups_grid dv 0.7266932223
+
+
+% 1.677025

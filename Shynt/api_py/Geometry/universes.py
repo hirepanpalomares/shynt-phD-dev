@@ -1,9 +1,11 @@
 
+from codecs import latin_1_decode
+from hashlib import new
 from Shynt.api_py.Geometry.regions import Region
 from collections import namedtuple
 
 from Shynt.api_py.Geometry.utilities_geometry import get_all_surfaces_in_a_cell, get_all_surfaces_in_a_universe
-from Shynt.api_py.Geometry.utilities_geometry import declaring_pin_by_cells
+from Shynt.api_py.Geometry.utilities_geometry import declare_pin_by_cells
 
 from .surfaces import *
 from Shynt.api_py.materials import Material
@@ -12,7 +14,7 @@ from Shynt.api_py.Geometry import surfaces
 
 
 
-class Universe(object):
+class Universe:
     """
         Universe class
     """
@@ -222,7 +224,7 @@ class Pin(Universe):
                     universe=self.name
                 )
                 level = Level(cell.id, None)
-                super().add_cells(cell)
+                super().add_cell(cell)
                 self.__pin_levels.append(level)
             else:
                 # surroundings of a pin with levels in it already
@@ -404,7 +406,7 @@ class Lattice(Universe):
         super().__init__(name)
 
 
-class SquareLattice(Lattice):
+class SquareLattice(Universe):
     """
         Square lattice universe composed by an array of fuel pins
         or universes
@@ -427,7 +429,7 @@ class SquareLattice(Lattice):
             ----------------------------------------------------------------
         """
         super().__init__(name)
-        self.__left_bottom = left_bottom
+        self.__left_bottom = left_bottom # corner
         self.__pitch = pitch
         self.__array = array
         self.__check_rows_cols()
@@ -435,6 +437,7 @@ class SquareLattice(Lattice):
         self.__nx = len(array[0])
         self.__pin_types = self.__get_different_pins()
         self.__num_pin_types = len(self.__pin_types)
+        self.centers = None
         self.__create_cells()
     
     def __check_rows_cols(self):
@@ -452,6 +455,7 @@ class SquareLattice(Lattice):
         num_rows = len(self.__array)
         num_cols = len(self.__array[0])
         new_array = [[0 for i in range(num_cols)] for j in range(num_rows)]
+        new_array_centers = [[0 for i in range(num_cols)] for j in range(num_rows)]
         
         x_lb, y_lb = self.__left_bottom
         top_left = (x_lb, y_lb + num_rows*self.__pitch)
@@ -494,13 +498,14 @@ class SquareLattice(Lattice):
                 
     
                 closing_surface = InfiniteSquareCylinderZ(new_center_x, new_center_y, self.__pitch*0.5)
-                pin_replacement = declaring_pin_by_cells(
+                pin_replacement = declare_pin_by_cells(
                     materials, radius, new_center_x, new_center_y, pin.name, closing_surface
                 )
                 new_pin = Cell(region=-closing_surface, fill=pin_replacement, universe=self.name)
                 super().add_cell(new_pin)
                 new_array[r][p] = new_pin.id # order of the cells from column by column
                 pin_replacement = None
+                new_array_centers[r][p] = (new_center_x, new_center_y)
                 # del pin
                 # del pin_replacement
                 # del new_pin
@@ -508,6 +513,7 @@ class SquareLattice(Lattice):
 
 
         self.array = new_array
+        self.centers = new_array_centers
 
     def __get_different_pins(self):
         types = []
@@ -516,6 +522,44 @@ class SquareLattice(Lattice):
                 if pin.name not in types:
                     types.append(pin.name)
         return types
+
+    def expand(self, scale_f):
+        """
+            This method expands the lattice moving the centers of the cells 
+            by a scaling factor - only for plotting purposes
+        """
+        lattice_cells = super().cells
+        new_pitch = self.__pitch * scale_f
+        
+
+        # Expand the lattice moving the centers, starting from the left top corner
+        first_cell_center = self.centers[0][0]
+        center_x, center_y = first_cell_center
+        center_x *= scale_f
+        center_y *= scale_f
+        new_centers = []
+        for y in range(self.__ny):
+            row_centers = []
+            for x in range(self.__nx):
+                row_centers.append((center_x, center_y))
+                center_x += new_pitch
+            new_centers.append(row_centers)
+            center_x = first_cell_center[0] * scale_f
+            center_y -= new_pitch
+            row_centers = []
+        
+        # now change the centers of every pin_cell of the lattice
+        self.centers = new_centers
+        for y in range(self.__ny):
+            for x in range(self.__nx):
+                pin_cell = lattice_cells[self.__array[y][x]]
+                internal_cells = pin_cell.content.cells
+                for c_id, inter_cell in internal_cells.items():
+                    if isinstance(inter_cell.region, SurfaceSide):
+                        inter_cell.region.surface.center = new_centers[y][x]
+                    elif isinstance(inter_cell.region, Region):
+                        inter_cell.region.child1.surface.center = new_centers[y][x]
+                        inter_cell.region.child2.surface.center = new_centers[y][x]
 
     def serpent_syntax_pin_by_cell(self):
         # pin_cells_syntax = []
@@ -554,6 +598,19 @@ class SquareLattice(Lattice):
 
         return pin_cells_syntax + lattice_syntax, cells
 
+    def translate(self, trans_vector):
+        super().translate(trans_vector)
+        # look for new centers
+        cells = super().cells
+        for x in range(self.__nx):
+            for y in range(self.__ny):
+                cell_id = self.__array[y][x]
+                c = cells[cell_id]
+                c_surface = c.region.surface # It is supposed to be a square
+                new_center = c_surface.center
+                self.centers[y][x] = new_center
+        return 1
+
     @property
     def array(self):
         return self.__array
@@ -571,6 +628,10 @@ class SquareLattice(Lattice):
         return self.__ny
 
     @property
+    def left_bottom(self):
+        return self.__left_bottom
+
+    @property
     def pitch(self):
         return self.__pitch
     
@@ -579,7 +640,7 @@ class SquareLattice(Lattice):
         return super().cells
 
 
-class HexagonalLatticeTypeX(Lattice):
+class HexagonalLatticeTypeX(Universe):
     """
         Hexagonal Lattice Type X composed by an array of pins, Example:
 
@@ -610,6 +671,7 @@ class HexagonalLatticeTypeX(Lattice):
         self.__enclosed_cells = []
         self.__pin_types = self.__get_different_pins()
         self.__num_pin_types = len(self.__pin_types)
+        self.centers = None
         self.__create_cells()
 
     def __check_rows_cols(self):
@@ -631,12 +693,12 @@ class HexagonalLatticeTypeX(Lattice):
         pin_centers = [[0 for i in range(self.__nx)] for j in range(self.__ny)]
         
         half_width = self.__pitch / 2
-        self.__radius = 2 * half_width / math.sqrt(3)
+        radius = 2 * half_width / math.sqrt(3)
 
         idx_center_row = self.__ny // 2
         idx_center_col = self.__nx // 2
 
-        dy = 1.5*self.__radius
+        dy = 1.5*radius
         
         start_x_row = self.__center_x - idx_center_row*half_width - idx_center_row*self.__pitch
         start_y_row = self.__center_y + idx_center_row*dy
@@ -645,26 +707,39 @@ class HexagonalLatticeTypeX(Lattice):
             for c in range(self.__nx):
                 x = start_x_row + c * self.__pitch
                 # create a pin with the same characteristics to move the cell
-                pin_replacement = self.__array[r][c].replicate()
-                if pin_replacement.pin_levels[0].radius is not None:
-                    # moving the pin
-                    trans_vector = (
-                        x - pin_replacement.get_center()[0],
-                        start_y_row - pin_replacement.get_center()[1]
-                    )
-                    pin_replacement.translate(trans_vector)
+                # pin_replacement = self.__array[r][c].replicate()
+                # if pin_replacement.pin_levels[0].radius is not None:
+                #     # moving the pin
+                #     trans_vector = (
+                #         x - pin_replacement.get_center()[0],
+                #         start_y_row - pin_replacement.get_center()[1]
+                #     )
+                #     pin_replacement.translate(trans_vector)
 
                 # new_center
+                pin = self.__array[r][c]
+                # create a pin with the same characteristics to move the cell
+                materials = []
+                radius = []
+                for level in pin.pin_levels:
+                    mat = pin.cells[level.cell_id].content
+                    materials.append(mat)
+                    radius.append(level.radius)
                 new_center_x, new_center_y = x, start_y_row
                 closing_surface = InfiniteHexagonalCylinderXtype(new_center_x, new_center_y, half_width)
+                pin_replacement = declare_pin_by_cells(
+                    materials, radius, new_center_x, new_center_y, pin.name, closing_surface
+                )
+                # raise SystemExit
                 new_pin = Cell(region=-closing_surface, fill=pin_replacement)
                 new_array[r][c] = new_pin.id # order of the cells from column by column
                 pin_centers[r][c] = (x,start_y_row) # order of the cells from column by column
-                self.add_cells(new_pin)
+                super().add_cell(new_pin)
 
             start_x_row += half_width
             start_y_row -= dy
         self.array = new_array
+        self.centers = pin_centers
  
     def __get_different_pins(self):
         types = []
@@ -677,10 +752,57 @@ class HexagonalLatticeTypeX(Lattice):
     def translate(self, trans_vector):
         return super().translate(trans_vector)
 
+    def expand(self, scale_f):
+        """
+            This method expands the lattice moving the centers of the cells 
+            by a scaling factor - only for plotting purposes
+        """
+        lattice_cells = super().cells
+        new_pitch = self.__pitch * scale_f
+
+        new_half_width = new_pitch / 2
+        new_radius = 2 * new_half_width / math.sqrt(3)
+
+        new_displacement_y = new_radius * 1.5
+
+        # Expand the lattice moving the centers, starting from the left top corner
+        first_cell_center = self.centers[0][0]
+        center_x, center_y = first_cell_center
+        center_x *= scale_f
+        center_y *= scale_f
+
+        start_x = center_x
+        new_centers = []
+        for y in range(self.__ny):
+            row_centers = []
+            for x in range(self.__nx):
+                row_centers.append((start_x + x * new_pitch, center_y))
+                center_x += new_pitch
+            new_centers.append(row_centers)
+            start_x += new_half_width
+            center_y -= new_displacement_y
+            row_centers = []
+        
+        # now change the centers of every pin_cell of the lattice
+        self.centers = new_centers
+        for y in range(self.__ny):
+            for x in range(self.__nx):
+                cell_id = self.__array[y][x]
+                if cell_id is not None:
+                    pin_cell = lattice_cells[cell_id]
+                    internal_cells = pin_cell.content.cells
+                    for c_id, inter_cell in internal_cells.items():
+                        if isinstance(inter_cell.region, SurfaceSide):
+                            inter_cell.region.surface.center = new_centers[y][x]
+                        elif isinstance(inter_cell.region, Region):
+                            inter_cell.region.child1.surface.center = new_centers[y][x]
+                            inter_cell.region.child2.surface.center = new_centers[y][x]
+
     def calculate_enclosed_cells(self, region):
         c = 1
-        for row in self.__array:
-            for c_id in row:
+        for r in range(self.__ny):
+            for c in range(self.__nx):
+                c_id = self.__array[r][c]
                 cell = super().cells[c_id]
                 #check cell center coordinates if they are inside the hexagon
                 cell_center = cell.region.surface.center
@@ -696,12 +818,11 @@ class HexagonalLatticeTypeX(Lattice):
                         raise SystemError
                     assert is_inside
                     self.__enclosed_cells.append(cell)
-                    print(c)
-                    print(cell.name)
                     c += 1
                 except AssertionError:
                     # center of the cell is not inside the lattice
                     #TODO probably check if the corners are inside to include the gaps of coolant
+                    self.__array[r][c] = None
                     continue
         a = 0
 
@@ -732,6 +853,10 @@ class HexagonalLatticeTypeX(Lattice):
     @property
     def cells(self):
         return super().cells
+    
+    @property
+    def enclosed_cells():
+        return self.__enclosed_cells
 
 
 def translate_universe(universe, trans_vector):

@@ -37,28 +37,51 @@ def getMatrixT_byNode_byGroup(mesh_info, energy_g, xs, probabilities):
             matrix_T_byNode_byGroup[n_id][g] = mT
     return matrix_T_byNode_byGroup
 
-
-def getMatrixT_system_byGroup(mesh_info, energy_g, xs, probabilities):
+def getMatrixT_system(mesh_info, energy_g, xs, probabilities):
     coarse_nodes = mesh_info.coarse_order
     coarse_nodes_regions = mesh_info.coarse_region_rel
-    coarse_nodes_surfaces = mesh_info.coarse_surface_rel
-    surface_areas = mesh_info.all_surfaces_area
     regions_volume = mesh_info.all_regions_vol
 
 
-    matrix_T_system_byGroup = {}
-    prob = { "regions": {}, "surfaces": {}}
+    matrix_T_system_byGroup = []
     for g in range(energy_g):
         systemMatrixes = []
         for n_id in coarse_nodes:
             regions = coarse_nodes_regions[n_id]
 
-            prob["regions"] = {r: probabilities["regions"][r] for r in regions}
             xs_node = {r: xs[r] for r in regions}
 
             mT = build_T(
                 xs_node,
-                prob,
+                probabilities,
+                regions,
+                regions_volume,
+                g
+            )
+            systemMatrixes.append(mT)
+        big_matrix_T = getBlockMatrix(systemMatrixes)
+        matrix_T_system_byGroup.append(big_matrix_T)
+            
+    return getBlockMatrix(matrix_T_system_byGroup)
+
+
+def getMatrixT_system_byGroup(mesh_info, energy_g, xs, probabilities):
+    coarse_nodes = mesh_info.coarse_order
+    coarse_nodes_regions = mesh_info.coarse_region_rel
+    regions_volume = mesh_info.all_regions_vol
+
+
+    matrix_T_system_byGroup = {}
+    for g in range(energy_g):
+        systemMatrixes = []
+        for n_id in coarse_nodes:
+            regions = coarse_nodes_regions[n_id]
+
+            xs_node = {r: xs[r] for r in regions}
+
+            mT = build_T(
+                xs_node,
+                probabilities,
                 regions,
                 regions_volume,
                 g

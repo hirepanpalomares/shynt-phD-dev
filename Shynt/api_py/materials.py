@@ -1,7 +1,7 @@
 
 class Material:
 
-    def __init__(self, name, atom_density=None, mass_density=None, moder="", composition=None, options=""):
+    def __init__(self, name, atom_density=None, mass_density=None, moder="", composition=None, options="", color=None):
         self.__name = name
         if composition is None:
             self.__composition = {"fractions":[], "type":""}
@@ -13,6 +13,7 @@ class Material:
         self.__mass_density = mass_density
         self.__atom_density = atom_density
         self.__moderLibrary = None
+        self.color = color
         if moder != "":
             self.__moderLibrary = moder
         self.__check_composition()

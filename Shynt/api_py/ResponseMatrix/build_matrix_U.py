@@ -33,6 +33,36 @@ def getMatrixU_byNode_byGroup(mesh_info, energy_g, probabilities):
             
     return matrixU_byNode_byGroup
 
+def getMatrixU_system(mesh_info, energy_g, probabilities):
+    # We need matrix U for the source
+    
+    coarse_nodes = mesh_info.coarse_order
+    coarse_nodes_regions = mesh_info.coarse_region_rel
+    coarse_nodes_surfaces = mesh_info.coarse_surface_rel
+    surface_areas = mesh_info.all_surfaces_area
+    regions_volume = mesh_info.all_regions_vol
+
+    matrixU_system_byGroup = []
+    for g in range(energy_g):
+        systemMatrixes = []
+        for n_id in coarse_nodes:
+            regions = coarse_nodes_regions[n_id]
+            surfaces_n = coarse_nodes_surfaces[n_id]
+
+            mat_u_n = build_U(
+                probabilities,
+                surfaces_n,
+                surface_areas,
+                regions,
+                regions_volume,
+                g,
+            )
+            systemMatrixes.append(mat_u_n)
+        big_matrix_U = getBlockMatrix(systemMatrixes)
+        matrixU_system_byGroup.append(big_matrix_U)
+            
+    return getBlockMatrix(matrixU_system_byGroup)
+
 def getMatrixU_system_byGroup(mesh_info, energy_g, probabilities):
     # We need matrix U for the source
     
@@ -43,17 +73,14 @@ def getMatrixU_system_byGroup(mesh_info, energy_g, probabilities):
     regions_volume = mesh_info.all_regions_vol
 
     matrixU_system_byGroup = { }
-    prob = { "regions": {}, "surfaces": {}}
     for g in range(energy_g):
         systemMatrixes = []
         for n_id in coarse_nodes:
             regions = coarse_nodes_regions[n_id]
             surfaces_n = coarse_nodes_surfaces[n_id]
-            prob["regions"] = {r: probabilities["regions"][r] for r in regions}
-            prob["surfaces"] = {s: probabilities["surfaces"][s] for s in surfaces_n}
 
             mat_u_n = build_U(
-                prob,
+                probabilities,
                 surfaces_n,
                 surface_areas,
                 regions,
@@ -80,7 +107,6 @@ def build_U(probabilities, surfaces, surface_areas, regions, regions_volume, g):
     
     matrix_U_shape = (numSurf, numReg)
     matrix_U_n = np.zeros(matrix_U_shape)
-
 
     for a in range(numSurf):
         surf_id = surfaces[a]

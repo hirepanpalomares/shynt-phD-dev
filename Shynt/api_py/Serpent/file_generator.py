@@ -5,8 +5,8 @@ import sys
 from pathlib import Path
 
 
-
-def generate_serpent_files(root, different_node_bins):
+# 
+def generate_serpent_files(root, different_node_bins, serp_dir="serpent_files"):
     """
     Parameters
     -------------
@@ -36,12 +36,12 @@ def generate_serpent_files(root, different_node_bins):
         coarse_nodes_clones[coarse_id] = coarse_node
         
 
-    det_files, xs_files = input_generator(coarse_nodes_to_files, local_cells, root)
+    det_files, xs_files = input_generator(coarse_nodes_to_files, local_cells, root, serp_dir=serp_dir)
 
     return det_files, xs_files
 
 
-def input_generator(coarse_nodes, fine_nodes, root):
+def input_generator(coarse_nodes, fine_nodes, root, serp_dir="serpent_files"):
     """
     
     Function to generate the input files from a given set of cells,
@@ -54,7 +54,7 @@ def input_generator(coarse_nodes, fine_nodes, root):
     input_file_absolute = str(Path(input_file_argument).absolute())
     input_file_dir = "/".join(input_file_absolute.split("/")[:-1]) + "/"
 
-    serpent_dir = input_file_dir + "serpent_files"
+    serpent_dir = input_file_dir + serp_dir
   
 
     try:
@@ -93,7 +93,7 @@ def input_generator(coarse_nodes, fine_nodes, root):
             if cell.content.isFuel:
                 type_reg = "fuel"
             else:
-                type_reg = "coolant" # TODO change this part to "other" and change specific parameter in SerpentFile
+                type_reg = "nonFuel" 
             serpent_input = SerpentInputFileRmmDetectors(
                 coarse_node, 
                 coarse_id, 

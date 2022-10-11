@@ -3,11 +3,13 @@ import os
 import sys
 from pathlib import Path
 
+from Shynt.api_py.Probabilities.probability_writer import write_excel
+
 
 
 class OutputFile:
 
-    def __init__(self, root, keff, flux, iter_number, convergence, mesh_info):
+    def __init__(self, root, keff, flux, iter_number, convergence, mesh_info, nameOut, phi_src, probs):
         self.root = root
         self.keff = keff
         self.flux = flux
@@ -15,21 +17,25 @@ class OutputFile:
         self.convergence_keff = convergence[0]
         self.convergence_flux = convergence[1]
         self.mesh_info = mesh_info
+        self.phi_src = phi_src
+        self.nameOut = nameOut
+        self.probs = probs
+
 
         input_file_argument = sys.argv[0]
-        self.input_file_name = input_file_argument.split("/")[-1]
-        self.input_file_name = self.input_file_name.split(".")[0]
+        self.input_file_name = nameOut
 
         input_file_absolute = str(Path(input_file_argument).absolute())
         input_file_dir = "/".join(input_file_absolute.split("/")[:-1]) + "/"
 
-        self.output_dir = input_file_dir + "output_RMM"
-    
+        self.output_dir = input_file_dir + "output_RMM_" + nameOut
 
         try:
             assert(os.path.isdir(self.output_dir))
         except AssertionError:
             os.mkdir(self.output_dir)
+    
+        write_excel(probs, mesh_info, root, self.output_dir)
 
         self.__write()
     
@@ -50,6 +56,9 @@ class OutputFile:
 
         with open(self.output_dir+f"/{self.input_file_name}_rmm_flux.csv", "w") as file_:
             file_.write(self.__write_flux())
+
+        with open(self.output_dir+f"/{self.input_file_name}_rmm_source.csv", "w") as file_:
+            file_.write(self.__write_src())
     
 
     def __write_energy(self):
@@ -58,6 +67,14 @@ class OutputFile:
         statement += f"Energy bins: {self.root.energy_grid.energy_mesh}\n"
         statement += f"Energy groups: {self.root.energy_grid.energy_groups}\n"
 
+        return statement
+
+    def __write_src(self):
+        statement = ""
+        for src in self.phi_src:
+            for val in src:
+                statement += f"{val}, "
+            statement += "\n"
         return statement
 
     def __write_flux(self):

@@ -1,102 +1,14 @@
 from typing import Dict
-from Shynt.api_py.Geometry.surfaces import Hexagon, InfiniteSquareCylinderZ, Surface
+from Shynt.api_py.Geometry.surfaces import Hexagon, InfiniteHexagonalCylinderXtype, InfiniteHexagonalCylinderYtype, InfiniteSquareCylinderZ, Surface
 from Shynt.api_py.Geometry.regions import Region, SurfaceSide
 from Shynt.api_py.Geometry.cells import Cell
 from Shynt.api_py.Geometry.universes import Lattice, Pin, SquareLattice, Universe
 from Shynt.api_py.Geometry.utilities_geometry import get_all_surfaces_in_a_cell, get_materials_in_cell
 from Shynt.api_py.materials import Material
-
+from Shynt.api_py.Serpent.detectors import Detector
 
 import os
 import sys
-
-
-class Detector():
-
-    """
-        Class for a single detector
-
-        Parameters:
-        -------------------------------------------------------------------
-        - name  :   Name for the detector in serpent card
-        - type  :   Type of detector regarding the probability that 
-                    we  want to calculate. Types:
-                    * total_rate
-                    * cell_to_surface
-                    * cell_to_surface
-                    * surface_to_all
-                    * surface_to_cell
-                    * surface_to_surface 
-        -------------------------------------------------------------------
-    """
-
-
-    def __init__(self, name, type_=""):
-        self.name = name
-        self.type = type_
-        self.__surface = ""
-        self.__energy_bins = ""
-        self.__response = ""
-        self.__flags = []
-        self.__cells = []
-
-        # self.__cell_to_cell = None
-        # self.__cell_to_surf = None
-        # self.__surf_to_cell = None
-        # self.__surf_to_surf = None
-        
-
-    def syntax(self):
-        syn = f"det {self.name} {self.__surface} {self.energy_bins}"
-        syn += f" {self.__response} "
-
-        if len(self.__cells) > 1:
-            syn += "\n"
-            for cell in self.__cells:
-                syn += f"dc {cell}\n"
-        else: 
-            for cell in self.__cells:
-                syn += f"dc {cell}  "
-        for flag in self.__flags:
-            syn += f" {flag} "
-        syn += "\n"
-        return syn
-
-    def set_surface_det(self, surf, direction):
-        self.__surface = f"ds {surf} {direction}"
-    
-    def set_energy_bins(self, energy_struct):
-        self.__energy_bins = f"de {energy_struct}"
-
-    def set_response(self, resp_number, material):
-        self.__response = f"dr {resp_number} {material}"
-
-    def set_flag(self, flag_number, option):
-        self.__flags.append(f"dfl {flag_number} {option}")
-    
-    def set_cell(self, cell):
-        self.__cells.append(cell)
-
-
-    @property
-    def surface_det(self):
-        return self.__surface
-    
-    @property
-    def energy_bins(self):
-        return self.__energy_bins
-
-    @property
-    def response(self):
-        return self.__response
-
-    @property
-    def flag(self):
-        return self.__flag
-    
-    @property
-    def cell(self):
-        return self.__cell
 
 
 class SerpentInputFileRmmDetectors():
@@ -139,10 +51,7 @@ class SerpentInputFileRmmDetectors():
         self.isFuel_relation = {}
         self.detectors = []
         self.flag_counter = 1
-        self.detectors_relation = {
-            "regions": {},
-            "surfaces": {}
-        }
+        self.detectors_relation = { }
         self.xs_gcu = {}
 
         with open(name, "w") as self.__file:
@@ -153,6 +62,7 @@ class SerpentInputFileRmmDetectors():
             self.__write_mc_params()
             if self.type_detectors == "xs_generation":
                 self.__write_energy_grid()
+                self.__file.write(f"\nset nfg {self.energy_grid.name}\n")
                 self.__write_geometry()
                 self.__write_outside_cell()
             elif self.type_detectors is not None: # "any other" hay: region, surfaces, reference flux
@@ -244,7 +154,7 @@ class SerpentInputFileRmmDetectors():
                 self.__helper_fuel_detectors(regions_dict)
             else: # Is not Fuel
                 # Coolant detectors ----------------------------------------------------
-                self.__helper_coolant_detectors(regions_dict)
+                self.__helper_nonFuel_detectors(regions_dict)
         elif self.type_detectors == "surfaces":
             # Surface detectors ----------------------------------------------------
             self.__helper_surface_detectors(regions_dict)
@@ -267,7 +177,10 @@ class SerpentInputFileRmmDetectors():
 
         # surfaces_in_closing = self.coarse_node.fictional_surfaces
         surfaces_in_closing = closing_surf.get_surface_relation()
-        self.closing_surface_ids = list(surfaces_in_closing.keys())
+        if isinstance(closing_surf, InfiniteHexagonalCylinderXtype) or isinstance(closing_surf, InfiniteHexagonalCylinderYtype):
+            self.closing_surface_ids = list(surfaces_in_closing.keys())
+        else:
+            self.closing_surface_ids = list(surfaces_in_closing.keys())
 
         self.surface_direction = closing_surf.get_neutron_current_directions()
 
@@ -298,6 +211,9 @@ class SerpentInputFileRmmDetectors():
 
         flag_relation = { }
         
+        # initialize detectprs_relation variable ----------------------------------
+        if "regions" not in self.detectors_relation:
+            self.detectors_relation["regions"] = {}
         self.detectors_relation["regions"][self.region_id] = {  
             "total": {g: None for g in range(groups)},
             "incoming": {g: None for g in range(groups)},
@@ -311,7 +227,9 @@ class SerpentInputFileRmmDetectors():
                 s: {g: {} for g in range(groups)} for s in self.closing_surface_ids
             }
         }
-        
+        # -------------------------------------------------------------------------
+
+
         fuel_cell = regions_dict[self.region_id].cell
 
         for g, bin_name in energy_bins.items():
@@ -387,12 +305,15 @@ class SerpentInputFileRmmDetectors():
                 self.detectors_relation["regions"][self.region_id]["surfaces"][s][g] = det
 
 
-    def __helper_coolant_detectors(self, regions_dict):
+    def __helper_nonFuel_detectors(self, regions_dict):
         energy_bins = self.energy_grid.bins_names_relation
         groups = self.energy_grid.energy_groups
 
         flag_relation = { }
 
+        # initialize detectprs_relation variable ----------------------------------
+        if "regions" not in self.detectors_relation:
+            self.detectors_relation["regions"] = {}
         self.detectors_relation["regions"][self.region_id] = {
             "total": {g: None for g in range(groups)},
             "regions": {
@@ -402,6 +323,8 @@ class SerpentInputFileRmmDetectors():
                 s: {g: {} for g in range(groups)} for s in self.closing_surface_ids
             },
         }
+        # -------------------------------------------------------------------------
+
 
         total_rate_detectors = {}
         coolant_cell = regions_dict[self.region_id].cell
@@ -423,6 +346,8 @@ class SerpentInputFileRmmDetectors():
         # Coolant to coolant, fuel and surf
         for g in range(self.energy_grid.energy_groups):
             for gp in range(self.energy_grid.energy_groups):
+                if g < gp:
+                    continue # To avoid upscaterring detectors
                 # COOLANT ----> COOLANT
                 name = f"reg{coolant_cell.id}_reg{coolant_cell.id}_g{g}_to_g{gp}"
                 det = Detector(name)
@@ -448,6 +373,8 @@ class SerpentInputFileRmmDetectors():
                 # coolant to coolant
                 for g in range(self.energy_grid.energy_groups):
                     for gp in range(self.energy_grid.energy_groups):
+                        if g < gp: # To avoid upscaterring detectors
+                            continue 
                         # COOLANT -----> REG _reg
                         name = f"reg{self.region_id}_reg{reg.cell.id}_g{g}_to_g{gp}"
                         det = Detector(name)
@@ -461,6 +388,8 @@ class SerpentInputFileRmmDetectors():
 
         for g in range(self.energy_grid.energy_groups):
             for gp in range(self.energy_grid.energy_groups):
+                if g < gp:
+                    continue # To avoid upscaterring detectors
                 # COOLANT -----> SURFACES
                 for s in self.closing_surface_ids:
                     name = f"reg{reg.cell.id}_surface{s}_g{g}_to_g{gp}"

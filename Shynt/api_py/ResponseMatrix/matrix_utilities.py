@@ -1,7 +1,20 @@
 import numpy as np
 
 
+def getInitializedPhi_system(numTotalRegions, energy_g):
+    """
+       
+    """
+
+    return np.ones(numTotalRegions*energy_g)
+
+
 def getInitializedPhi_system_byGroup(numTotalRegions, energy_g):
+    """
+        Returns a dictionary of Energygroups length with vectors as values
+        and integers as keys. Each vector has a length equal to the number
+        of regions in the system. The key corresponds to the energy group.
+    """
     phi_vectors = {}
 
     for g in range(energy_g):

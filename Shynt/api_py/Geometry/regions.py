@@ -2,6 +2,7 @@
 
 
 
+
 class Region:
     """ Class used to represent the euclidean space generated
     by the intersection of two SurfaceSides.
@@ -85,15 +86,18 @@ class Region:
             child2_clone = self.child2.clone(new_center_x, new_center_y)
             return child1_clone & child2_clone
         except AssertionError:
+            # Cloning of two regions not supported, only two surfaceSides
             raise SystemError
 
-    def destructure_region(self, surfaces_sides={}):
+    def destructure_region(self, surfaces_sides=None):
         """
             Recursive function to destructurate a region in its surfaces sides
 
             returns:
                 Array(<SurfaceSide class>)
         """
+        if surfaces_sides is None:
+            surfaces_sides = {}
         if isinstance(self, SurfaceSide):
             # Base case
             surfaces_sides.update({
@@ -102,15 +106,21 @@ class Region:
 
             return surfaces_sides
         elif isinstance(self, Region):
-            surfaces_sides.update(self.child1.destructure_region({}))
-            surfaces_sides.update(self.child2.destructure_region({}))
+            surfaces_sides.update(self.child1.destructure_region())
+            surfaces_sides.update(self.child2.destructure_region())
             return surfaces_sides
 
     def translate(self, trans_vector):
         self.child1.translate(trans_vector)
         self.child2.translate(trans_vector)
-        
-    def surfaces_of_region(self, surfaces={}):
+    
+    def scale(self, scale_f):
+        self.child1.scale(scale_f)
+        self.child2.scale(scale_f)
+
+    def surfaces_of_region(self, surfaces=None):
+        if surfaces is None:
+            surfaces = {}
         if isinstance(self, SurfaceSide):
             # base case
             surf = self.surface
@@ -147,16 +157,38 @@ class Region:
         #     for s_id, surf_side in surfaces_sides.items():
         #         syntax += f" {side(surf_side.side)}{surf_side.surface.id}"
         # syntax += ""
-        surface_sides = self.destructure_region({})
+        surface_sides = self.destructure_region()
         for s_id, ss in surface_sides.items():
             syntax += f" {side(ss.side)}{s_id} "
         return syntax
 
 
+    def point_in_region(self):
+        percentage = 0.01
+
+        # point_in_region = False
+        # point = None
+        # while not point_in_region:
+        #     point = self.child1.point_in_region(percentage)
+        #     print(point)
+        #     point_in_region = self.child2.isPointInsideRegion(point)
+        #     percentage -= 0.01
+            # point2 = self.child2.point_in_region()
+        point = self.child1.point_in_region(percentage)
+        return point
+
     @property
     def operation(self):
         return self.__operation
     
+    @property
+    def center(self):
+        center1 = self.child1.surface.center
+        center2 = self.child2.surface.center
+        if center1 == center2:
+            return center1
+        else:
+            return (0,0)
 
 class SurfaceSide(Region):
 
@@ -202,6 +234,54 @@ class SurfaceSide(Region):
                 return False
         return True
     
+    def isPointInsideRegion(self, point):
+        if self.side == "-":
+            return self.surface.isPointNegativeSide(point)
+        elif self.side == "+":
+            return self.surface.isPointPositiveSide(point)
+
     def translate(self, trans_vector):
         self.surface.translate(trans_vector)
-        
+    
+    def scale(self, scale_f):
+        self.surface.scale(scale_f)
+
+    def point_in_region(self, percentage=0.1):
+        from Shynt.api_py.Geometry.surfaces import InfiniteCylinderZ, InfiniteSquareCylinderZ
+        from Shynt.api_py.Geometry.surfaces import InfiniteHexagonalCylinderXtype, InfiniteHexagonalCylinderYtype
+        point = None
+        if self.side == "-":
+            if isinstance(self.surface, InfiniteCylinderZ):
+                dx = self.surface.radius * (1-percentage)
+                point = (self.surface.center_x + dx, self.surface.center_y)
+                # point = self.surface.center
+            elif isinstance(self.surface, InfiniteSquareCylinderZ):
+                dx = self.surface.half_width * (1-percentage)
+                point = (self.surface.center_x + dx, self.surface.center_y)
+                # point = self.surface.center
+            elif isinstance(self.surface, InfiniteHexagonalCylinderXtype):
+                dx = self.surface.half_width * (1-percentage)
+                point = (self.surface.center_x + dx, self.surface.center_y)
+            elif isinstance(self.surface, InfiniteHexagonalCylinderYtype):
+                dy = self.surface.half_width * (1-percentage)
+                point = (self.surface.center_x, self.surface.center_y + dy)
+        elif self.side == "+":
+            if isinstance(self.surface, InfiniteCylinderZ):
+                dx = self.surface.radius * (1+percentage)
+                point = (self.surface.center_x + dx, self.surface.center_y)
+                # point = self.surface.center
+            elif isinstance(self.surface, InfiniteSquareCylinderZ):
+                dx = self.surface.half_width * (1+percentage)
+                point = (self.surface.center_x + dx, self.surface.center_y)
+                # point = self.surface.center
+            elif isinstance(self.surface, InfiniteHexagonalCylinderXtype):
+                dx = self.surface.half_width * (1+percentage)
+                point = (self.surface.center_x + dx, self.surface.center_y)
+            elif isinstance(self.surface, InfiniteHexagonalCylinderYtype):
+                dy = self.surface.half_width * (1+percentage)
+                point = (self.surface.center_x, self.surface.center_y + dy)
+        return point
+    
+    @property
+    def center(self):
+        return self.surface.center

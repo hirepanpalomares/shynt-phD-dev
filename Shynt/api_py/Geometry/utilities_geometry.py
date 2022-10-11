@@ -100,8 +100,10 @@ def get_surface_equality(node, node_base):
         }
 
 
-def get_all_surfaces_in_a_cell(cell, surfaces={}):
+def get_all_surfaces_in_a_cell(cell, surfaces=None):
     from Shynt.api_py.Geometry.universes import Universe
+    if surfaces is None:
+        surfaces = {}
     if isinstance(cell.content, Material):
         # base case
         surfaces_enclosing_cell = cell.region.surfaces_of_region()
@@ -128,8 +130,10 @@ def get_all_surfaces_in_a_universe(universe):
     return surfaces
 
 
-def get_materials_in_cell(cell, materials={}):
+def get_materials_in_cell(cell, materials=None):
     from Shynt.api_py.Geometry.universes import Universe
+    if materials is None:
+        materials = {}
     if isinstance(cell.content, Material):
         mat_name = cell.content.name
         materials[mat_name] = cell.content
@@ -141,12 +145,13 @@ def get_materials_in_cell(cell, materials={}):
         return materials
 
 
-def declaring_pin_by_cells(materials, radius, center_x, center_y, name_pin_universe, closing_surf):
+def declare_pin_by_cells(materials, radius, center_x, center_y, name_pin_universe, closing_surf):
     from .cells import Cell
     from Shynt.api_py.Geometry.universes import Universe
 
     cells = {}
     last_surf = None
+    
     for l in range(len(materials)):
         mat = materials[l]
         r = radius[l]
@@ -158,8 +163,11 @@ def declaring_pin_by_cells(materials, radius, center_x, center_y, name_pin_unive
                 reg = +last_surf & -closing_surf
         else:
             surf = InfiniteCylinderZ(center_x, center_y, r)
+            if last_surf is None:
+                reg = -surf
+            else:
+                reg = +last_surf & -surf
             last_surf = surf
-            reg = -surf
         name_for_cell = f"{name_pin_universe}_cell_c"
         c = Cell(name=name_for_cell, fill=mat, region=reg, universe=name_pin_universe)
         cells[c.id] = c

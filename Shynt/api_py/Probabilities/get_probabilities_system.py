@@ -1,51 +1,40 @@
-from Shynt.api_py.Probabilities.p_calc import calculate_probabilities
-from Shynt.api_py.Serpent.detector_output import read_detector_file
+from Shynt.api_py.Probabilities.p_calc import calculate_probabilities_main_nodes
+from Shynt.api_py.Serpent.detector_output import read_detectors_data
 
+import numpy as np
 
+def get_probabilities(det_inputs, mesh_info, root):
+    model_cell = root.model_cell
+    energy_g = root.energy_grid.energy_groups
+    coarse_nodes = model_cell.global_mesh.coarse_nodes
+    coarse_nodes_map = model_cell.global_mesh.coarse_nodes_map
+    fine_nodes = model_cell.local_mesh.fine_nodes
 
-def helper_get_probabilities(det_inputs, mesh_info, coarse_nodes, fine_nodes, energy_g):
-    # Extract data from detectors -------------------------------------------------------------------
-    """
-        This section probably could be includdde in the file p_calc as a part of the 
-        process of getting the neutrons counts
-    """
-    coarse_node_scores = {}
-    detector_relation = {}
-    for id_, inp in det_inputs.items():
-        # id_ is a coarse node identifier
-        coarse_node_scores[id_] = {}
-        detector_relation[id_] = {}
-        for file_ in inp:
-            det_file_name = file_.name + "_det0.m"
-            data_detector = read_detector_file(det_file_name) # This is data of the detectors
-            coarse_node_scores[id_][file_.specific] = data_detector
-            detector_relation[id_][file_.specific] = file_.detectors_relation
-            # print(file_.detectors_relation.keys())
-    
-    # Calculate probabilities for each node of the coarse mesh -------------------
-    probabilities = {}
-    for id_ in det_inputs:
-        prob_id = calculate_probabilities(
-            coarse_node_scores[id_], 
-            detector_relation[id_], 
-            energy_g, id_, mesh_info, coarse_nodes, fine_nodes
-        )
-        probabilities[id_] = prob_id
-
-    debugging_breakingPoint = True
-
-    # return get_HY_probabilities()
-    return probabilities
-
-
-def get_probabilities_data(det_inputs, mesh_info, coarse_nodes, fine_nodes, energy_g):
     # Calculating probabilities
     
-    probabilities_uniq_node = helper_get_probabilities(det_inputs, mesh_info, coarse_nodes, fine_nodes, energy_g)
+    coarse_node_scores, detector_relation = read_detectors_data(det_inputs)
+    
+    probabilities_unique_nodes = calculate_probabilities_main_nodes(
+        det_inputs, 
+        mesh_info, 
+        coarse_nodes, 
+        fine_nodes, 
+        energy_g, 
+        coarse_node_scores, 
+        detector_relation
+    )
 
+    sum_prob_unique_nodes = calculate_sum_probabilities(probabilities_unique_nodes, energy_g)
 
     debugging_breakingPoint = True
 
+    probs = fill_probabilities(coarse_nodes, mesh_info, probabilities_unique_nodes)
+
+    return probs
+    
+
+
+def fill_probabilities(coarse_nodes, mesh_info, probabilities_unique_nodes):
     new_prob = {
         "regions": {},
         "surfaces": {}
@@ -68,7 +57,7 @@ def get_probabilities_data(det_inputs, mesh_info, coarse_nodes, fine_nodes, ener
                 "surfaces": {}
             } for s in surfaces
         })
-        prob_id_eq = probabilities_uniq_node[id_eq]
+        prob_id_eq = probabilities_unique_nodes[id_eq]
 
         # Filling probabilities to every similar node
 
@@ -100,6 +89,28 @@ def get_probabilities_data(det_inputs, mesh_info, coarse_nodes, fine_nodes, ener
 
     return  new_prob
 
+def calculate_sum_probabilities(probabilities_unique_nodes, energy_g):
+    sum_prob_unique_nodes = {}
 
-
+    for id_ in probabilities_unique_nodes.keys():
+        sum_prob_unique_nodes[id_] = {
+            "regions": {}, "surfaces": {}
+        }
+        regions = list(probabilities_unique_nodes[id_]["regions"].keys()) 
+        surfaces = list(probabilities_unique_nodes[id_]["surfaces"].keys()) 
+        for r in regions:
+            sum_prob_r = np.zeros(energy_g)
+            for rp in regions:
+                sum_prob_r += probabilities_unique_nodes[id_]["regions"][r]["regions"][rp]
+            for sp in surfaces:
+                sum_prob_r += probabilities_unique_nodes[id_]["regions"][r]["surfaces"][sp]
+            sum_prob_unique_nodes[id_]["regions"][r] = sum_prob_r
+        for s in surfaces:
+            sum_prob_s = np.zeros(energy_g)
+            for rp in regions:
+                sum_prob_s += probabilities_unique_nodes[id_]["surfaces"][s]["regions"][rp]
+            for sp in surfaces:
+                sum_prob_s += probabilities_unique_nodes[id_]["surfaces"][s]["surfaces"][sp]
+            sum_prob_unique_nodes[id_]["surfaces"][s] = sum_prob_s
+    return sum_prob_unique_nodes
     

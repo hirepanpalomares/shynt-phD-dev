@@ -1,10 +1,14 @@
 
+import Shynt
+from Shynt.api_py.Drawer.cell_drawing import plot_cell
+from Shynt.api_py.Geometry.cells import Cell
+from Shynt.api_py.Geometry.universes import SquareLattice, Universe
+from Shynt.api_py.Geometry.mesh_helpers import make_mesh
+
 import numpy as np
 import os 
 import sys
 
-import Shynt
-from Shynt.api_py.Geometry.mesh_helpers import make_mesh
 
 
 # Defining isotopes ----------------------------------------------------
@@ -24,37 +28,37 @@ libraries = Shynt.libraries.SerpentLibraries(acelib='"jeff311/sss_jeff311u.xsdat
 energy_grid = Shynt.energy.Grid([0, 0.625E-06, 20], name="2groups_grid") # MeV
 
 # Defining materials -------------------------------------------------
-fuel1 = Shynt.materials.Material("fuel1", mass_density=10.424)
+fuel1 = Shynt.materials.Material("fuel1", mass_density=10.424, color=(245,56,30))
 fuel1.addIsotope(u235, mass_fraction=0.015867)
 fuel1.addIsotope(u238, mass_fraction=0.86563)
 fuel1.addIsotope(oxygen09, mass_fraction=0.1185)
 
-fuel2 = Shynt.materials.Material("fuel2", mass_density=10.424)
+fuel2 = Shynt.materials.Material("fuel2", mass_density=10.424, color=(247,208,47))
 fuel2.addIsotope(u235, mass_fraction=0.018512)
 fuel2.addIsotope(u238, mass_fraction=0.86299)
 fuel2.addIsotope(oxygen09, mass_fraction=0.1185)
 
-fuel3 = Shynt.materials.Material("fuel3", mass_density=10.424)
+fuel3 = Shynt.materials.Material("fuel3", mass_density=10.424, color=(100,20,58))
 fuel3.addIsotope(u235, mass_fraction=0.022919)
 fuel3.addIsotope(u238, mass_fraction=0.85858)
 fuel3.addIsotope(oxygen09, mass_fraction=0.1185)
 
-fuel4 = Shynt.materials.Material("fuel4", mass_density=10.424)
+fuel4 = Shynt.materials.Material("fuel4", mass_density=10.424, color=(100,39,58))
 fuel4.addIsotope(u235, mass_fraction=0.026445)
 fuel4.addIsotope(u238, mass_fraction=0.85505)
 fuel4.addIsotope(oxygen09, mass_fraction=0.1185)
 
-fuel5 = Shynt.materials.Material("fuel5", mass_density=10.424)
+fuel5 = Shynt.materials.Material("fuel5", mass_density=10.424, color=(100,200,207))
 fuel5.addIsotope(u235, mass_fraction=0.029971)
 fuel5.addIsotope(u238, mass_fraction=0.85153)
 fuel5.addIsotope(oxygen09, mass_fraction=0.1185)
 
-fuel6 = Shynt.materials.Material("fuel6", mass_density=10.424)
+fuel6 = Shynt.materials.Material("fuel6", mass_density=10.424, color=(243,200,58))
 fuel6.addIsotope(u235, mass_fraction=0.032615)
 fuel6.addIsotope(u238, mass_fraction=0.84888)
 fuel6.addIsotope(oxygen09, mass_fraction=0.1185)
 
-coolant = Shynt.materials.Material("coolant", moder="lwtr 1001", mass_density=0.443760)
+coolant = Shynt.materials.Material("coolant", moder="lwtr 1001", mass_density=0.443760, color=(56,190,235))
 coolant.addIsotope(oxygen06, atom_fraction=0.33333)
 coolant.addIsotope(hydrogen, atom_fraction=0.66667)
 
@@ -108,9 +112,11 @@ model_universe = Shynt.universes.Root(
 )
 
 
-Shynt.run(model_universe)
+# Shynt.run(model_universe)
 # serp_root_input_file = Shynt.file_generator.generate_root_serpent_file(model_universe)
 
+
+plot_cell(model_cell)
 
 
 

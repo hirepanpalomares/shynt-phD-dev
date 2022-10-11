@@ -1,8 +1,10 @@
+from Shynt.api_py.Drawer.cell_drawing import plot_cell
 import numpy as np
 
 import Shynt
-from Shynt.api_py.Geometry import mesh
+from api_py.Mesh import mesh
 from Shynt.api_py.Geometry.cells import Cell
+from Shynt.api_py.Geometry.mesh_helpers import make_mesh
 from Shynt.api_py.Geometry.surfaces import InfiniteHexagonalCylinderYtype
 from Shynt.api_py.Geometry.universes import HexagonalLatticeTypeX, Pin
 from Shynt.api_py.energy import Grid
@@ -75,11 +77,11 @@ composition_inner_fuel = {
     "type": "atomic_density"
 }
 
-inner_fuel = Material("inner_fuel", composition=composition_inner_fuel, options="sum tmp 453")
+inner_fuel = Material("inner_fuel", composition=composition_inner_fuel, options="sum tmp 453", color=(228, 237, 52))
 
-helium_gas = Material("helium_gas", composition={"fractions":[(helium_03, 1.0E-05)],"type":"atomic_density"}, options="sum tmp 453")
+helium_gas = Material("helium_gas", composition={"fractions":[(helium_03, 1.0E-05)],"type":"atom_density"}, options="sum tmp 453", color=(252, 184, 235))
 
-na_coolant = Material("na_coolant", composition={"fractions":[(na, 2.37718e-02)],"type":"atomic_density"}, options="sum tmp 453")
+na_coolant = Material("na_coolant", composition={"fractions":[(na, 2.37718e-02)],"type":"atom_density"}, options="sum tmp 453", color=(100, 141, 176))
 
 composition_cladding = {
     "fractions": [
@@ -92,9 +94,10 @@ composition_cladding = {
         (mo_92, 1.87735e-04), (mo_94, 1.15707e-04), (mo_95, 1.98193e-04), (mo_96, 2.06406e-04),
         (mo_97, 1.17638e-04), (mo_98, 2.95822e-04), (mo_100, 1.16718e-04)
     ],
-    "type": "atomic_density"
+    "type": "atom_density"
 }
-cladding = Material("na_coolant", composition=composition_cladding, options="sum tmp 453")
+
+cladding = Material("cladding", composition=composition_cladding, options="sum tmp 453", color=(108, 112, 115))
 
 # Defining pins  -------------------------------------------------------
 p_i = Pin("pin_inner")
@@ -138,7 +141,7 @@ hex_wrap = InfiniteHexagonalCylinderYtype(0, 0, 8.22164, boundary="reflective")
 # Main problem cell
 assembly_cell = Cell("hex_assembly_problem", region=-hex_wrap, fill=assembly_hex)
 outside_cell = Cell("outside_world", region=+hex_wrap)
-assembly_cell_meshed = Shynt.mesh.make_mesh(
+assembly_cell_meshed = make_mesh(
     assembly_cell, global_mesh_type="pin_cell", local_mesh_type="material"
 )
 
@@ -150,4 +153,5 @@ root_universe = Shynt.universes.Root(
     libraries=libraries
 )
 
-Shynt.run(root_universe)
+# Shynt.run(root_universe)
+# plot_cell(assembly_cell)

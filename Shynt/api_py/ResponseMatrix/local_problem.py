@@ -1,3 +1,4 @@
+from Shynt.api_py.ResponseMatrix.matrix_utilities import getBlockMatrix
 import numpy as np
 
 
@@ -27,5 +28,18 @@ def solveLocalProblem(matrixS_n, jin_system, phi_source_n, energy_g):
 
         local_solution = mS_x_jin + phi_source
         phi[g] = local_solution
+    
+    return phi
+
+
+def solveLocalProblem_sys(matrixS_sys, jin_sys, phi_source_sys):
+    """
+        I
+    """
+    
+    mS_x_jin = np.matmul(matrixS_sys, jin_sys)
+
+    local_solution = mS_x_jin + phi_source_sys
+    phi = local_solution
     
     return phi

@@ -1,0 +1,99 @@
+set title ""
+
+mat fuel2 -10.424 
+
+mat coolant -0.44376 moder lwtr 1001
+
+mat fuel3 -10.424 
+
+mat fuel5 -10.424 
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+therm lwtr lwj3.11t
+
+set bc 2
+
+set pop 2000 500 50
+
+set seed 1474468046
+
+ene 2groups_grid_0 1 0 6.25e-07
+ene 2groups_grid_1 1 6.25e-07 20
+
+
+surf 7 sqc 0.0000 0.0000 0.6475
+surf 12 cyl 0.0000 0.0000 0.4335
+surf 19 sqc 0.0000 0.0000 0.6475
+surf 24 cyl 0.0000 0.0000 0.4335
+surf 25 sqc 0.0000 0.0000 0.6475
+surf 30 cyl 0.0000 0.0000 0.4335
+
+cell 24 0 fill pin_fuel5 -25
+cell 22 pin_fuel5 fuel5  -30
+cell 23 pin_fuel5 coolant  12 -7 24 -19 30 -25
+cell 335 0 outside 25
+
+% ----- Surface for detectors
+surf 26 px -0.6475
+surf 28 px 0.6475
+surf 27 py 0.6475
+surf 29 py -0.6475
+
+% ----- Detectors ------
+det surface_26_jin_g0 ds 26 1 de 2groups_grid_0   dfl 1 1 
+det surface_28_jin_g0 ds 28 -1 de 2groups_grid_0   dfl 2 1 
+det surface_27_jin_g0 ds 27 -1 de 2groups_grid_0   dfl 3 1 
+det surface_29_jin_g0 ds 29 1 de 2groups_grid_0   dfl 4 1 
+det surface_26_jin_g1 ds 26 1 de 2groups_grid_1   dfl 5 1 
+det surface_28_jin_g1 ds 28 -1 de 2groups_grid_1   dfl 6 1 
+det surface_27_jin_g1 ds 27 -1 de 2groups_grid_1   dfl 7 1 
+det surface_29_jin_g1 ds 29 1 de 2groups_grid_1   dfl 8 1 
+det surface_26_to_reg22_g0  de 2groups_grid_0 dr -1 fuel5 dc 22   dfl 1 2  dfl 1 0 
+det surface_28_to_reg22_g0  de 2groups_grid_0 dr -1 fuel5 dc 22   dfl 2 2  dfl 2 0 
+det surface_27_to_reg22_g0  de 2groups_grid_0 dr -1 fuel5 dc 22   dfl 3 2  dfl 3 0 
+det surface_29_to_reg22_g0  de 2groups_grid_0 dr -1 fuel5 dc 22   dfl 4 2  dfl 4 0 
+det surface_26_to_reg22_g1  de 2groups_grid_1 dr -1 fuel5 dc 22   dfl 5 2  dfl 5 0 
+det surface_28_to_reg22_g1  de 2groups_grid_1 dr -1 fuel5 dc 22   dfl 6 2  dfl 6 0 
+det surface_27_to_reg22_g1  de 2groups_grid_1 dr -1 fuel5 dc 22   dfl 7 2  dfl 7 0 
+det surface_29_to_reg22_g1  de 2groups_grid_1 dr -1 fuel5 dc 22   dfl 8 2  dfl 8 0 
+det surface_26_to_reg23_g0  de 2groups_grid_0 dr -1 coolant dc 23   dfl 1 2  dfl 1 0 
+det surface_28_to_reg23_g0  de 2groups_grid_0 dr -1 coolant dc 23   dfl 2 2  dfl 2 0 
+det surface_27_to_reg23_g0  de 2groups_grid_0 dr -1 coolant dc 23   dfl 3 2  dfl 3 0 
+det surface_29_to_reg23_g0  de 2groups_grid_0 dr -1 coolant dc 23   dfl 4 2  dfl 4 0 
+det surface_26_to_reg23_g1  de 2groups_grid_1 dr -1 coolant dc 23   dfl 5 2  dfl 5 0 
+det surface_28_to_reg23_g1  de 2groups_grid_1 dr -1 coolant dc 23   dfl 6 2  dfl 6 0 
+det surface_27_to_reg23_g1  de 2groups_grid_1 dr -1 coolant dc 23   dfl 7 2  dfl 7 0 
+det surface_29_to_reg23_g1  de 2groups_grid_1 dr -1 coolant dc 23   dfl 8 2  dfl 8 0 
+det surface_26_to_surf26_g0 ds 26 -1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
+det surface_26_to_surf28_g0 ds 28 1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
+det surface_26_to_surf27_g0 ds 27 1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
+det surface_26_to_surf29_g0 ds 29 -1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
+det surface_28_to_surf26_g0 ds 26 -1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+det surface_28_to_surf28_g0 ds 28 1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+det surface_28_to_surf27_g0 ds 27 1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+det surface_28_to_surf29_g0 ds 29 -1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+det surface_27_to_surf26_g0 ds 26 -1 de 2groups_grid_0   dfl 3 2  dfl 3 0 
+det surface_27_to_surf28_g0 ds 28 1 de 2groups_grid_0   dfl 3 2  dfl 3 0 
+det surface_27_to_surf27_g0 ds 27 1 de 2groups_grid_0   dfl 3 2  dfl 3 0 
+det surface_27_to_surf29_g0 ds 29 -1 de 2groups_grid_0   dfl 3 2  dfl 3 0 
+det surface_29_to_surf26_g0 ds 26 -1 de 2groups_grid_0   dfl 4 2  dfl 4 0 
+det surface_29_to_surf28_g0 ds 28 1 de 2groups_grid_0   dfl 4 2  dfl 4 0 
+det surface_29_to_surf27_g0 ds 27 1 de 2groups_grid_0   dfl 4 2  dfl 4 0 
+det surface_29_to_surf29_g0 ds 29 -1 de 2groups_grid_0   dfl 4 2  dfl 4 0 
+det surface_26_to_surf26_g1 ds 26 -1 de 2groups_grid_1   dfl 5 2  dfl 5 0 
+det surface_26_to_surf28_g1 ds 28 1 de 2groups_grid_1   dfl 5 2  dfl 5 0 
+det surface_26_to_surf27_g1 ds 27 1 de 2groups_grid_1   dfl 5 2  dfl 5 0 
+det surface_26_to_surf29_g1 ds 29 -1 de 2groups_grid_1   dfl 5 2  dfl 5 0 
+det surface_28_to_surf26_g1 ds 26 -1 de 2groups_grid_1   dfl 6 2  dfl 6 0 
+det surface_28_to_surf28_g1 ds 28 1 de 2groups_grid_1   dfl 6 2  dfl 6 0 
+det surface_28_to_surf27_g1 ds 27 1 de 2groups_grid_1   dfl 6 2  dfl 6 0 
+det surface_28_to_surf29_g1 ds 29 -1 de 2groups_grid_1   dfl 6 2  dfl 6 0 
+det surface_27_to_surf26_g1 ds 26 -1 de 2groups_grid_1   dfl 7 2  dfl 7 0 
+det surface_27_to_surf28_g1 ds 28 1 de 2groups_grid_1   dfl 7 2  dfl 7 0 
+det surface_27_to_surf27_g1 ds 27 1 de 2groups_grid_1   dfl 7 2  dfl 7 0 
+det surface_27_to_surf29_g1 ds 29 -1 de 2groups_grid_1   dfl 7 2  dfl 7 0 
+det surface_29_to_surf26_g1 ds 26 -1 de 2groups_grid_1   dfl 8 2  dfl 8 0 
+det surface_29_to_surf28_g1 ds 28 1 de 2groups_grid_1   dfl 8 2  dfl 8 0 
+det surface_29_to_surf27_g1 ds 27 1 de 2groups_grid_1   dfl 8 2  dfl 8 0 
+det surface_29_to_surf29_g1 ds 29 -1 de 2groups_grid_1   dfl 8 2  dfl 8 0 

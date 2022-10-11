@@ -7,7 +7,7 @@ from Shynt.api_py.materials import Material
 
 from Shynt.api_py.Geometry.regions import Region
 from Shynt.api_py.Geometry.regions import SurfaceSide
-from .universes import HexagonalLatticeTypeX, Pin, Universe
+from .universes import HexagonalLatticeTypeX, Pin, SquareLattice, Universe
 from .cell_counter import cell_ids
 
 
@@ -138,13 +138,20 @@ class Cell:
             if isinstance(fill, Pin):
                 # declare last cell
                 fill.close_last_level(self.__region)
-            if isinstance(fill, HexagonalLatticeTypeX):
+            elif isinstance(fill, HexagonalLatticeTypeX):
                 x0, y0 = fill.center
                 x1, y1 = self.__region.surface.center
                 xv = x1 - x0 # translation vector - x
                 yv = y1 - y0 # translation vector - y
                 fill.translate((xv,yv))
                 fill.calculate_enclosed_cells(self.__region)
+            elif isinstance(fill, SquareLattice):
+                x0, y0 = fill.left_bottom # left bottom corner of lattice
+                x1, y1 = self.__region.surface.left_bottom #  center of the enclosing square
+                xv = x1 - x0 # translation vector - x
+                yv = y1 - y0 # translation vector - y
+                fill.translate((xv,yv))
+                print("lattice translated")
             # if isinstance(fill, HexagonalLatticeTypeY):
             #     fill.calculate_enclosed_cells()
             return fill
@@ -160,7 +167,19 @@ class Cell:
         surfaces = get_all_surfaces_in_a_cell(self)
         for id_, surf in surfaces.items():
             surf.translate(trans_vector)
+
+    def scale(self, scale_f):
+        # self.__region.scale(scale_f)
+        cell_surfaces = get_all_surfaces_in_a_cell(self)
+        for s_id, surf in cell_surfaces.items():
+            surf.scale(scale_f)
+        if isinstance(self.__content, SquareLattice):
+            self.__content.expand(scale_f)
+        elif isinstance(self.__content, HexagonalLatticeTypeX):
+            self.__content.expand(scale_f)
         
+           
+
     def has_global_mesh(self):
         return self.__global_mesh
 
@@ -287,6 +306,7 @@ class Cell:
 
         clone_cell = None
         if isinstance(self.__content, Material):
+            # The cell only contains a material, so only clone the surface with a new center
             material = self.__content
             region_clone = self.__region.clone(new_center_x, new_center_y)
             clone_cell = Cell(self.__name, region=region_clone, fill=material, isClone=True)

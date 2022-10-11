@@ -1,0 +1,210 @@
+% Single fuel cell
+
+set title "Single+fuel+cell"
+
+% Set seed to get same results
+
+set seed 1474468046
+
+% Moderator region:
+
+surf 1 sqc 0.0 0.0 0.6475
+
+% Fuel region:
+
+surf 2 cyl 0.0 0.0 4.33500E-01
+
+% Cell definitions:
+
+cell  1 0 fuel1		-2	%Simple fuel pin, no cladding or gap
+cell  2 0 cool 	 	 2 -1	%Coolant in cell
+cell 99 0 outside 	 1	%Outside world
+
+% Fuel materials:
+
+mat fuel1   -10.424 rgb 0 255 0
+ 92235.09c   -0.015867
+ 92238.09c   -0.86563
+  8016.09c   -0.1185
+
+
+
+% Coolant (40% void fraction):
+
+mat cool     -0.443760  moder lwtr 1001 rgb 0 255 255
+ 1001.06c     0.66667
+ 8016.06c     0.33333
+
+% Thermal scattering data for light water:
+
+therm lwtr lwj3.11t
+
+% Cross section data library file path:
+
+set acelib "jeff311/sss_jeff311u.xsdata"
+
+% Reflective boundary condition:
+
+set bc 2   %changed from reflective to periodic boundary condition
+
+% Neutron population and criticality cycles:
+
+set pop 2000 500 50
+
+% Geometry and mesh plots:
+
+plot 3 500 500
+%mesh 3 500 500
+
+% Set energy grids
+ene 2gthm	1 0		0.625E-6
+ene 2gfast	1 0.625E-6 	20
+
+% Boundary surfaces for detectors:
+surf W px -0.647			%West
+surf E px  0.647			%East
+surf S py -0.647			%South
+surf N py  0.647			%North
+
+
+% ---------------------------------------------------------------------------------------------------------------
+
+% Neutrones totales (sigma_total) que interactúan en el coolant (Bandera 2 y 1)
+
+% fast & thermal neutrons reacting in the moderator
+det modtotfast dc 2 de 2gfast dr -1 cool 
+dfl 1 1
+
+det modtotthm dc 2 de 2gthm dr -1 cool 
+dfl 2 1
+% 
+
+% ---------------------------------------------------------------------------------------------------------------
+
+% MOD ----> MOD
+det modtt dc 2 de 2gthm dr -1 cool 
+dfl 2 2 % Score detector if flag is set
+dfl 2 0 % Reset flag if detector is scored
+dfl 2 1 % Set flag if the detector is scored
+
+det modft dc 2 de 2gthm dr -1 cool 
+dfl 1 2 % Score detector if flag is set
+dfl 1 0 % Reset flag if detector is scored
+dfl 2 1 % Set flag if the detector is scored
+
+det modff dc 2 de 2gfast dr -1 cool 
+dfl 1 2 
+dfl 1 0 
+dfl 1 1
+
+det modtf dc 2 de 2gfast dr -1 cool 
+dfl 2 2 
+dfl 2 0 
+dfl 1 1
+
+
+
+
+
+
+
+
+
+
+/*
+det modtt dc 2 de 2gthm dr -3 cool dfl 2 2 dfl 2 0 dfl 2 1
+det modft dc 2 de 2gthm dr -3 cool dfl 1 2 dfl 1 0 dfl 2 1
+
+det modff dc 2 de 2gfast dr -3 cool dfl 1 2 dfl 1 0 dfl 1 1
+det modtf dc 2 de 2gfast dr -3 cool dfl 2 2 dfl 2 0 dfl 1 1
+
+det modtttot dc 2 de 2gthm dr -1 cool dfl 2 2 dfl 2 0
+det modfttot dc 2 de 2gthm dr -1 cool dfl 1 2 dfl 1 0
+
+det modfftot dc 2 de 2gfast dr -1 cool dfl 1 2 dfl 1 0
+det modtftot dc 2 de 2gfast dr -1 cool dfl 2 2 dfl 2 0
+
+det modscapfast dc 2 de 2gfast dr -16 cool
+det modscapthm  dc 2 de 2gthm  dr -16 cool 
+
+det modn2nfast  dc 2 de 2gfast dr -5 cool
+det modn2nthm   dc 2 de 2gfast dr -5 cool
+
+% fast & thermal neutrons scattering in the moderator
+det modelafast dc 2 de 2gfast dr -3 cool dfl 1 1
+det modelathm dc 2 de 2gthm dr -3 cool dfl 2 1
+*/
+
+% ---------------------------------------------------------------------------------------------------------------
+% MOD ----> fuel
+
+% remove neutron if they are scattered to surfaces or fuel, all energy remove flag
+det rmodelafastfastf dc 1 dr -1 fuel1 de 2gfast dfl 1 2 dfl 1 0
+det rmodelathmfastf  dc 1 dr -1 fuel1 de 2gfast dfl 2 2 dfl 2 0
+
+det rmodelathmthmf  dc 1 dr -1 fuel1 de 2gthm dfl 2 2 dfl 2 0
+det rmodelafastthmf dc 1 dr -1 fuel1 de 2gthm dfl 1 2 dfl 1 0
+
+% ---------------------------------------------------------------------------------------------------------------
+% MOD ----> Surface
+
+det rmodelafastfastw ds W -1 de 2gfast dfl 1 2 dfl 1 0
+det rmodelathmfastw  ds W -1 de 2gfast dfl 2 2 dfl 2 0
+det rmodelathmthmw  ds W -1 de 2gthm dfl 2 2 dfl 2 0
+det rmodelafastthmw ds W -1 de 2gthm dfl 1 2 dfl 1 0
+
+det rmodelafastfaste ds E  1 de 2gfast dfl 1 2 dfl 1 0
+det rmodelathmfaste  ds E  1 de 2gfast dfl 2 2 dfl 2 0
+det rmodelathmthme  ds E  1 de 2gthm dfl 2 2 dfl 2 0
+det rmodelafastthme ds E  1 de 2gthm dfl 1 2 dfl 1 0
+
+det rmodelafastfasts ds S -1 de 2gfast dfl 1 2 dfl 1 0
+det rmodelathmfasts  ds S -1 de 2gfast dfl 2 2 dfl 2 0
+det rmodelathmthms  ds S -1 de 2gthm dfl 2 2 dfl 2 0
+det rmodelafastthms ds S -1 de 2gthm dfl 1 2 dfl 1 0
+
+det rmodelafastfastn ds N  1 de 2gfast dfl 1 2 dfl 1 0
+det rmodelathmfastn  ds N  1 de 2gfast dfl 2 2 dfl 2 0
+det rmodelathmthmn  ds N  1 de 2gthm dfl 2 2 dfl 2 0
+det rmodelafastthmn ds N  1 de 2gthm dfl 1 2 dfl 1 0
+
+
+/*
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% fast group %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% ----------------------------------------------------------------------------------------------------
+% --- Calculate fast neutrons emitted in moderator to first interact in fuel or other surfaces,fast
+% ------ All scattering reactions happening in the moderator region (all energy groups, n2n reactions neglected)
+det modela dc 2 dr -3 cool dfl 31 1
+% ------ Determine neutrons emitted from moderator to first interact in fuel region
+det modfuelfast dc 1 de 2gfast dr -1 fuel1 dfl 31 2 dfl 31 0
+% ------ Determine neutrons emitted from moderator to directly escape from surfaces
+det modwfast ds W -1 de 2gfast dfl 31 2 dfl 31 0
+det modefast ds E  1 de 2gfast dfl 31 2 dfl 31 0
+det modsfast ds S -1 de 2gfast dfl 31 2 dfl 31 0
+det modnfast ds N  1 de 2gfast dfl 31 2 dfl 31 0
+% *********************************************************
+% ***This flag 31 will also be used in the thermal group***
+% *********************************************************
+% ----------------------------------------------------------------------------------------------------
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% thermal group %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% ----------------------------------------------------------------------------------------------------
+% --- Calculate thermal neutrons emitted in moderator to first interact in fuel or other surfaces,thermal
+% ------ Determine neutrons emitted from moderator to first interact in fuel region, thermal
+det modfuelthm dc 1 de 2gthm dr -1 fuel1 dfl 31 2 dfl 31 0
+% ------ Determine neutrons emitted from moderator to directly escape from surfaces, thermal
+det modwthm ds W -1 de 2gthm dfl 31 2 dfl 31 0
+det modethm ds E  1 de 2gthm dfl 31 2 dfl 31 0
+det modsthm ds S -1 de 2gthm dfl 31 2 dfl 31 0
+det modnthm ds N  1 de 2gthm dfl 31 2 dfl 31 0
+% ----------------------------------------------------------------------------------------------------
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*/

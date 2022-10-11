@@ -1,4 +1,8 @@
+import asyncio
+import subprocess
+import sys
 import os
+
 
 
 def run_detector_files(det_inputs):
@@ -23,3 +27,5 @@ def run_xs_files(xs_inputs):
         except AssertionError:
             os.system(command_xs_gen)
     return 0
+
+

@@ -1,0 +1,96 @@
+set title ""
+
+mat fuel6 -10.424 
+92235.09c -0.032615
+92238.09c -0.84888
+8016.09c -0.1185
+
+mat cladding sum tmp 453
+C-nat.03c 0.000197913
+Si-28.03c 0.000939458
+Si-29.03c 4.60789e-05
+Si-30.03c 2.93992e-05
+P-31.03c 4.6006e-05
+Ti-46.03c 3.41106e-05
+Ti-47.03c 3.0107e-05
+Ti-48.03c 0.000292121
+Ti-49.03c 2.09995e-05
+Ti-50.03c 1.97055e-05
+Cr-50.03c 0.000661142
+Cr-52.03c 0.0122599
+Cr-53.03c 0.00136391
+Cr-54.03c 0.000333224
+Mn-55.03c 0.00146981
+Fe-54.03c 0.0033312
+Fe-56.03c 0.0504275
+Fe-57.03c 0.00114412
+Fe-58.03c 0.000149639
+Ni-58.03c 0.00781396
+Ni-60.03c 0.00290969
+Ni-61.03c 0.000124406
+Ni-62.03c 0.000390285
+Ni-64.03c 9.6272e-05
+Mo-92.03c 0.000187735
+Mo-94.03c 0.000115707
+Mo-95.03c 0.000198193
+Mo-96.03c 0.000206406
+Mo-97.03c 0.000117638
+Mo-98.03c 0.000295822
+Mo-100.03c 0.000116718
+
+mat coolant -0.44376 moder lwtr 1001
+8016.06c 0.33333
+1001.06c 0.66667
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+therm lwtr lwj3.11t
+
+set bc 2
+
+set pop 5000 1500 250
+
+ene 2groups_grid_0 1 0.00000000E+00 6.25000000E-07
+ene 2groups_grid_1 1 6.25000000E-07 2.00000000E+01
+
+
+surf 104 sqc 0.00000000 0.00000000 0.64750000
+surf 109 cyl 0.00000000 0.00000000 0.43350000
+surf 110 cyl 0.00000000 0.00000000 0.50000000
+
+cell 74 0 fill pin_fuel6 -104 
+cell 71 pin_fuel6 fuel6  -109 
+cell 72 pin_fuel6 cladding  109  -110 
+cell 73 pin_fuel6 coolant  110  -104 
+cell 459 0 outside 104 
+
+% ----- Surface for detectors
+surf 105 px -0.64750000
+surf 106 py 0.64750000
+surf 107 px 0.64750000
+surf 108 py -0.64750000
+
+% ----- Detectors ------
+det reg73_reg73_g0_to_g0  de 2groups_grid_0 dr -1 coolant dc 73   dfl 1 2  dfl 1 0  dfl 1 1 
+det reg73_reg73_g1_to_g0  de 2groups_grid_0 dr -1 coolant dc 73   dfl 2 2  dfl 2 0  dfl 1 1 
+det reg73_reg73_g1_to_g1  de 2groups_grid_1 dr -1 coolant dc 73   dfl 2 2  dfl 2 0  dfl 2 1 
+det total_rate_reg73_g0  de 2groups_grid_0 dr -1 coolant dc 73   dfl 1 1 
+det total_rate_reg73_g1  de 2groups_grid_1 dr -1 coolant dc 73   dfl 2 1 
+det reg73_reg71_g0_to_g0  de 2groups_grid_0 dr -1 fuel6 dc 71   dfl 1 2  dfl 1 0 
+det reg73_reg71_g1_to_g0  de 2groups_grid_0 dr -1 fuel6 dc 71   dfl 2 2  dfl 2 0 
+det reg73_reg71_g1_to_g1  de 2groups_grid_1 dr -1 fuel6 dc 71   dfl 2 2  dfl 2 0 
+det reg73_reg72_g0_to_g0  de 2groups_grid_0 dr -1 cladding dc 72   dfl 1 2  dfl 1 0 
+det reg73_reg72_g1_to_g0  de 2groups_grid_0 dr -1 cladding dc 72   dfl 2 2  dfl 2 0 
+det reg73_reg72_g1_to_g1  de 2groups_grid_1 dr -1 cladding dc 72   dfl 2 2  dfl 2 0 
+det reg73_surface105_g0_to_g0 ds 105 -1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
+det reg73_surface106_g0_to_g0 ds 106 1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
+det reg73_surface107_g0_to_g0 ds 107 1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
+det reg73_surface108_g0_to_g0 ds 108 -1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
+det reg73_surface105_g1_to_g0 ds 105 -1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+det reg73_surface106_g1_to_g0 ds 106 1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+det reg73_surface107_g1_to_g0 ds 107 1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+det reg73_surface108_g1_to_g0 ds 108 -1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+det reg73_surface105_g1_to_g1 ds 105 -1 de 2groups_grid_1   dfl 2 2  dfl 2 0 
+det reg73_surface106_g1_to_g1 ds 106 1 de 2groups_grid_1   dfl 2 2  dfl 2 0 
+det reg73_surface107_g1_to_g1 ds 107 1 de 2groups_grid_1   dfl 2 2  dfl 2 0 
+det reg73_surface108_g1_to_g1 ds 108 -1 de 2groups_grid_1   dfl 2 2  dfl 2 0 

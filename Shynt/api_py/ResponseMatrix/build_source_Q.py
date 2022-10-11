@@ -1,4 +1,3 @@
-from os import system
 from matplotlib.pyplot import axis
 import numpy as np
 
@@ -27,6 +26,16 @@ class SourceQ:
     def __buildFissionMatrix(self):
         """
             returns the fission matrix by node and by region in the node
+
+            Each fission matrix  for a region is composed by the terms 
+            nuFiss_g * chi_g.
+
+            Example for 3 energy groups:
+            [
+                [nuFiss_1*Chi_1, nuFiss_2*Chi_1, nuFiss_3*Chi_1],
+                [nuFiss_1*Chi_2, nuFiss_2*Chi_2, nuFiss_3*Chi_2],
+                [nuFiss_1*Chi_3, nuFiss_2*Chi_3, nuFiss_3*Chi_3],
+            ]
         """
         fission = {}
         # print("chi: ", self.__xs[1][1]["chi"])
@@ -72,7 +81,7 @@ class SourceQ:
             regions = coarse_nodes_regions[n_id]
             numRegions = len(regions)
             mF = np.zeros((numRegions*self.__energyG,numRegions*self.__energyG))
-            for j in range(numRegions):
+            for j in range(numRegions): # j is  the region where the neutrons will go after fission 
                 reg_j = regions[j]
                 vol_j = regions_vol[reg_j]
                 for g in range(self.__energyG):
@@ -83,7 +92,7 @@ class SourceQ:
                         prob = probabilities["regions"][reg_i]["regions"][reg_j][g]
                         array = self.__fissionMatrix[reg_i][g] * vol_i * prob
                         row_matrix = np.concatenate((row_matrix, array), axis=0)
-                    index_mF_row = numRegions * j + g
+                    index_mF_row = j * self.__energyG  + g
                     mF[index_mF_row] = row_matrix
             array_of_matrixes.append(mF)
         
@@ -93,6 +102,25 @@ class SourceQ:
     
     def buildScatteringSource(self, flux):
         return 1
+
+    def __orderFlux(self, flux, total_regions):
+        numRegions = len(total_regions)
+
+        r_counter = 0
+        g_counter = 0
+        new_flux = {} # keys: g
+        f_vector = np.zeros(numRegions)
+        for val_ in flux:
+            f_vector[r_counter] = val_
+            r_counter += 1
+            if r_counter == numRegions:
+                r_counter = 0
+                new_flux[g_counter] = f_vector
+                g_counter += 1
+                f_vector = np.zeros(numRegions)
+        return new_flux
+
+
 
 
     def calculate_Qvector(self, keff, flux, total_regions):
@@ -108,6 +136,7 @@ class SourceQ:
             
             }
         """
+        flux = self.__orderFlux(flux, total_regions) # comment this line for the case of flux in a dictionary
 
         # change order of fluxes
         numRegions = len(total_regions)

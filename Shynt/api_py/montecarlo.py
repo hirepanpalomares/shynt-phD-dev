@@ -1,12 +1,14 @@
 class MontecarloParams:
 
 
-    def __init__(self, histories, active, unactive, seed=""):
+    def __init__(self, histories, active, unactive, seed=None):
         self.__histories = histories
         self.__active_cycles = active
         self.__unactive_cycles = unactive
         self.__seed = seed
-        self.serpent_syntax = f"set pop {histories} {active} {unactive}\n\nset seed {self.__seed}\n"
+        self.serpent_syntax = f"set pop {histories} {active} {unactive}\n"
+        if seed:
+            self.serpent_syntax += f"set seed {self.__seed}\n"
         
 
     def setHistories(self, value):

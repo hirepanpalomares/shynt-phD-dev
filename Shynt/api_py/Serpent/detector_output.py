@@ -1,5 +1,10 @@
+from tokenize import String
+import serpentTools
 
 def read_detector_file(fname):
+    """
+        NOT USED ANYMORE; CHANGED FOR serpentTools module
+    """
     """
         Helper to extract the data from the detectors
 
@@ -53,3 +58,37 @@ def read_detector_file(fname):
                 data[det_name]["energy"].append((g0, gf))
     return data
 
+
+def read_detectors_data(det_inputs):
+    coarse_node_scores = {}
+    detector_relation = {}
+    for id_, inp in det_inputs.items():
+        # id_ is a coarse node identifier
+        coarse_node_scores[id_] = {
+            "region_fuel": {},
+            "region_nonFuel": {},
+            "surfaces": {}
+        }
+        detector_relation[id_] = {
+            "region_fuel": {},
+            "region_nonFuel": {},
+            "surfaces": {}
+        }
+        for file_ in inp:
+            det_file_name = ""
+            if not isinstance(file_, str):
+                det_file_name = file_.name + "_det0.m"
+            else:
+                det_file_name = file_ + "_det0.m"
+            print(det_file_name)
+            data_detector_serp_tools = serpentTools.read(det_file_name)
+            detectors_data = data_detector_serp_tools.detectors
+            coarse_node_scores[id_][file_.specific].update(detectors_data)            
+            if "regions" in file_.detectors_relation and "regions" in detector_relation[id_][file_.specific]:
+                detector_relation[id_][file_.specific]["regions"].update(file_.detectors_relation["regions"])
+            else:
+                detector_relation[id_][file_.specific] = file_.detectors_relation
+
+            # print(file_.detectors_relation.keys())
+
+    return coarse_node_scores, detector_relation

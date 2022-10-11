@@ -25,7 +25,7 @@ class Grid:
         syntax = f"ene {self.__name} 1 "
 
         for ener in self.__energy_mesh:
-            syntax += f"{ener} "
+            syntax += f"{format(ener, '.8E')} "
         syntax += "\n"
         
         return syntax
@@ -36,7 +36,7 @@ class Grid:
         """
         syntax = ""
         for g, b_name in self.__bins_names_relation.items():
-            syntax += f"ene {b_name} 1 {self.__bins[g][0]} {self.__bins[g][1]}\n"
+            syntax += f"ene {b_name} 1 {format(self.__bins[g][0], '.8E')} {format(self.__bins[g][1], '.8E')}\n"
 
         
         return syntax    

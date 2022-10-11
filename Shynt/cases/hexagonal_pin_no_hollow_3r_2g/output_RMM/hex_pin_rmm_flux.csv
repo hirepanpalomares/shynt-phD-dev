@@ -1,0 +1,7 @@
+Energy_group, coarse_node_id, region_id, material, scalar_flux
+1, 1, 1, inner_fuel, 1.2456576959028896
+1, 1, 2, cladding, 1.2966251503180128
+1, 1, 3, na_coolant, 1.2399464321895988
+2, 1, 1, inner_fuel, 0.13555047250169727
+2, 1, 2, cladding, 0.14022607595144404
+2, 1, 3, na_coolant, 0.13532925250994698
