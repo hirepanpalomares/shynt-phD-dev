@@ -111,5 +111,6 @@ def build_T(xs, probabilities, regions, regions_volume, g):
             vol_i = regions_volume[region_i_id]
             p_i_j = probabilities["regions"][region_i_id]["regions"][region_j_id][g]
             matrix_T[j][i] =  vol_i * p_i_j / (xsTotal_j * vol_j)
+            # matrix_T[j][i] =  p_i_j / (xsTotal_j)
     
     return matrix_T

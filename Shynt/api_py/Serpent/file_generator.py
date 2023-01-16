@@ -88,7 +88,7 @@ def input_generator(coarse_nodes, fine_nodes, root, serp_dir="serpent_files"):
             # with the flags
             cell = reg.cell
             material = cell.content.name
-            name_file = f"{global_cell_dir}/det_local_problem_{material}.serp"
+            name_file = f"{global_cell_dir}/det_local_problem_{material}_{reg_id}.serp"
             type_reg = ""
             if cell.content.isFuel:
                 type_reg = "fuel"
@@ -105,8 +105,8 @@ def input_generator(coarse_nodes, fine_nodes, root, serp_dir="serpent_files"):
                 type_detectors="region",
                 region_id=reg_id,
                 specific=f"region_{type_reg}"
-
             )
+            
             det_files[coarse_id].append(serpent_input)
 
         # Additional file for the surfaces

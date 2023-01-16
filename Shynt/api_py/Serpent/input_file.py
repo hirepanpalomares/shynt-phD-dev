@@ -66,7 +66,8 @@ class SerpentInputFileRmmDetectors():
                 self.__write_geometry()
                 self.__write_outside_cell()
             elif self.type_detectors is not None: # "any other" hay: region, surfaces, reference flux
-                self.__write_energy_grid(syntax="by_bin")
+                # self.__write_energy_grid(syntax="by_bin")
+                self.__write_energy_grid(syntax="complete")
                 self.__write_geometry()
                 self.__write_outside_cell()
                 self.__write_detectors()
@@ -151,13 +152,16 @@ class SerpentInputFileRmmDetectors():
             isFuel = self.isFuel_relation[self.region_id][1]
             if isFuel: # Is fuel
                 # Fuel detectors -------------------------------------------------------
-                self.__helper_fuel_detectors(regions_dict)
+                # self.__helper_fuel_detectors(regions_dict)
+                self.__helper_fuel_detectors_less(regions_dict)
             else: # Is not Fuel
-                # Coolant detectors ----------------------------------------------------
-                self.__helper_nonFuel_detectors(regions_dict)
+                # Non-fuel detectors ----------------------------------------------------
+                # self.__helper_nonFuel_detectors(regions_dict)
+                self.__helper_nonFuel_detectors_less(regions_dict)
         elif self.type_detectors == "surfaces":
             # Surface detectors ----------------------------------------------------
-            self.__helper_surface_detectors(regions_dict)
+            # self.__helper_surface_detectors(regions_dict)
+            self.__helper_surface_detectors_less(regions_dict)
         
         # Writing detectors in the serpent file --------------------------------
         self.__file.write("\n% ----- Detectors ------\n")
@@ -211,7 +215,7 @@ class SerpentInputFileRmmDetectors():
 
         flag_relation = { }
         
-        # initialize detectprs_relation variable ----------------------------------
+        # initialize detectors_relation variable ----------------------------------
         if "regions" not in self.detectors_relation:
             self.detectors_relation["regions"] = {}
         self.detectors_relation["regions"][self.region_id] = {  
@@ -303,7 +307,6 @@ class SerpentInputFileRmmDetectors():
                 det.set_flag(flag_relation[f"j_out_reg{fuel_cell.id}_g{g}"], "0")
                 self.detectors.append(det)
                 self.detectors_relation["regions"][self.region_id]["surfaces"][s][g] = det
-
 
     def __helper_nonFuel_detectors(self, regions_dict):
         energy_bins = self.energy_grid.bins_names_relation
@@ -401,7 +404,6 @@ class SerpentInputFileRmmDetectors():
                     self.detectors.append(det)
                     self.detectors_relation["regions"][self.region_id]["surfaces"][s][g][gp] = det
 
-
     def __helper_surface_detectors(self, regions_dict):
         energy_bins = self.energy_grid.bins_names_relation
         groups = self.energy_grid.energy_groups
@@ -463,6 +465,240 @@ class SerpentInputFileRmmDetectors():
                     det.set_flag(flag_relation[f"surf_{s}_jin_g{g}"], "0")
                     self.detectors.append(det)
                     self.detectors_relation["surfaces"][s]["surfaces"][sp][g] = det
+
+
+    def __helper_fuel_detectors_less(self, regions_dict):
+        flag_relation = { }
+        
+        # initialize detectors_relation variable ----------------------------------
+        if "regions" not in self.detectors_relation:
+            self.detectors_relation["regions"] = {}
+        self.detectors_relation["regions"][self.region_id] = {  
+            "regions": {
+                r.cell.id: {} for r in self.regions if r.cell.id != self.region_id
+            },
+            "surfaces" : {
+                s: {} for s in self.closing_surface_ids
+            }
+        }
+        # -------------------------------------------------------------------------
+
+
+        fuel_cell = regions_dict[self.region_id].cell
+
+        bin_name = self.energy_grid.name
+        # Total reaction rate for each energy_bin
+        name = f"total_rate_reg{fuel_cell.id}"
+        det = Detector(name)
+        det.set_cell(self.region_id)
+        det.set_response("-1", fuel_cell.content.name)
+        det.set_energy_bins(bin_name)
+        self.detectors.append(det)
+        self.detectors_relation["regions"][self.region_id]["total"] = det
+
+
+        surface_id = fuel_cell.region.surface.id
+        # Surface detector. Inward neutrons to the fuel
+        name = f"j_in_reg{fuel_cell.id}"
+        det = Detector(name)
+        det.set_surface_det(surface_id, self.surface_direction[surface_id]["inward"])
+        det.set_energy_bins(bin_name)
+        det.set_flag(self.flag_counter, "1")
+        flag_relation[f"j_in_reg{fuel_cell.id}"] = self.flag_counter
+        self.detectors.append(det)
+        self.detectors_relation["regions"][self.region_id]["incoming"] = det
+
+
+        # Surface detector. Outward neutrons from the fuel
+        name = f"j_out_reg{fuel_cell.id}"
+        det = Detector(name)
+        det.set_surface_det(surface_id, self.surface_direction[surface_id]["outward"])
+        det.set_energy_bins(bin_name)
+        det.set_flag(self.flag_counter, "3")
+        det.set_flag(self.flag_counter+1, "1")
+        flag_relation[f"j_out_reg{fuel_cell.id}"] = self.flag_counter + 1
+        self.detectors.append(det)
+        self.detectors_relation["regions"][self.region_id]["outcoming"] = det
+        self.flag_counter += 2
+
+
+        # Surf and coolant to fuel
+        name = f"all_to_reg{fuel_cell.id}"
+        det = Detector(name)
+        det.set_cell(fuel_cell.id)
+        det.set_response("-1", fuel_cell.content.name)
+        det.set_energy_bins(bin_name)
+        det.set_flag(flag_relation[f"j_in_reg{fuel_cell.id}"], "2")
+        det.set_flag(flag_relation[f"j_in_reg{fuel_cell.id}"], "0")
+        self.detectors.append(det)
+        self.detectors_relation["regions"][self.region_id]["surface&coolant"] = det
+
+
+        # Fuel to coolant (or other regions)
+        for reg in self.regions:
+            if reg.cell.id != self.region_id:
+                name = f"reg{fuel_cell.id}_to_reg{reg.cell.id}"
+                det = Detector(name)
+                det.set_cell(reg.cell.id)
+                det.set_response("-1", reg.cell.content.name)
+                det.set_energy_bins(bin_name)
+                det.set_flag(flag_relation[f"j_out_reg{fuel_cell.id}"], "2")
+                det.set_flag(flag_relation[f"j_out_reg{fuel_cell.id}"], "0")
+                self.detectors.append(det)
+                self.detectors_relation["regions"][self.region_id]["regions"][reg.cell.id] = det
+
+        # Fuel to surf
+        for s in self.closing_surface_ids:
+            name = f"reg{fuel_cell.id}_to_surface{s}"
+            det = Detector(name)
+            det.set_surface_det(s, self.surface_direction[s]["outward"])
+            det.set_energy_bins(bin_name)
+            det.set_flag(flag_relation[f"j_out_reg{fuel_cell.id}"], "2")
+            det.set_flag(flag_relation[f"j_out_reg{fuel_cell.id}"], "0")
+            self.detectors.append(det)
+            self.detectors_relation["regions"][self.region_id]["surfaces"][s] = det
+
+    def __helper_nonFuel_detectors_less(self, regions_dict):
+        flag_relation = { }
+
+        # initialize detectors_relation variable ----------------------------------
+        if "regions" not in self.detectors_relation:
+            self.detectors_relation["regions"] = {}
+        self.detectors_relation["regions"][self.region_id] = {
+            "total": {},
+            "regions": {
+                r.cell.id: {} for r in self.regions
+            },
+            "surfaces": {
+                s: {} for s in self.closing_surface_ids
+            },
+        }
+        # -------------------------------------------------------------------------
+
+
+        coolant_cell = regions_dict[self.region_id].cell
+
+        bin_name = self.energy_grid.name
+
+        
+
+        # Total reaction rate for each energy_bin
+        name = f"total_rate_reg{coolant_cell.id}"
+        det = Detector(name)
+        det.set_cell(coolant_cell.id)
+        det.set_response("-1", coolant_cell.content.name)
+        det.set_energy_bins(bin_name)
+        det.set_flag(self.flag_counter, "1")
+        flag_relation[f"reg{coolant_cell.id}_total_rate"] = self.flag_counter
+        # detectors.append(det)
+        # detectors_relation["coolant"]["total"][g] = det
+        total_rate_detector = det
+        self.flag_counter += 1
+        self.detectors_relation["regions"][self.region_id]["total"] = total_rate_detector
+        
+        # COOLANT ----> COOLANT
+        name = f"reg{coolant_cell.id}_reg{coolant_cell.id}"
+        det = Detector(name)
+        det.set_cell(coolant_cell.id)
+        det.set_response("-1", coolant_cell.content.name)
+        det.set_energy_bins(bin_name)
+        det.set_flag(flag_relation[f"reg{coolant_cell.id}_total_rate"], "2")
+        det.set_flag(flag_relation[f"reg{coolant_cell.id}_total_rate"], "0")
+        det.set_flag(flag_relation[f"reg{coolant_cell.id}_total_rate"], "1")
+        self.detectors.append(det)
+        self.detectors_relation["regions"][self.region_id]["regions"][self.region_id] = det
+
+        # APPEND TOTAL RATE DETECTOR
+        self.detectors.append(total_rate_detector)
+
+        
+
+        # Fuel to coolant (or other regions)
+
+        for reg in self.regions:
+            if reg.cell.id != self.region_id:
+                # for a region that is different to the current coolant region
+                # if it is another coolant region check the implementation for
+                # coolant to coolant
+
+                # COOLANT -----> REG _reg
+                name = f"reg{self.region_id}_reg{reg.cell.id}"
+                det = Detector(name)
+                det.set_cell(reg.cell.id)
+                det.set_response("-1", reg.cell.content.name)
+                det.set_energy_bins(bin_name)
+                det.set_flag(flag_relation[f"reg{coolant_cell.id}_total_rate"], "2")
+                det.set_flag(flag_relation[f"reg{coolant_cell.id}_total_rate"], "0")
+                self.detectors.append(det)
+                self.detectors_relation["regions"][self.region_id]["regions"][reg.cell.id] = det
+
+        
+        # COOLANT -----> SURFACES
+        for s in self.closing_surface_ids:
+            name = f"reg{reg.cell.id}_surface{s}" # it should be coolant_cell.id but it cause conflicts with all the serpent files ran in the past
+            det = Detector(name)
+            det.set_surface_det(s, self.surface_direction[s]["outward"])
+            det.set_energy_bins(bin_name)
+            det.set_flag(flag_relation[f"reg{coolant_cell.id}_total_rate"], "2")
+            det.set_flag(flag_relation[f"reg{coolant_cell.id}_total_rate"], "0")
+            self.detectors.append(det)
+            self.detectors_relation["regions"][self.region_id]["surfaces"][s] = det
+
+    def __helper_surface_detectors_less(self, regions_dict):
+        
+
+        self.detectors_relation["surfaces"] = {
+            s: {
+                "regions": {
+                    r.cell.id: {} for r in self.regions
+                },
+                "incoming": {},
+                "surfaces": {
+                    s: {} for s in self.closing_surface_ids
+                }
+            } for s in self.closing_surface_ids
+        }
+
+        flag_relation = { }
+        bin_name = self.energy_grid.name
+
+        # Incoming neutrons
+        for s in self.closing_surface_ids:
+            name = f"surface_{s}_jin"
+            det = Detector(name)
+            det.set_surface_det(s, self.surface_direction[s]["inward"])
+            det.set_energy_bins(bin_name)
+            det.set_flag(self.flag_counter, "1")
+            flag_relation[f"surf_{s}_jin"] = self.flag_counter
+            self.detectors.append(det)
+            self.detectors_relation["surfaces"][s]["incoming"] = det
+            self.flag_counter += 1
+        
+        # Surf to regions
+        for reg in self.regions:
+            for s in self.closing_surface_ids:
+                name = f"surface_{s}_to_reg{reg.cell.id}"
+                det = Detector(name)
+                det.set_cell(reg.cell.id)
+                det.set_response("-1", reg.cell.content.name)
+                det.set_energy_bins(bin_name)
+                det.set_flag(flag_relation[f"surf_{s}_jin"], "2")
+                det.set_flag(flag_relation[f"surf_{s}_jin"], "0")
+                self.detectors.append(det)
+                self.detectors_relation["surfaces"][s]["regions"][reg.cell.id] = det
+
+        # Surf to surf
+        for s in self.closing_surface_ids:
+            for sp in self.closing_surface_ids:
+                name = f"surface_{s}_to_surf{sp}"
+                det = Detector(name)
+                det.set_surface_det(sp, self.surface_direction[sp]["outward"])                    
+                det.set_energy_bins(bin_name)
+                det.set_flag(flag_relation[f"surf_{s}_jin"], "2")
+                det.set_flag(flag_relation[f"surf_{s}_jin"], "0")
+                self.detectors.append(det)
+                self.detectors_relation["surfaces"][s]["surfaces"][sp] = det
+
 
 
 class SerpentInputFileReferenceFlux():

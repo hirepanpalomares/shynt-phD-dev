@@ -35,7 +35,7 @@ def get_cross_sections(energy_g, xs_inputs, fine_nodes):
                 "capture": xs_gamma,
                 "nuSigFission": xs_nuFiss,
                 "chi": xs_chi,
-                "scatter": xs_scatterMatrix
+                "scatter": xs_scatterMatrix.T
 
             }   
     

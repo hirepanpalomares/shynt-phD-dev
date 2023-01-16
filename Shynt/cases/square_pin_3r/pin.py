@@ -26,7 +26,7 @@ zr96 = Shynt.materials.Isotope("40096.06c")
 
 
 # Montecarlo params and libraries --------------------------------------
-mc_params = Shynt.montecarlo.MontecarloParams(300_000, 1500, 250)
+mc_params = Shynt.montecarlo.MontecarloParams(10_000, 1500, 500)
 libraries = Shynt.libraries.SerpentLibraries(acelib='"jeff311/sss_jeff311u.xsdata"', therm="therm lwtr lwj3.11t")
 energy_grid = Shynt.energy.Grid([0, 0.625E-06, 20], name="2groups_grid") # MeV
 

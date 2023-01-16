@@ -41,15 +41,15 @@ def buildJsource(coarse_nodes, matrixU, source, energy_g):
     return j_source
     # return total_j_source
 
-def buildJsource_sys(coarse_nodes, matrixU, source, energy_g):
+def buildJsource_sys(matrixU, source, energy_g):
     """
       
     """ 
 
     j_source = []
     q_sys = []
-    for g in range(energy_g):
-        for val_ in source[g]:
+    for g, src_g in source.items():
+        for val_ in src_g:
             q_sys.append(val_)
 
     q_sys = np.array(q_sys)

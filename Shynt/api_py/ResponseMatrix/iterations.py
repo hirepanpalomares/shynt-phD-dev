@@ -37,16 +37,14 @@ def solveKeff(root, xs, probabilities, mesh_info):
 
     # Building matrixes -----------------------------------------------------------
     # matrixS = getMatrixS_system_byGroup(mesh_info, energy_g, xs, probabilities) # ready
-    matrixU_bg = getMatrixU_system_byGroup(mesh_info, energy_g, probabilities) # ready
-    matrixT_bg = getMatrixT_system_byGroup(mesh_info, energy_g, xs, probabilities) # read
+    # matrixU_bg = getMatrixU_system_byGroup(mesh_info, energy_g, probabilities) # ready
+    # matrixT_bg = getMatrixT_system_byGroup(mesh_info, energy_g, xs, probabilities) # read
     # matrixR = getResponseMatrix_byGroup(mesh_info, energy_g, probabilities) # ready
     # matrixM = getM_matrix(coarse_nodes_map, coarse_nodes, all_surfaces, mesh_info.type_system) # ready 
     # inverse_IMR = calculate_inverseIMR(matrixM, matrixR, energy_g)
     
 
-    phi_guess = getInitializedPhi_system(numRegions, energy_g)
-    keff_guess = 1
-    matrixS = getMatrixS_system(mesh_info, energy_g, xs, probabilities) # ready
+    matrixS = getMatrixS_system(mesh_info, energy_g, xs, probabilities) # ready 
     matrixU = getMatrixU_system(mesh_info, energy_g, probabilities) # ready
     matrixT = getMatrixT_system(mesh_info, energy_g, xs, probabilities) # read
     matrixR = getResponseMatrix_system(mesh_info, energy_g, probabilities) # ready    
@@ -57,9 +55,14 @@ def solveKeff(root, xs, probabilities, mesh_info):
     
 
     # Building the source
-    systemSource = SourceQ(coarse_nodes_order, coarse_nodes_regions, energy_g, xs) # scatterinf matrix and fission matrix per region
+    systemSource = SourceQ(coarse_nodes_order, coarse_nodes_regions, energy_g, xs) # scattering matrix and fission matrix per region
     fission_source = systemSource.buildFissionSource(mesh_info, probabilities) # for power iteration
+    
     # Guessing initial keff and phi
+    phi_guess = getInitializedPhi_system(numRegions, energy_g)
+    # phi_guess = getInitializedPhi_system_byGroup(numRegions, energy_g)
+
+    keff_guess = 1
 
     keff_prev = keff_guess
     phi_prev = phi_guess
@@ -72,6 +75,11 @@ def solveKeff(root, xs, probabilities, mesh_info):
     iteration = 1
     k_array = []
     phi_source_array = []
+    print(matrixS)
+    print(matrixT)
+    print(matrixU) 
+    print(matrixR)
+    iii = input()
     while k_converge >= tolerance or phi_converge >= tolerance:
         print("-"*50)
 
@@ -79,19 +87,19 @@ def solveKeff(root, xs, probabilities, mesh_info):
         source_Q_vectors = systemSource.calculate_Qvector(keff_prev, phi_prev, all_regions_order) # checked
 
 
-        j_source = buildJsource(coarse_nodes_order, matrixU_bg, source_Q_vectors, energy_g)
-        phi_source = buildPhiSource(coarse_nodes_order, matrixT_bg, source_Q_vectors, energy_g)
-
-        j_sourceTBT = buildJsourceTBT(energy_g, mesh_info, probabilities, xs, keff_prev, phi_prev)
-        phi_sourceTBT = buildPhiSourceTBT(energy_g, mesh_info, probabilities, xs, keff_prev, phi_prev)
+        # j_source = buildJsource(coarse_nodes_order, matrixU_bg, source_Q_vectors, energy_g)
+        # phi_source = buildPhiSource(coarse_nodes_order, matrixT_bg, source_Q_vectors, energy_g)
+        # j_sourceTBT = buildJsourceTBT(energy_g, mesh_info, probabilities, xs, keff_prev, phi_prev)
+        # phi_sourceTBT = buildPhiSourceTBT(energy_g, mesh_info, probabilities, xs, keff_prev, phi_prev)
+        
         # Solving the Global problem------------------------------
         # j_in = solveGlobalProblem(energy_g, inverse_IMR, matrixM, j_source) 
         # Solving local problem: ---------------------------------
         # phi_new = solveLocalProblem(matrixS, j_in, phi_source, energy_g)
         # ---------------------------------------------------------------------------------------
 
-        j_source_sys = buildJsource_sys(coarse_nodes_order, matrixU, source_Q_vectors, energy_g)
-        phi_source_sys = buildPhiSource_sys(coarse_nodes_order, matrixT, source_Q_vectors, energy_g)
+        j_source_sys = buildJsource_sys(matrixU, source_Q_vectors, energy_g)
+        phi_source_sys = buildPhiSource_sys(matrixT, source_Q_vectors, energy_g)
         
         phi_source_array.append(phi_source_sys)
 
@@ -100,6 +108,7 @@ def solveKeff(root, xs, probabilities, mesh_info):
 
         # power iteration -----------------------------------------
         keff_new = power_iteration_sys(phi_new, phi_prev, keff_prev, fission_source, all_regions_order, energy_g)    
+        # keff_new = power_iteration(phi_new, phi_prev, keff_prev, fission_source, all_regions_order, energy_g)    
         k_array.append(keff_new)
 
 
@@ -112,17 +121,23 @@ def solveKeff(root, xs, probabilities, mesh_info):
         print(f"phi converge: {phi_converge:.8E}")
         print(f"convergence tolerance: {tolerance:.8E}")
         print("iteration:", iteration)
+        print(phi_new)
+
         # update for the next iteration
         keff_prev = keff_new
         phi_prev = phi_new
         iteration += 1
+        # inputtt = input()
         
-
     # phi_output = order_flux_output(phi_new, mesh_info, energy_g)
     phi_output = order_flux_output_sys(phi_new, mesh_info, energy_g)
 
+    print(phi_output)
+    flux_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_new, j_in_sys)
+    current_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_new, j_in_sys)
+
     return  {
-        "keff": keff_new, 
+        "keff": keff_new,
         "phi": phi_output,
         "keff_convergence": k_converge,
         "flux_convergence": phi_converge, 
@@ -131,19 +146,91 @@ def solveKeff(root, xs, probabilities, mesh_info):
     }
 
 
+def flux_eq_proof(probabilities, source, mesh_info, energy_g, xs, flux, j_in):
+    left =  []
+    right = []
+    
+    all_regions = mesh_info.all_regions_order
+    all_surfaces = mesh_info.all_surfaces_order
+
+    numRegions = len(all_regions)
+    numSurfaces = len(all_surfaces)
+    for g in range(energy_g):
+        vec_left = []
+        vec_right = []
+        for r, r_i in enumerate(all_regions):
+            coarse_node = mesh_info.region_coarse_rel[r_i]
+            coarse_node_regions = mesh_info.coarse_region_rel[coarse_node]
+            coarse_node_surfaces = mesh_info.coarse_surface_rel[coarse_node]
+            vol_i = mesh_info.all_regions_vol[r_i]
+            
+            index_flx = numRegions * g + r
+            flux_val = flux[index_flx]
+            left_side = xs[r_i]['total'][g] * vol_i * flux_val
+            vec_left.append(left_side)
+            right_sum = 0
+            for r_j in coarse_node_regions:
+                index_j = all_regions.index(r_j)
+                vol_j = mesh_info.all_regions_vol[r_j]
+                right_sum += probabilities["regions"][r_j]["regions"][r_i][g] * vol_j * source[g][index_j]
+            for s_a in coarse_node_surfaces:
+                index_a = all_surfaces.index(s_a)
+                index_jin_a = numSurfaces * g + index_a
+                right_sum += j_in[index_jin_a] * mesh_info.all_surfaces_area[s_a] * probabilities["surfaces"][s_a]["regions"][r_i][g]
+            vec_right.append(right_sum)
+        left.append(vec_left)
+        right.append(vec_right)
+
+
+    pass
+
+
+def current_eq_proof(probabilities, source, mesh_info, energy_g, xs, flux, j_in):
+    left =  []
+    right = []
+    
+    all_regions = mesh_info.all_regions_order
+    all_surfaces = mesh_info.all_surfaces_order
+
+    numRegions = len(all_regions)
+    numSurfaces = len(all_surfaces)
+    for g in range(energy_g):
+        vec_left = []
+        vec_right = []
+        for s, s_a in enumerate(all_surfaces):
+            coarse_node = 1 # This does not apply for bigger systems than a pin cell
+            coarse_node_regions = mesh_info.coarse_region_rel[coarse_node]
+            coarse_node_surfaces = mesh_info.coarse_surface_rel[coarse_node]
+            area_a = mesh_info.all_surfaces_area[s_a]
+
+            index_a = all_surfaces.index(s_a)
+            index_jout_a = numSurfaces * g + index_a
+            jout_val = j_in[index_jout_a]
+
+            left_side = jout_val * area_a
+            vec_left.append(left_side)
+            right_sum = 0
+            for r_j in coarse_node_regions:
+                index_j = all_regions.index(r_j)
+                vol_j = mesh_info.all_regions_vol[r_j]
+                right_sum += probabilities["regions"][r_j]["surfaces"][s_a][g] * vol_j * source[g][index_j]
+            for s_b in coarse_node_surfaces:
+                index_b = all_surfaces.index(s_b)
+                index_jin_b = numSurfaces * g + index_b
+                right_sum += j_in[index_jin_b] * mesh_info.all_surfaces_area[s_b] * probabilities["surfaces"][s_a]["surfaces"][s_b][g]
+            vec_right.append(right_sum)
+        left.append(vec_left)
+        right.append(vec_right)
+
+
+    pass
+
 
 def check_convergence_sys(k_prev, k_new, phi_prev, phi_new, energy_g):
     k_converge = abs(k_new - k_prev)/k_new
 
-    # max_phi_prev = np.zeros(energy_g)
-    # max_phi_new = np.zeros(energy_g)
-
-    # for g in range(energy_g):
-    #     max_phi_new[g] = phi_new[g].max()
-    #     max_phi_prev[g] = phi_prev[g].max()
-
     phi_converge = abs(phi_new - phi_prev) / phi_new
-    # print(phi_converge)
+    
     return k_converge, phi_converge.max()
 
 
@@ -175,6 +262,7 @@ def calculate_inverseIMR(matrixM, matrixR, energy_g):
         inverse = np.linalg.inv(matrix_to_invert)
         inv[g] = inverse
     return inv
+
 
 def calculate_inverseIMR_sys(matrixM, matrixR):
     

@@ -3,7 +3,7 @@ import os
 import sys
 
 import Shynt
-from Shynt.api_py.Geometry.mesh_helpers import make_mesh
+from Shynt.api_py.Mesh.mesh_helpers import make_mesh
 
 
 

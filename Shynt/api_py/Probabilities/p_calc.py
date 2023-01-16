@@ -2,8 +2,6 @@ import numpy as np
 
 from Shynt.api_py.materials import Material
 
-# from . import compare
-
 
 def get_nonFuel_counts(scores, det_relation, energy, regions, surfaces, fuel_region):
     """
@@ -204,6 +202,118 @@ def get_surface_probabilities(surface_neutrons, energy_groups, regions, surfaces
     return p_surfaces
 
 
+def get_nonFuel_counts_lessDet(scores, det_relation, energy, regions, surfaces, fuel_region):
+    """
+        Method to extract the following rates:
+            - mod --> regions
+            - mod --> surface
+    """
+    nonFuel_counts = {
+        r: {
+            "regions": {
+                r: np.zeros(energy) for r in regions
+            },
+            "surfaces": {
+                s: np.zeros(energy) for s in surfaces
+            }
+        } for r in regions if r != fuel_region
+    }
+    
+
+    for r in regions:
+        if r != fuel_region:
+            detectors = det_relation["regions"][r]
+            # for g in range(energy):
+            #     for gp in range(energy):
+            #         if g < gp:
+            #             continue # To avoid upscaterring detectors
+            #         energy_index = energy - 1 - gp # To get array fast ---> thermal
+
+            for rp in regions: # rp is the region where the neutron intercts for the second time
+                det_name_rp = detectors["regions"][rp].name
+                nonFuel_counts[r]["regions"][rp] = np.flip(abs(scores[det_name_rp].tallies))
+            
+            for s in surfaces:
+                det_name_surface = detectors["surfaces"][s].name
+                nonFuel_counts[r]["surfaces"][s] = np.flip(abs(scores[det_name_surface].tallies))
+
+    return nonFuel_counts
+
+def get_fuel_counts_lessDet(scores, det_relation, energy, regions, surfaces, fuel_region):
+    """
+        Method to extract the following rates:
+            - fuel --> regions
+            - fuel --> surfaces
+        
+        This methods counts the neutrons of every possible interaction fuel -> clad, fuel -> coolant, etc
+    """  
+    region_fuel_counts = {
+        "regions": {
+            r: np.zeros(energy) for r in regions
+        },
+        "surfaces": {
+            s: np.zeros(energy) for s in surfaces
+        }
+    }
+    
+    detectors = det_relation["regions"][fuel_region]
+    # for g in range(energy):
+    #     energy_index = energy - 1 - g # To get array fast ---> thermal
+    # Total reaction rate in the fuel
+    det_name_total = detectors["total"].name
+
+    # All neutrons entering the fuel through surface
+    det_name_all_incoming = detectors["surface&coolant"].name
+
+    # Neutrons that interact in the fuel and then in other regions
+    for r in regions:
+        if r != fuel_region:
+            det_name_region = detectors["regions"][r].name
+            region_fuel_counts["regions"][r] = np.flip(abs(scores[det_name_region].tallies))
+
+    # Neutrons  fuel to fuel        
+    region_fuel_counts["regions"][fuel_region] = np.flip(
+        abs(scores[det_name_total].tallies) - abs(scores[det_name_all_incoming].tallies)
+    )
+
+    # Neutrons fuel to surfaces
+    for s in surfaces:
+        det_name_surface = detectors["surfaces"][s].name
+        region_fuel_counts["surfaces"][s] = np.flip(abs(scores[det_name_surface].tallies))
+        
+    return region_fuel_counts
+
+def get_surface_counts_lessDet(scores, det_relation, energy, regions, surfaces):
+    """
+        Method to extract the following rates:
+            - surface --> regions
+            - surface --> surface
+
+    """
+
+    # Preparing surface_counts
+    surface_counts = {    
+        s: {
+            "regions": {
+                r: np.zeros(energy) for r in regions
+            },
+            "surfaces": {
+                su: np.zeros(energy) for su in surfaces
+            }
+        } for s in surfaces
+    }
+
+    # for g in range(energy):
+    for s in det_relation.keys():
+        for r in regions:
+            # energy_index = energy - 1 - g  # To get array fast ---> thermal
+            det_name_region = det_relation[s]["regions"][r].name
+            surface_counts[s]["regions"][r] = np.flip(abs(scores[det_name_region].tallies))
+            for sp in surfaces:
+                det_name_surface = det_relation[s]["surfaces"][sp].name
+                surface_counts[s]["surfaces"][sp] = np.flip(abs(scores[det_name_surface].tallies))
+    return surface_counts
+
 def calculate_probabilities_main_nodes(det_inputs, mesh_info, coarse_nodes, fine_nodes, energy_groups, coarse_node_scores, detector_relation):                    
     """
         # TODO: The number of detectors can be reduced (see bellow)
@@ -232,13 +342,16 @@ def calculate_probabilities_main_nodes(det_inputs, mesh_info, coarse_nodes, fine
     
         for type_ in detector_relation[id_].keys():
             if type_ == "region_fuel":
-                fuel_neutrons = get_fuel_counts(coarse_node_scores[id_]["region_fuel"],detector_relation[id_]["region_fuel"],energy_groups,regions,surfaces,fuel_region)
+                # fuel_neutrons = get_fuel_counts(coarse_node_scores[id_]["region_fuel"],detector_relation[id_]["region_fuel"],energy_groups,regions,surfaces,fuel_region)
+                fuel_neutrons = get_fuel_counts_lessDet(coarse_node_scores[id_]["region_fuel"],detector_relation[id_]["region_fuel"],energy_groups,regions,surfaces,fuel_region)
                 fuel_probabilities = get_fuel_probabilities(fuel_neutrons,regions,surfaces,energy_groups)
             elif type_ == "region_nonFuel":
-                nonFuel_neutrons = get_nonFuel_counts(coarse_node_scores[id_]["region_nonFuel"],detector_relation[id_]["region_nonFuel"],energy_groups,regions,surfaces,fuel_region)
+                # nonFuel_neutrons = get_nonFuel_counts(coarse_node_scores[id_]["region_nonFuel"],detector_relation[id_]["region_nonFuel"],energy_groups,regions,surfaces,fuel_region)
+                nonFuel_neutrons = get_nonFuel_counts_lessDet(coarse_node_scores[id_]["region_nonFuel"],detector_relation[id_]["region_nonFuel"],energy_groups,regions,surfaces,fuel_region)
                 nonFuel_probabilities = get_nonFuel_probabilities(nonFuel_neutrons,regions,surfaces,fuel_region,energy_groups)
             elif type_ == "surfaces":
-                surface_neutrons = get_surface_counts(coarse_node_scores[id_]["surfaces"],detector_relation[id_]["surfaces"]["surfaces"],energy_groups,regions,surfaces)
+                # surface_neutrons = get_surface_counts(coarse_node_scores[id_]["surfaces"],detector_relation[id_]["surfaces"]["surfaces"],energy_groups,regions,surfaces)
+                surface_neutrons = get_surface_counts_lessDet(coarse_node_scores[id_]["surfaces"],detector_relation[id_]["surfaces"]["surfaces"],energy_groups,regions,surfaces)
                 surface_probabilities = get_surface_probabilities(surface_neutrons,energy_groups,regions,surfaces)
             else:
                 print("Warning in calculate probabilities, type of detector not valid")

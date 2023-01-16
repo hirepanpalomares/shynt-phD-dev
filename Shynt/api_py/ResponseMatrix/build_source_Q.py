@@ -136,7 +136,7 @@ class SourceQ:
             
             }
         """
-        flux = self.__orderFlux(flux, total_regions) # comment this line for the case of flux in a dictionary
+        flux = self.__orderFlux(flux, total_regions)
 
         # change order of fluxes
         numRegions = len(total_regions)
@@ -151,13 +151,27 @@ class SourceQ:
             for r in range(numRegions):
                 r_id = total_regions[r]
                 phi = flux_r_g[r_id]
-
-                scatt_matrix = self.__scatteringMatrix[r_id].T
+                scatt_matrix = self.__scatteringMatrix[r_id]
                 fiss_matrix = self.__fissionMatrix[r_id]
-                scattering_value = np.dot(scatt_matrix[g], phi)
-                fission_value = np.dot(fiss_matrix[g], phi) / keff
-                _Q[g][r] = scattering_value + fission_value   # / (4 * np.pi)       
-                db = True      
+
+                scatt_term = 0.0
+                fission_term = 0.0
+                for gp in range(self.__energyG):
+                    # scattering --------------------
+                    scatt_term += scatt_matrix[g][gp] * phi[gp]
+                    # fission -----------------------
+                    fission_term += fiss_matrix[g][gp] * phi[gp]
+
+                _Q[g][r] = scatt_term + fission_term / keff
+
+                # r_id = total_regions[r]
+                # phi = flux_r_g[r_id]
+                # scatt_matrix = self.__scatteringMatrix[r_id].T
+                # fiss_matrix = self.__fissionMatrix[r_id]
+                # scattering_value = np.dot(scatt_matrix[g], phi)
+                # fission_value = np.dot(fiss_matrix[g], phi) / keff
+                # _Q[g][r] = scattering_value + fission_value   # / (4 * np.pi)       
+                # db = True      
         
         return _Q
 

@@ -34,7 +34,7 @@ def solveLocalProblem(matrixS_n, jin_system, phi_source_n, energy_g):
 
 def solveLocalProblem_sys(matrixS_sys, jin_sys, phi_source_sys):
     """
-        I
+        
     """
     
     mS_x_jin = np.matmul(matrixS_sys, jin_sys)

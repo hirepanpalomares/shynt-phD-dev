@@ -116,6 +116,7 @@ def build_U(probabilities, surfaces, surface_areas, regions, regions_volume, g):
             vol_i = regions_volume[region_id]
             p_i_a = probabilities["regions"][region_id]["surfaces"][surf_id][g]
             matrix_U_n[a][i] =  vol_i * p_i_a / area_a
+            # matrix_U_n[a][i] =  p_i_a / area_a
 
 
     return matrix_U_n

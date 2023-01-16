@@ -3,7 +3,7 @@ from Shynt.api_py.Mesh.mesh_info import MeshInfo
 from Shynt.api_py.Geometry.universes import HexagonalLatticeTypeX, SquareLattice
 from Shynt.api_py.Postprocess.write_output import OutputFile
 from Shynt.api_py.Serpent.serpent_runners import run_detector_files, run_xs_files
-from Shynt.api_py.Probabilities.get_probabilities_system import get_probabilities
+from Shynt.api_py.Probabilities.get_probabilities_system import get_probabilities, check_reciprocity
 from Shynt.api_py.CrossSections.get_xs_system import get_xs_data
 from Shynt.api_py.ResponseMatrix.iterations import solveKeff
 from Shynt.api_py.Serpent.file_generator import generate_serpent_files
@@ -11,6 +11,10 @@ from Shynt.api_py.Serpent.file_generator import generate_serpent_files
 from Shynt.api_py.Geometry.surfaces import InfiniteHexagonalCylinderXtype, InfiniteHexagonalCylinderYtype, InfiniteSquareCylinderZ, reset_surface_counter
 from Shynt.api_py.Geometry.cells import reset_cell_counter
 from Shynt.api_py.Probabilities.probability_writer import write_excel
+
+import numpy as np
+
+
 
 def generate_MeshInfo(root):
 
@@ -112,12 +116,14 @@ def run(root, server=True, name_out="", serp_dir="serpent_files"):
 
     # raise SystemExit
     # get XS and probabilities
-    probabilities = get_probabilities(det_inputs, mesh_info, root)
     xs = get_xs_data(mesh_info, root, xs_inputs)
+    probabilities = get_probabilities(det_inputs, mesh_info, root, xs)
+    
     
     reset_surface_counter()
     reset_cell_counter()
-
+    # raise SystemExit
+    
     # Run detector files 
     # Solve iterative method ----------------------------------------------------
     solution = solveKeff(

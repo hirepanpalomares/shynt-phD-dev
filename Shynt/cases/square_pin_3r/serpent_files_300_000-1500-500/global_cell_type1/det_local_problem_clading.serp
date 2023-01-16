@@ -50,21 +50,26 @@ det reg2_reg2_g1_to_g0  de 2groups_grid_0 dr -1 clading dc 2   dfl 2 2  dfl 2 0 
 det reg2_reg2_g1_to_g1  de 2groups_grid_1 dr -1 clading dc 2   dfl 2 2  dfl 2 0  dfl 2 1 
 det total_rate_reg2_g0  de 2groups_grid_0 dr -1 clading dc 2   dfl 1 1 
 det total_rate_reg2_g1  de 2groups_grid_1 dr -1 clading dc 2   dfl 2 1 
+
 det reg2_reg1_g0_to_g0  de 2groups_grid_0 dr -1 fuel1 dc 1   dfl 1 2  dfl 1 0 
-det reg2_reg1_g1_to_g0  de 2groups_grid_0 dr -1 fuel1 dc 1   dfl 2 2  dfl 2 0 
-det reg2_reg1_g1_to_g1  de 2groups_grid_1 dr -1 fuel1 dc 1   dfl 2 2  dfl 2 0 
 det reg2_reg3_g0_to_g0  de 2groups_grid_0 dr -1 coolant dc 3   dfl 1 2  dfl 1 0 
-det reg2_reg3_g1_to_g0  de 2groups_grid_0 dr -1 coolant dc 3   dfl 2 2  dfl 2 0 
 det reg2_reg3_g1_to_g1  de 2groups_grid_1 dr -1 coolant dc 3   dfl 2 2  dfl 2 0 
-det reg3_surface4_g0_to_g0 ds 4 -1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
-det reg3_surface5_g0_to_g0 ds 5 1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
-det reg3_surface6_g0_to_g0 ds 6 1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
-det reg3_surface7_g0_to_g0 ds 7 -1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
+det reg2_reg1_g1_to_g1  de 2groups_grid_1 dr -1 fuel1 dc 1   dfl 2 2  dfl 2 0 
+
+
 det reg3_surface4_g1_to_g0 ds 4 -1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
 det reg3_surface5_g1_to_g0 ds 5 1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
 det reg3_surface6_g1_to_g0 ds 6 1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
 det reg3_surface7_g1_to_g0 ds 7 -1 de 2groups_grid_0   dfl 2 2  dfl 2 0 
+
 det reg3_surface4_g1_to_g1 ds 4 -1 de 2groups_grid_1   dfl 2 2  dfl 2 0 
 det reg3_surface5_g1_to_g1 ds 5 1 de 2groups_grid_1   dfl 2 2  dfl 2 0 
 det reg3_surface6_g1_to_g1 ds 6 1 de 2groups_grid_1   dfl 2 2  dfl 2 0 
 det reg3_surface7_g1_to_g1 ds 7 -1 de 2groups_grid_1   dfl 2 2  dfl 2 0 
+
+%det reg2_reg1_g1_to_g0  de 2groups_grid_0 dr -1 fuel1 dc 1   dfl 2 2  dfl 2 0 
+%det reg2_reg3_g1_to_g0  de 2groups_grid_0 dr -1 coolant dc 3   dfl 2 2  dfl 2 0 
+%det reg3_surface4_g0_to_g0 ds 4 -1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
+%det reg3_surface5_g0_to_g0 ds 5 1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
+%det reg3_surface6_g0_to_g0 ds 6 1 de 2groups_grid_0   dfl 1 2  dfl 1 0 
+%det reg3_surface7_g0_to_g0 ds 7 -1 de 2groups_grid_0   dfl 1 2  dfl 1 0 

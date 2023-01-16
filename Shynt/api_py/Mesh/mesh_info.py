@@ -69,7 +69,7 @@ class MeshInfo:
             for r_id, fine_node  in self.__fine_nodes[n_id].items():
                 self.region_coarse_rel[r_id] = n_id
                 region_cell = fine_node.cell
-                material_name = region_cell.content.name
+                material_name = region_cell.content.name + f"_{region_cell.id}"
                 self.region_type_rel[n_id][material_name] = r_id
                 self.region_type_rel_switched[n_id][r_id] = material_name
                 # if region_cell.content.isFuel:

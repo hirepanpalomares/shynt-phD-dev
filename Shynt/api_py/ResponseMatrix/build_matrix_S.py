@@ -30,6 +30,7 @@ def getMatrixS_byNode_byGroup(coarse_nodes, energy_g, xs, probabilities):
         
     return matrix_S_byNode_byGroup
 
+
 def getMatrixS_system(mesh_info, energy_g, xs, probabilities):
  
     coarse_nodes = mesh_info.coarse_order

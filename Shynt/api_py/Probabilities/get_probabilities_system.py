@@ -3,7 +3,7 @@ from Shynt.api_py.Serpent.detector_output import read_detectors_data
 
 import numpy as np
 
-def get_probabilities(det_inputs, mesh_info, root):
+def get_probabilities(det_inputs, mesh_info, root, xs):
     model_cell = root.model_cell
     energy_g = root.energy_grid.energy_groups
     coarse_nodes = model_cell.global_mesh.coarse_nodes
@@ -25,6 +25,19 @@ def get_probabilities(det_inputs, mesh_info, root):
     )
 
     sum_prob_unique_nodes = calculate_sum_probabilities(probabilities_unique_nodes, energy_g)
+    print("Sum of probabilities: ")
+    print(sum_prob_unique_nodes)
+    
+    reciprocity = check_reciprocity(probabilities_unique_nodes, xs, energy_g, mesh_info)
+    print("reciprocity --------------------------")
+    for n_id in reciprocity:
+        print("regions " + "-"*100)
+        for r_id in reciprocity[n_id]["regions"]:
+            print(r_id, reciprocity[n_id]["regions"][r_id])
+        print("surfaces " + "-"*100)
+        for s_id in reciprocity[n_id]["surfaces"]:
+            print(s_id, reciprocity[n_id]["surfaces"][s_id])
+
 
     debugging_breakingPoint = True
 
@@ -113,4 +126,66 @@ def calculate_sum_probabilities(probabilities_unique_nodes, energy_g):
                 sum_prob_s += probabilities_unique_nodes[id_]["surfaces"][s]["surfaces"][sp]
             sum_prob_unique_nodes[id_]["surfaces"][s] = sum_prob_s
     return sum_prob_unique_nodes
+
+def check_reciprocity(probabilities, xs, energy_g, mesh_info):
+    reciprocity = {}
+    for n_id, prob_n in probabilities.items():
+        reciprocity[n_id] = {
+            "regions": {},
+            "surfaces": {}
+        }
+        for r_i in prob_n["regions"]:
+            # checking region to region
+            reciprocity[n_id]["regions"][r_i] = {
+                "regions": {},
+                "surfaces": {}
+            }
+            for r_j in prob_n["regions"][r_i]["regions"]:
+                reciprocity[n_id]["regions"][r_i]["regions"][r_j] = np.zeros(energy_g)
+                for g in range(energy_g):
+                    prob_j_i = prob_n["regions"][r_j]["regions"][r_i][g]
+                    prob_i_j_rec = xs[r_j]["total"][g] * mesh_info.all_regions_vol[r_j] * prob_j_i
+                    prob_i_j_rec /= (xs[r_i]["total"][g] * mesh_info.all_regions_vol[r_i])
+
+                    prob_i_j = prob_n["regions"][r_i]["regions"][r_j][g]
+                    diff = ( prob_i_j - prob_i_j_rec ) * 100 / prob_i_j
+                    reciprocity[n_id]["regions"][r_i]["regions"][r_j][g] = diff
+            # checking region to surface
+            for s_a in prob_n["regions"][r_i]["surfaces"]:
+                radius_wigner = mesh_info.all_surfaces_area[s_a] / np.sqrt(np.pi) # because pitch is equal to surface area in this case
+                reciprocity[n_id]["regions"][r_i]["surfaces"][s_a] = np.zeros(energy_g)
+                for g in range(energy_g):
+                    prob_a_i = prob_n["surfaces"][s_a]["regions"][r_i][g]
+
+                    prob_i_a_rec = 2 * np.pi * radius_wigner * prob_a_i / 4
+                    prob_i_a_rec /= (4 * mesh_info.all_regions_vol[r_i] * xs[r_i]["total"][g])
+
+                    prob_i_a = prob_n["regions"][r_i]["surfaces"][s_a][g]
+                    diff = ( prob_i_a - prob_i_a_rec ) * 100 / prob_i_a
+                    reciprocity[n_id]["regions"][r_i]["surfaces"][s_a][g] = diff
+        
+        for s_a in prob_n["surfaces"]:
+            radius_wigner = mesh_info.all_surfaces_area[s_a] / np.sqrt(np.pi) # because pitch is equal to surface area in this case
+            reciprocity[n_id]["surfaces"][s_a] = {
+                "regions": {},
+                "surfaces": {}
+            }
+            # checking surface to region
+            for r_j in prob_n["surfaces"][s_a]["regions"]:
+                reciprocity[n_id]["surfaces"][s_a]["regions"][r_j] = np.zeros(energy_g)
+                for g in range(energy_g):
+                    prob_j_a = prob_n["regions"][r_j]["surfaces"][s_a][g]
+                    prob_a_j_rec = 4 * mesh_info.all_regions_vol[r_j] * xs[r_j]["total"][g] * prob_j_a
+                    prob_a_j_rec /= (2 * np.pi * radius_wigner / 4)
+
+                    prob_a_j = prob_n["surfaces"][s_a]["regions"][r_j][g]
+                    diff = ( prob_a_j - prob_a_j_rec ) * 100 / prob_a_j
+                    reciprocity[n_id]["surfaces"][s_a]["regions"][r_j][g] = diff
+            # checking surface to surface
+            pass
+        
+        
     
+    return reciprocity
+
+                

@@ -38,11 +38,8 @@ def buildPhiSource(coarse_nodes, matrixT, source, energy_g):
     # print(phi_source)
     return phi_source
 
-def buildPhiSource_sys(coarse_nodes, matrixT, source, energy_g):
-    """
-      
-    """
-
+def buildPhiSource_sys(matrixT, source, energy_g):
+    
     q_sys = []
     for g in range(energy_g):
         for val_ in source[g]:
