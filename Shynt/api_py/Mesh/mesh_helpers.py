@@ -1,7 +1,7 @@
 from Shynt.api_py.Mesh.mesh import GlobalMesh, FineMesh
+from Shynt.api_py.Geometry.cells import Cell
 
-
-def make_mesh(cell, global_mesh_type="", local_mesh_type=""):
+def make_mesh(cell, global_mesh_type="", local_mesh_type="") -> Cell:
     """
     Helper method to construct the global and local meshes
 

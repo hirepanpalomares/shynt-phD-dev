@@ -84,6 +84,9 @@ det j_out_s1_inter   ds 1  1  de  2groups_grid  dfl 1 3  dfl 3 1              % 
 det all_to_reg1  de 2groups_grid dr -1 fuel1 dc 1 dfl 1 0 dfl 2 0 dfl 4 0     % Only to reset flagswhen there is a reaction in F1
 det all_to_reg2  de 2groups_grid dr -1 fuel1 dc 2 dfl 1 2 dfl 1 0             % Neutrons that crossed (j_in) S2  and then interact in F2
 
+
+
+
 det reg1_to_reg2   de 2groups_grid dr -1 fuel1 dc 2   dfl 3 2  dfl 3 0        % Neutrons that have Flag #3 and then interact in F2
 
 % neutrons from r2 to all
@@ -106,3 +109,11 @@ det reg2_to_surface5 ds  5 -1           de 2groups_grid  dfl 6 2  dfl 6 0
 det reg2_to_surface6 ds  6  1           de 2groups_grid  dfl 6 2  dfl 6 0 
 det reg2_to_surface7 ds  7  1           de 2groups_grid  dfl 6 2  dfl 6 0 
 det reg2_to_surface8 ds  8 -1           de 2groups_grid  dfl 6 2  dfl 6 0 
+
+
+
+
+
+
+
+

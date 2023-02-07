@@ -24,19 +24,19 @@ def get_probabilities(det_inputs, mesh_info, root, xs):
         detector_relation
     )
 
-    sum_prob_unique_nodes = calculate_sum_probabilities(probabilities_unique_nodes, energy_g)
-    print("Sum of probabilities: ")
-    print(sum_prob_unique_nodes)
+    # sum_prob_unique_nodes = calculate_sum_probabilities(probabilities_unique_nodes, energy_g)
+    # print("Sum of probabilities: ")
+    # print(sum_prob_unique_nodes)
     
-    reciprocity = check_reciprocity(probabilities_unique_nodes, xs, energy_g, mesh_info)
-    print("reciprocity --------------------------")
-    for n_id in reciprocity:
-        print("regions " + "-"*100)
-        for r_id in reciprocity[n_id]["regions"]:
-            print(r_id, reciprocity[n_id]["regions"][r_id])
-        print("surfaces " + "-"*100)
-        for s_id in reciprocity[n_id]["surfaces"]:
-            print(s_id, reciprocity[n_id]["surfaces"][s_id])
+    # reciprocity = check_reciprocity(probabilities_unique_nodes, xs, energy_g, mesh_info)
+    # print("reciprocity --------------------------")
+    # for n_id in reciprocity:
+    #     print("regions " + "-"*100)
+    #     for r_id in reciprocity[n_id]["regions"]:
+    #         print(r_id, reciprocity[n_id]["regions"][r_id])
+    #     print("surfaces " + "-"*100)
+    #     for s_id in reciprocity[n_id]["surfaces"]:
+    #         print(s_id, reciprocity[n_id]["surfaces"][s_id])
 
 
     debugging_breakingPoint = True
@@ -77,12 +77,12 @@ def fill_probabilities(coarse_nodes, mesh_info, probabilities_unique_nodes):
         for reg in regions:
             type_region = mesh_info.region_type_rel_switched[id_][reg]
             reg_eq = mesh_info.region_type_rel[id_eq][type_region]
-            # region to region
+            # sdfsd reg to reg
             for reg_p in regions:
                 type_region_p = mesh_info.region_type_rel_switched[id_][reg_p]
                 reg_p_eq = mesh_info.region_type_rel[id_eq][type_region_p]
                 new_prob["regions"][reg]["regions"][reg_p] = prob_id_eq["regions"][reg_eq]["regions"][reg_p_eq]
-            # region to surfaces
+            # reg to surf
             for surf in surfaces:
                 surf_eq = mesh_info.equivalence_surface_rel[surf]
                 new_prob["regions"][reg]["surfaces"][surf] = prob_id_eq["regions"][reg_eq]["surfaces"][surf_eq]

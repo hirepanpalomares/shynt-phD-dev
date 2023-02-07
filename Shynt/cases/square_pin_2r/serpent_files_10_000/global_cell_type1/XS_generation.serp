@@ -19,8 +19,6 @@ set pop 100000 1500 500
 
 ene 2groups_grid 1 0.00000000E+00 6.25000000E-07 2.00000000E+01 
 
-set nfg 2groups_grid
-
 
 surf 2 sqc 0.00000000 0.00000000 0.64750000
 surf 1 cyl 0.00000000 0.00000000 0.43350000
@@ -37,3 +35,5 @@ cell 12 0 fill pin_fuel1  -2
 set gcu u4gcu_1 u4gcu_2 
 cell 13 0 outside 2 
 
+
+set nfg 2groups_grid

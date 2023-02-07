@@ -35,31 +35,31 @@ surf 5 px 0.64750000
 surf 6 py -0.64750000
 
 % ----- Detectors ------
-det surface_3_jin ds 3 1 de 2groups_grid   dfl 1 1 
-det surface_4_jin ds 4 -1 de 2groups_grid   dfl 2 1 
-det surface_5_jin ds 5 -1 de 2groups_grid   dfl 3 1 
-det surface_6_jin ds 6 1 de 2groups_grid   dfl 4 1 
-det surface_3_to_reg1  de 2groups_grid dr -1 fuel1 dc 1   dfl 1 2  dfl 1 0 
-det surface_4_to_reg1  de 2groups_grid dr -1 fuel1 dc 1   dfl 2 2  dfl 2 0 
-det surface_5_to_reg1  de 2groups_grid dr -1 fuel1 dc 1   dfl 3 2  dfl 3 0 
-det surface_6_to_reg1  de 2groups_grid dr -1 fuel1 dc 1   dfl 4 2  dfl 4 0 
-det surface_3_to_reg2  de 2groups_grid dr -1 coolant dc 2   dfl 1 2  dfl 1 0 
-det surface_4_to_reg2  de 2groups_grid dr -1 coolant dc 2   dfl 2 2  dfl 2 0 
-det surface_5_to_reg2  de 2groups_grid dr -1 coolant dc 2   dfl 3 2  dfl 3 0 
-det surface_6_to_reg2  de 2groups_grid dr -1 coolant dc 2   dfl 4 2  dfl 4 0 
-det surface_3_to_surf3 ds 3 -1 de 2groups_grid   dfl 1 2  dfl 1 0 
-det surface_3_to_surf4 ds 4 1 de 2groups_grid   dfl 1 2  dfl 1 0 
-det surface_3_to_surf5 ds 5 1 de 2groups_grid   dfl 1 2  dfl 1 0 
-det surface_3_to_surf6 ds 6 -1 de 2groups_grid   dfl 1 2  dfl 1 0 
-det surface_4_to_surf3 ds 3 -1 de 2groups_grid   dfl 2 2  dfl 2 0 
-det surface_4_to_surf4 ds 4 1 de 2groups_grid   dfl 2 2  dfl 2 0 
-det surface_4_to_surf5 ds 5 1 de 2groups_grid   dfl 2 2  dfl 2 0 
-det surface_4_to_surf6 ds 6 -1 de 2groups_grid   dfl 2 2  dfl 2 0 
-det surface_5_to_surf3 ds 3 -1 de 2groups_grid   dfl 3 2  dfl 3 0 
-det surface_5_to_surf4 ds 4 1 de 2groups_grid   dfl 3 2  dfl 3 0 
-det surface_5_to_surf5 ds 5 1 de 2groups_grid   dfl 3 2  dfl 3 0 
-det surface_5_to_surf6 ds 6 -1 de 2groups_grid   dfl 3 2  dfl 3 0 
-det surface_6_to_surf3 ds 3 -1 de 2groups_grid   dfl 4 2  dfl 4 0 
-det surface_6_to_surf4 ds 4 1 de 2groups_grid   dfl 4 2  dfl 4 0 
-det surface_6_to_surf5 ds 5 1 de 2groups_grid   dfl 4 2  dfl 4 0 
-det surface_6_to_surf6 ds 6 -1 de 2groups_grid   dfl 4 2  dfl 4 0 
+det surface_3_jin ds 3 1 de 2groups_grid dfl 1 1 
+det surface_4_jin ds 4 -1 de 2groups_grid dfl 2 1 
+det surface_5_jin ds 5 -1 de 2groups_grid dfl 3 1 
+det surface_6_jin ds 6 1 de 2groups_grid dfl 4 1 
+det surface_3_to_reg1 de 2groups_grid dr -1 fuel1 dc 1 dfl 1 2 dfl 1 0 
+det surface_4_to_reg1 de 2groups_grid dr -1 fuel1 dc 1 dfl 2 2 dfl 2 0 
+det surface_5_to_reg1 de 2groups_grid dr -1 fuel1 dc 1 dfl 3 2 dfl 3 0 
+det surface_6_to_reg1 de 2groups_grid dr -1 fuel1 dc 1 dfl 4 2 dfl 4 0 
+det surface_3_to_reg2 de 2groups_grid dr -1 coolant dc 2 dfl 1 2 dfl 1 0 
+det surface_4_to_reg2 de 2groups_grid dr -1 coolant dc 2 dfl 2 2 dfl 2 0 
+det surface_5_to_reg2 de 2groups_grid dr -1 coolant dc 2 dfl 3 2 dfl 3 0 
+det surface_6_to_reg2 de 2groups_grid dr -1 coolant dc 2 dfl 4 2 dfl 4 0 
+det surface_3_to_surf3 ds 3 -1 de 2groups_grid dfl 1 2 dfl 1 0 
+det surface_3_to_surf4 ds 4 1 de 2groups_grid dfl 1 2 dfl 1 0 
+det surface_3_to_surf5 ds 5 1 de 2groups_grid dfl 1 2 dfl 1 0 
+det surface_3_to_surf6 ds 6 -1 de 2groups_grid dfl 1 2 dfl 1 0 
+det surface_4_to_surf3 ds 3 -1 de 2groups_grid dfl 2 2 dfl 2 0 
+det surface_4_to_surf4 ds 4 1 de 2groups_grid dfl 2 2 dfl 2 0 
+det surface_4_to_surf5 ds 5 1 de 2groups_grid dfl 2 2 dfl 2 0 
+det surface_4_to_surf6 ds 6 -1 de 2groups_grid dfl 2 2 dfl 2 0 
+det surface_5_to_surf3 ds 3 -1 de 2groups_grid dfl 3 2 dfl 3 0 
+det surface_5_to_surf4 ds 4 1 de 2groups_grid dfl 3 2 dfl 3 0 
+det surface_5_to_surf5 ds 5 1 de 2groups_grid dfl 3 2 dfl 3 0 
+det surface_5_to_surf6 ds 6 -1 de 2groups_grid dfl 3 2 dfl 3 0 
+det surface_6_to_surf3 ds 3 -1 de 2groups_grid dfl 4 2 dfl 4 0 
+det surface_6_to_surf4 ds 4 1 de 2groups_grid dfl 4 2 dfl 4 0 
+det surface_6_to_surf5 ds 5 1 de 2groups_grid dfl 4 2 dfl 4 0 
+det surface_6_to_surf6 ds 6 -1 de 2groups_grid dfl 4 2 dfl 4 0 

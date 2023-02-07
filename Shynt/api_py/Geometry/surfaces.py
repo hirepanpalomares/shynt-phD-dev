@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
 import math
-from xxlimited import new
 import numpy as np
 
-from Shynt.api_py.Geometry.regions import SurfaceSide
 from .surf_counter import surf_ids
+
 
 class Surface():
 
@@ -99,9 +98,11 @@ class Surface():
             raise SystemExit
          
     def __neg__(self):
+        from Shynt.api_py.Geometry.regions import SurfaceSide
         return SurfaceSide(self, "-")
 
     def __pos__(self):
+        from Shynt.api_py.Geometry.regions import SurfaceSide
         return SurfaceSide(self, "+")
 
 class CompoundSurface(Surface, ABC):
@@ -220,6 +221,13 @@ class PlaneX(Surface):
         except AssertionError:
             return True
     
+    def clone(self, clone_vector=None):
+        new_x0 = self.__x0
+        if clone_vector:
+            new_x0 = self.__x0 + clone_vector[0]
+        surf_clone = PlaneX(new_x0, isClone=True)
+        surf_clone.id = super().id
+        return surf_clone
     
     @property
     def serpent_syntax_exact_position(self):
@@ -362,6 +370,15 @@ class PlaneY(Surface):
         else:
             self.__y0 += y_t
     
+    def clone(self, clone_vector=None):
+        new_y0 = self.__y0
+        if clone_vector:
+            new_y0 = self.__y0 + clone_vector[1]
+        surf_clone = PlaneY(new_y0, isClone=True)
+        surf_clone.id = super().id
+        return surf_clone
+    
+
     @property
     def serpent_syntax_exact_position(self):
         serp_syntax =  f"surf {self.id} py {format(self.y0, '.8f')}\n"
@@ -410,6 +427,40 @@ class PlaneZ(Surface):
     def z0(self):
         return self.__z0
 
+class PlaneParametric(Surface):
+
+    def __init__(self, x0, y0, z0, x1, y1, z1, x2, y2, z2, type_surface="", name="", isClone=False):
+        super().__init__(type_surface, name, isClone)
+        self.__x0 = x0
+        self.__y0 = y0
+        self.__z0 = z0
+        self.__x1 = x1
+        self.__y1 = y1
+        self.__z1 = z1
+        self.__x2 = x2
+        self.__y2 = y2
+        self.__z2 = z2
+    
+    def clone(self, clone_vector=None):
+        # new_y0 = self.__y0
+        # if clone_vector:
+        #     new_y0 = self.__y0 + clone_vector[1]
+        surf_clone = PlaneParametric(
+            self.__x0, self.__y0, self.__z0, 
+            self.__x1, self.__y1, self.__z1, 
+            self.__x2, self.__y2, self.__z2, 
+            isClone=True
+        )
+        surf_clone.id = super().id
+        return surf_clone
+        
+    @property
+    def serpent_syntax_exact_position(self):
+        serpent_syntax = f"surf {self.id} plane "
+        serpent_syntax += f"{format(self.__x0, '.8f')} {format(self.__y0, '.8f')} {format(self.__z0, '.8f')} "
+        serpent_syntax += f"{format(self.__x1, '.8f')} {format(self.__y1, '.8f')} {format(self.__z1, '.8f')} "
+        serpent_syntax += f"{format(self.__x2, '.8f')} {format(self.__y2, '.8f')} {format(self.__z2, '.8f')}\n"
+        return serpent_syntax
 
 class InfiniteCylinderZ(Surface):
 
@@ -443,7 +494,7 @@ class InfiniteCylinderZ(Surface):
     def scale(self, scale_f):
         self.__radius *= scale_f
 
-    def clone(self, new_center_x, new_center_y):
+    def clone(self, new_center_x, new_center_y, clone_vector=None):
         surf_clone = InfiniteCylinderZ(new_center_x, new_center_y, self.__radius, isClone=True)
         surf_clone.id = super().id
         return surf_clone
@@ -748,7 +799,7 @@ class InfiniteSquareCylinderZ(Surface):
             self.__surf_bottom.id: {"inward": "1", "outward": "-1"},
         }
 
-    def clone(self, center_x, center_y):
+    def clone(self, center_x, center_y, clone_vector=None):
         """
             It clones the surface: same id, but in a new center
         """
@@ -844,6 +895,147 @@ class InfiniteSquareCylinderZ(Surface):
         return points
 
 
+class PieQuadrant(Surface):
+    
+    def __init__(self, circle, v_plane, h_plane, quadrant, boundary=None, name="", isClone=False):
+        super().__init__(type_surface="pie_surface", name=name, isClone=isClone)
+        self.__surf_circle = circle
+        self.__surf_v_plane = v_plane
+        self.__surf_h_plane = h_plane
+        self.__quadrant = quadrant
+        self.__boundary = boundary
+        self.__isClone = isClone
+
+    def clone(self, center_x, center_y, clone_vector=None):
+        """
+            It clones the surface: same id, but in a new center
+        """
+        center_x, center_y = self.__surf_circle.center
+        clone_circle = self.__surf_circle.clone(center_x, center_y, clone_vector=clone_vector)
+        clone_v_plane = self.__surf_v_plane.clone(clone_vector=clone_vector)
+        clone_h_plane = self.__surf_h_plane.clone(clone_vector=clone_vector)
+
+        clone_pie = PieQuadrant(clone_circle, clone_v_plane, clone_h_plane, self.__quadrant, isClone=True)
+        clone_pie.surf_circle.id = self.__surf_circle.id
+        clone_pie.surf_v_plane.id = self.__surf_v_plane.id
+        clone_pie.surf_h_plane.id = self.__surf_h_plane.id
+        clone_pie.id = super().id
+
+        return clone_pie
+    
+    def get_surface_relation(self):
+        return {
+            self.__surf_circle.id: self.__surf_circle,
+            self.__surf_v_plane.id: self.__surf_v_plane,
+            self.__surf_h_plane.id: self.__surf_h_plane,
+        }
+
+    def get_surface_sides(self):
+        if self.__quadrant == "top_left":
+            return {
+                self.__surf_circle.id:  -self.__surf_circle,
+                self.__surf_v_plane.id: -self.__surf_v_plane,
+                self.__surf_h_plane.id: +self.__surf_h_plane,
+            }
+        elif self.__quadrant == "top_right":
+            return {
+                self.__surf_circle.id: -self.__surf_circle,
+                self.__surf_v_plane.id: +self.__surf_v_plane,
+                self.__surf_h_plane.id: -self.__surf_h_plane,
+            }
+        elif self.__quadrant == "bottom_right":
+            return {
+                self.__surf_circle.id: -self.__surf_circle,
+                self.__surf_v_plane.id: -self.__surf_v_plane,
+                self.__surf_h_plane.id: +self.__surf_h_plane,
+            }
+        elif self.__quadrant == "bottom_left":
+            return {
+                self.__surf_circle.id: -self.__surf_circle,
+                self.__surf_v_plane.id: +self.__surf_v_plane,
+                self.__surf_h_plane.id: -self.__surf_h_plane,
+            }
+        else:
+            return {}
+        
+
+    def get_neutron_current_directions(self):
+        if self.__quadrant == "top_left":
+            return {
+                self.__surf_circle.id: {"inward": "-1", "outward": "1"},
+                self.__surf_v_plane.id: {"inward": "-1", "outward": "1"},
+                self.__surf_h_plane.id: {"inward": "1", "outward": "-1"},
+            }
+        elif self.__quadrant == "top_right":
+            return {
+                self.__surf_circle.id: {"inward": "-1", "outward": "1"},
+                self.__surf_v_plane.id: {"inward": "1", "outward": "-1"},
+                self.__surf_h_plane.id: {"inward": "-1", "outward": "1"},
+            }
+        elif self.__quadrant == "bottom_right":
+            return {
+                self.__surf_circle.id: {"inward": "-1", "outward": "1"},
+                self.__surf_v_plane.id: {"inward": "-1", "outward": "1"},
+                self.__surf_h_plane.id: {"inward": "1", "outward": "-1"},
+            }
+        elif self.__quadrant == "bottom_left":
+            return {
+                self.__surf_circle.id: {"inward": "-1", "outward": "1"},
+                self.__surf_v_plane.id: {"inward": "-1", "outward": "1"},
+                self.__surf_h_plane.id: {"inward": "1", "outward": "-1"},
+            }
+        else:
+            return {}
+
+
+    @property
+    def serpent_syntax_exact_position(self):
+        serpent_syntax = f"surf {self.__surf_circle.id} cyl {format(self.__surf_circle.center_x, '.8f')} " 
+        serpent_syntax += f"{format(self.__surf_circle.center_y, '.8f')} "
+        serpent_syntax += f"{format(self.__surf_circle.radius, '.8f')}\n" 
+        serpent_syntax += self.__surf_v_plane.serpent_syntax_exact_position()
+        serpent_syntax += self.__surf_h_plane.serpent_syntax_exact_position()
+        return serpent_syntax
+
+
+    @property
+    def center_x(self):
+        return self.__center_x
+    
+    @property
+    def center_y(self):
+        return self.__center_y
+    
+    @property
+    def center(self):
+        return (self.__center_x, self.__center_y)
+    
+    @center.setter
+    def center(self, center):
+        self.__center_x = center[0]
+        self.__center_y = center[1]
+
+    @property
+    def quadrant(self):
+        return self.__quadrant
+
+    @property
+    def surf_circle(self):
+        return self.__surf_circle
+
+    @property
+    def surf_v_plane(self):
+        return self.__surf_v_plane
+
+    @property
+    def surf_h_plane(self):
+        return self.__surf_h_plane
+
+    @property
+    def boundary(self):
+        return self.__boundary
+
+
 class Hexagon(Surface):
 
     def __init__(self, type_surface="", name="", isClone=False):
@@ -903,7 +1095,7 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
 
         return surfaces
     
-    def clone(self, center_x, center_y):
+    def clone(self, center_x, center_y, clone_vector=None):
         """
             It clones the surface: same id, but in a new center
         """
@@ -1166,7 +1358,7 @@ class InfiniteHexagonalCylinderYtype(Hexagon):
 
         return surfaces
     
-    def clone(self, center_x, center_y):
+    def clone(self, center_x, center_y, clone_vector=None):
         """
             It clones the surface: same id, but in a new center
         """

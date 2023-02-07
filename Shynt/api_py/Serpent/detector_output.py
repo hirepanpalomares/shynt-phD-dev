@@ -1,5 +1,5 @@
-from tokenize import String
 import serpentTools
+
 
 def read_detector_file(fname):
     """
@@ -83,6 +83,7 @@ def read_detectors_data(det_inputs):
             print(det_file_name)
             data_detector_serp_tools = serpentTools.read(det_file_name)
             detectors_data = data_detector_serp_tools.detectors
+            
             coarse_node_scores[id_][file_.specific].update(detectors_data)            
             if "regions" in file_.detectors_relation and "regions" in detector_relation[id_][file_.specific]:
                 detector_relation[id_][file_.specific]["regions"].update(file_.detectors_relation["regions"])

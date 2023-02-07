@@ -75,11 +75,11 @@ def solveKeff(root, xs, probabilities, mesh_info):
     iteration = 1
     k_array = []
     phi_source_array = []
-    print(matrixS)
-    print(matrixT)
-    print(matrixU) 
-    print(matrixR)
-    iii = input()
+    # print(matrixS)
+    # print(matrixT)
+    # print(matrixU) 
+    # print(matrixR)
+    # iii = input()
     while k_converge >= tolerance or phi_converge >= tolerance:
         print("-"*50)
 

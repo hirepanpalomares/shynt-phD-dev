@@ -1,6 +1,4 @@
-
-
-
+from Shynt.api_py.Geometry.surfaces import PieQuadrant
 
 
 class Region:
@@ -78,16 +76,19 @@ class Region:
         
         return inverted
         
-    def clone(self, new_center_x, new_center_y):
-        try: 
-            assert isinstance(self.child1, SurfaceSide)
-            assert isinstance(self.child2, SurfaceSide)
-            child1_clone = self.child1.clone(new_center_x, new_center_y)
-            child2_clone = self.child2.clone(new_center_x, new_center_y)
-            return child1_clone & child2_clone
-        except AssertionError:
-            # Cloning of two regions not supported, only two surfaceSides
-            raise SystemError
+    def clone(self, new_center_x, new_center_y, clone_vector=None):
+        # try: 
+        #     assert isinstance(self.child1, SurfaceSide)
+        #     assert isinstance(self.child2, SurfaceSide)
+        #     child1_clone = self.child1.clone(new_center_x, new_center_y)
+        #     child2_clone = self.child2.clone(new_center_x, new_center_y)
+        #     return child1_clone & child2_clone
+        # except AssertionError:
+        #     # Cloning of two regions not supported, only two surfaceSides
+        #     raise SystemError
+        child1_clone = self.child1.clone(new_center_x, new_center_y, clone_vector=clone_vector)
+        child2_clone = self.child2.clone(new_center_x, new_center_y, clone_vector=clone_vector)
+        return child1_clone & child2_clone
 
     def destructure_region(self, surfaces_sides=None):
         """
@@ -100,9 +101,12 @@ class Region:
             surfaces_sides = {}
         if isinstance(self, SurfaceSide):
             # Base case
-            surfaces_sides.update({
-                self.surface.id: self
-            })
+            if isinstance(self.surface, PieQuadrant):
+                surfaces_sides.update(self.surface.get_surface_sides())
+            else:
+                surfaces_sides.update({
+                    self.surface.id: self
+                })
 
             return surfaces_sides
         elif isinstance(self, Region):
@@ -190,14 +194,15 @@ class Region:
         else:
             return (0,0)
 
+
 class SurfaceSide(Region):
 
     def __init__(self, surface, side):
         self.surface = surface
         self.side = side
 
-    def clone(self, new_center_x, new_center_y):
-        surface_clone = self.surface.clone(new_center_x, new_center_y)
+    def clone(self, new_center_x, new_center_y, clone_vector=None):
+        surface_clone = self.surface.clone(new_center_x, new_center_y, clone_vector=clone_vector)
         if self.side == "-":
             return -surface_clone
         elif self.side == "+":
@@ -285,3 +290,5 @@ class SurfaceSide(Region):
     @property
     def center(self):
         return self.surface.center
+
+

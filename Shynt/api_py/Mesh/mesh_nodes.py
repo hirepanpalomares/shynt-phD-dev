@@ -16,7 +16,7 @@ class CoarseNode(Node):
     def __init__(self, cell) -> None:
         super().__init__()
         self.__cell = cell
-        
+        self.__id = None
         
         self.__surfaces = self.__getSurfaces()                      # Dictionary of surface classes {id: <Surface class>}
         # self.fictional_surfaces = self.__getFictionalSurfaces()
@@ -97,6 +97,14 @@ class CoarseNode(Node):
     @cell.setter
     def cell(self, new_cell):
         self.__cell = new_cell
+
+    @property
+    def id(self):
+        return self.__id
+    
+    @id.setter
+    def id(self, id_):
+        self.__id = id_
 
     @property
     def surfaces(self):

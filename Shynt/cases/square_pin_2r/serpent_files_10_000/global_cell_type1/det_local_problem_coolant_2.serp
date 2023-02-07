@@ -35,10 +35,6 @@ surf 5 px 0.64750000
 surf 6 py -0.64750000
 
 % ----- Detectors ------
-det total_rate_reg2  de 2groups_grid dr -1 coolant dc 2   dfl 1 1 
-det reg2_reg2  de 2groups_grid dr -1 coolant dc 2   dfl 1 2  dfl 1 0  dfl 1 1 
-det reg2_reg1  de 2groups_grid dr -1 fuel1 dc 1   dfl 1 2  dfl 1 0 
-det reg2_surface3 ds 3 -1 de 2groups_grid   dfl 1 2  dfl 1 0 
-det reg2_surface4 ds 4 1 de 2groups_grid   dfl 1 2  dfl 1 0 
-det reg2_surface5 ds 5 1 de 2groups_grid   dfl 1 2  dfl 1 0 
-det reg2_surface6 ds 6 -1 de 2groups_grid   dfl 1 2  dfl 1 0 
+det reg2_reg2 de 2groups_grid dr -1 coolant dc 2 dfl 1 2 dfl 1 0 dfl 1 1 
+det total_rate_reg2 de 2groups_grid dr -1 coolant dc 2 dfl 1 1 
+det reg2_reg1 de 2groups_grid dr -1 fuel1 dc 1 dfl 1 2 dfl 1 0 

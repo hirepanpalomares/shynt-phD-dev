@@ -19,14 +19,15 @@ class Detector():
     """
 
 
-    def __init__(self, name, type_=""):
+    def __init__(self, name, cells=[], response=(), energy_grid=None, surface=(), type_="", flags=[]):
         self.name = name
         self.type = type_
-        self.__surface = ""
-        self.__energy_bins = ""
-        self.__response = ""
-        self.__flags = []
-        self.__cells = []
+        self.__surface = surface
+        self.__energy_bins = energy_grid
+        self.__response = response
+        self.__flags = flags
+        self.__cells = cells
+        
 
         # self.__cell_to_cell = None
         # self.__cell_to_surf = None
@@ -35,18 +36,22 @@ class Detector():
         
 
     def syntax(self):
-        syn = f"det {self.name} {self.__surface} {self.energy_bins}"
-        syn += f" {self.__response} "
+        syn = f"det {self.name} "
+        if len(self.__surface) == 2:
+            surf, direction = self.__surface
+            syn += f"ds {surf} {direction} "
+        if self.__energy_bins:
+            syn += f"de {self.energy_bins} "
+        if len(self.__response) == 2:
+            rxn, material = self.__response
+            syn += f"dr {rxn} {material} "
+        
+        for cell in self.__cells:
+            syn += f"dc {cell} "
 
-        if len(self.__cells) > 1:
-            syn += "\n"
-            for cell in self.__cells:
-                syn += f"dc {cell}\n"
-        else: 
-            for cell in self.__cells:
-                syn += f"dc {cell}  "
         for flag in self.__flags:
-            syn += f" {flag} "
+            fl, option = flag
+            syn += f"dfl {fl} {option} "
         syn += "\n"
         return syn
 

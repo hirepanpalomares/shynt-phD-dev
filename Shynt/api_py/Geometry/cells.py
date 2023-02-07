@@ -4,16 +4,15 @@ from Shynt.api_py.Geometry.surfaces import Surface
 from Shynt.api_py.Geometry.utilities_geometry import get_all_surfaces_in_a_cell
 from Shynt.api_py.materials import Material
 
-
 from Shynt.api_py.Geometry.regions import Region
 from Shynt.api_py.Geometry.regions import SurfaceSide
-from .universes import HexagonalLatticeTypeX, Pin, SquareLattice, Universe
+from .surfaces import InfiniteSquareCylinderZ
 from .cell_counter import cell_ids
 
 
 class Cell:
 
-    def __init__(self, name="", fill=None, region=None, universe=None, isClone=False):
+    def __init__(self, name="", fill=None, region=None, universe=None, isClone=False, volume=None):
         """
             Init method of the class
 
@@ -41,7 +40,7 @@ class Cell:
         else:
             self.__id = self.calculateId()
 
-        self.__volume = None
+        self.__volume = volume
 
         self.__universe_name_for_gcu = ["u4gcu_", "1"]
         self.__gcu_universes = {}
@@ -124,6 +123,7 @@ class Cell:
         return reg
 
     def check_fill(self, fill):
+        from .universes import HexagonalLatticeTypeX, Pin, SquareLattice, Universe
         """
             When a cell is filled with a universe check the coordinates 
             of that universe. Translate all the content of the universe 
@@ -169,6 +169,7 @@ class Cell:
             surf.translate(trans_vector)
 
     def scale(self, scale_f):
+        from .universes import HexagonalLatticeTypeX, SquareLattice
         # self.__region.scale(scale_f)
         cell_surfaces = get_all_surfaces_in_a_cell(self)
         for s_id, surf in cell_surfaces.items():
@@ -192,6 +193,7 @@ class Cell:
         return False
 
     def content_is_universe(self):
+        from .universes import Universe
         if isinstance(self.__content, Universe):
             return True
         return False
@@ -225,6 +227,7 @@ class Cell:
         return syntax
 
     def serpent_syntax_gcu(self):
+        from .universes import Universe
         syntax = ""
         if isinstance(self.__content, Material):
             """
@@ -256,6 +259,8 @@ class Cell:
         return syntax, self.__gcu_universes
 
     def serpent_syntax(self): 
+        from .universes import Universe
+
         """
             Method to print the cell in the serpent syntax
             It will be printed by material found in the cell
@@ -298,7 +303,9 @@ class Cell:
 
         return syntax
 
-    def clone(self, new_center_x, new_center_y):
+    def clone(self, new_center_x, new_center_y, clone_vector=None):
+        from .universes import Universe
+
         """
             It makes a copy of the cell with surfaces and cells with
             same ids
@@ -308,21 +315,22 @@ class Cell:
         if isinstance(self.__content, Material):
             # The cell only contains a material, so only clone the surface with a new center
             material = self.__content
-            region_clone = self.__region.clone(new_center_x, new_center_y)
+            region_clone = self.__region.clone(new_center_x, new_center_y, clone_vector=clone_vector)
+            
             clone_cell = Cell(self.__name, region=region_clone, fill=material, isClone=True)
             clone_cell.id = self.__id
             clone_cell.universe = self.__universe
             return clone_cell
         elif isinstance(self.__content, Universe):
             # cloning region -------------------------------------------------------------------
-            closing_surface_clone = self.__region.surface.clone(new_center_x, new_center_y)
+            closing_surface_clone = self.__region.surface.clone(new_center_x, new_center_y, clone_vector=clone_vector)
             closing_region_clone = -closing_surface_clone
 
             # cloning cells of the universe ----------------------------------------------------
             uni_cells = self.__content.cells
             uni_clone = Universe(name=self.__content.name)
             for c_id, cell in uni_cells.items():
-                cell_clone = cell.clone(new_center_x, new_center_y)
+                cell_clone = cell.clone(new_center_x, new_center_y, clone_vector=clone_vector)
                 cell_clone.id = c_id
                 uni_clone.add_cell(cell_clone)
 
@@ -434,6 +442,11 @@ class Cell:
     @gcuName.setter
     def gcuName(self, gcu):
         self.__gcuName = gcu
+
+    @property
+    def center(self):
+        if isinstance(self.__region.surface, InfiniteSquareCylinderZ):
+            return self.__region.surface.center
 
 
 
