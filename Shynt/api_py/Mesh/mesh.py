@@ -187,18 +187,24 @@ class FineMesh(StructuredMesh):
                     x2, y2 = 0, 0
                     z2 = 1
                     
-                    pT = PlaneParametric(x0, y0, z0, x0, y0+circle.radius, z0, x2, y2, z2)
-                    pR = PlaneParametric(x0, y0, z0, x0+circle.radius, y0, z0, x2, y2, z2)
-                    pB = PlaneParametric(x0, y0, z0, x0, y0-circle.radius, z0, x2, y2, z2)
-                    pL = PlaneParametric(x0, y0, z0, x0-circle.radius, y0, z0, x2, y2, z2)
+                    pT_tl = PlaneParametric(x0, y0, z0, x0, y0+circle.radius, z0, x2, y2, z2)
+                    pT_tr = PlaneParametric(x0, y0, z0, x0, y0+circle.radius, z0, x2, y2, z2)
+                    
+                    pR_tr = PlaneParametric(x0, y0, z0, x0+circle.radius, y0, z0, x2, y2, z2)
+                    pR_br = PlaneParametric(x0, y0, z0, x0+circle.radius, y0, z0, x2, y2, z2)
 
+                    pB_br = PlaneParametric(x0, y0, z0, x0, y0-circle.radius, z0, x2, y2, z2)
+                    pB_bl = PlaneParametric(x0, y0, z0, x0, y0-circle.radius, z0, x2, y2, z2)
+
+                    pL_bl = PlaneParametric(x0, y0, z0, x0-circle.radius, y0, z0, x2, y2, z2)
+                    pL_tl = PlaneParametric(x0, y0, z0, x0-circle.radius, y0, z0, x2, y2, z2)
                     
 
                     volume_pie_slice = math.pi * circle.radius * circle.radius / 4
-                    pie_top_left_region = -PieQuadrant(circle, pT, pL, "top_left")          # f1
-                    pie_top_right_region = -PieQuadrant(circle, pT, pR, "top_right")        # f2
-                    pie_bottom_right_region = -PieQuadrant(circle, pB, pR, "bottom_right")  # f3
-                    pie_bottom_left_region = -PieQuadrant(circle, pB, pL, "bottom_left")    # f4
+                    pie_top_left_region = -PieQuadrant(circle, pT_tl, pL_tl, "top_left")          # f1
+                    pie_top_right_region = -PieQuadrant(circle, pT_tr, pR_tr, "top_right")        # f2
+                    pie_bottom_right_region = -PieQuadrant(circle, pB_br, pR_br, "bottom_right")  # f3
+                    pie_bottom_left_region = -PieQuadrant(circle, pB_bl, pL_bl, "bottom_left")    # f4
             
                     pie_cell_top_left = Cell(name="pie_cell_top_left", fill=cell.content, region=pie_top_left_region, universe=cell.universe, volume=volume_pie_slice)
                     pie_cell_top_right = Cell(name="pie_cell_top_right", fill=cell.content, region=pie_top_right_region, universe=cell.universe, volume=volume_pie_slice)

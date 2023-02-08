@@ -981,8 +981,8 @@ class PieQuadrant(Surface):
         elif self.__quadrant == "bottom_left":
             return {
                 self.__surf_circle.id: {"inward": "-1", "outward": "1"},
-                self.__surf_v_plane.id: {"inward": "-1", "outward": "1"},
-                self.__surf_h_plane.id: {"inward": "1", "outward": "-1"},
+                self.__surf_v_plane.id: {"inward": "1", "outward": "-1"},
+                self.__surf_h_plane.id: {"inward": "-1", "outward": "1"},
             }
         else:
             return {}

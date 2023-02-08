@@ -334,9 +334,13 @@ def calculate_probabilities_main_nodes(det_inputs, mesh_info, coarse_nodes, fine
             if type_ == "region_fuel":
                 fuel_neutrons = get_fuel_counts_lessDet(coarse_node_scores[id_]["region_fuel"],detector_relation[id_]["region_fuel"],energy_groups,regions,surfaces, fuel_regions)
                 fuel_probabilities = get_fuel_probabilities(fuel_neutrons,regions,surfaces,energy_groups,fuel_regions)
+                print(fuel_neutrons)
+                print("-"*50)
             elif type_ == "region_nonFuel":
                 nonFuel_neutrons = get_nonFuel_counts_lessDet(coarse_node_scores[id_]["region_nonFuel"],detector_relation[id_]["region_nonFuel"],energy_groups,regions,surfaces, nonFuel_regions)
                 nonFuel_probabilities = get_nonFuel_probabilities(nonFuel_neutrons,regions,surfaces,energy_groups, nonFuel_regions)
+                print(nonFuel_neutrons)
+                print("-"*50)
             elif type_ == "surfaces":
                 surface_neutrons = get_surface_counts_lessDet(coarse_node_scores[id_]["surfaces"],detector_relation[id_]["surfaces"]["surfaces"],energy_groups,regions,surfaces)
                 print(surface_neutrons)
