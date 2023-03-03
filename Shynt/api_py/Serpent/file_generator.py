@@ -98,15 +98,9 @@ def input_generator(coarse_nodes, fine_nodes, root, serp_dir="serpent_files"):
             cell = reg.cell
             material = cell.content.name
             name_file = f"{global_cell_dir}/det_local_problem_{material}_{reg_id}.serp"
-            type_reg = ""
-            if cell.content.isFuel:
-                type_reg = "fuel"
-            else:
-                type_reg = "nonFuel" 
-            # print(type_reg)
-            # print(name_file)
+            
             serpent_input = SerpentInputFileDetectorsRegion(
-                coarse_n, fine_nodes[coarse_n.id], name_file, root, reg_id, type_reg
+                coarse_n, fine_nodes[coarse_n.id], name_file, root, reg_id
             )
             
             det_files[coarse_n.id].append(serpent_input)

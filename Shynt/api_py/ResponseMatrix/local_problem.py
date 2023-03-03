@@ -2,7 +2,7 @@ from Shynt.api_py.ResponseMatrix.matrix_utilities import getBlockMatrix
 import numpy as np
 
 
-def solveLocalProblem(matrixS_n, jin_system, phi_source_n, energy_g):
+def solveLocalProblem_bg(matrixS_n, jin_system, phi_source_n, energy_g):
     """
         It gives the solution of the flux by enery group
 

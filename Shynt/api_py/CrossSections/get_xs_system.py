@@ -13,14 +13,13 @@ def get_xs_data(mesh_info, root, xs_inputs):
     new_xs = {}
     for id_ in coarse_nodes.keys():
         # Filling XS
-        regions = mesh_info.coarse_region_rel[id_]
 
         id_eq = mesh_info.equal_nodes_rel[id_]
         xs_id_eq = xs[id_eq]
-        for reg in regions:
-            type_region = mesh_info.region_type_rel_switched[id_][reg]
-            reg_eq = mesh_info.region_type_rel[id_eq][type_region]
-            new_xs[reg] = xs_id_eq[reg_eq]
+        type_regs = list(mesh_info.region_type_rel_switched[id_eq].keys())
+        for r, reg_id in enumerate(mesh_info.coarse_region_rel[id_]):
+            reg_eq = type_regs[r]
+            new_xs[reg_id] = xs_id_eq[reg_eq]
     
     return new_xs
 

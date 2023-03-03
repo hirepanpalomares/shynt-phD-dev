@@ -55,7 +55,7 @@ pin_fuel1 = Shynt.universes.Pin("pin_fuel1")
 # mat_lev = [fuel1, mat_helium, clading, coolant]
 # rad_lev = [0.4335, 0.4600, 0.5000, None]
 mat_lev = [fuel1, cladding, coolant]
-rad_lev = [0.4335, 0.55, None]
+rad_lev = [0.4335, 0.50, None]
 pin_fuel1.add_pin_levels(mat_lev, rad_lev)
 #print(pin_fuel1.pin_levels[0].cell.material.serpent_syntax)
 

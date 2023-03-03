@@ -1,0 +1,117 @@
+set title ""
+
+mat fuel1 -10.424  rgb 78, 80, 191
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c -0.1185
+
+mat fuel2 -10.424  rgb 142, 110, 85
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c -0.1185
+
+
+mat fuel3 -10.424  rgb 139, 148, 168
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c -0.1185
+
+
+mat fuel4 -10.424   rgb 123, 124, 121
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c -0.1185
+
+mat coolant1 -0.44376 moder lwtr 1001   rgb 183, 198, 63
+8016.06c 0.33333
+1001.06c 0.66667
+
+mat coolant2 -0.44376 moder lwtr 1001   rgb 0, 3, 68
+8016.06c 0.33333
+1001.06c 0.66667
+
+mat coolant3 -0.44376 moder lwtr 1001  rgb 237, 73, 215
+8016.06c 0.33333
+1001.06c 0.66667
+
+mat coolant4 -0.44376 moder lwtr 1001  rgb 15, 191, 56
+8016.06c 0.33333
+1001.06c 0.66667
+
+
+
+mat coolant5 -0.44376 moder lwtr 1001   rgb 175, 26, 165
+8016.06c 0.33333
+1001.06c 0.66667
+
+mat coolant6 -0.44376 moder lwtr 1001   rgb 58, 103, 109
+8016.06c 0.33333
+1001.06c 0.66667
+
+mat coolant7 -0.44376 moder lwtr 1001  rgb 72, 70, 91
+8016.06c 0.33333
+1001.06c 0.66667
+
+mat coolant8 -0.44376 moder lwtr 1001  rgb 142, 45, 47
+1001.06c 0.66667
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+therm lwtr lwj3.11t
+
+set bc 2
+
+set pop 10000 1500 500
+
+ene 2groups_grid 1 0.00000000E+00 6.25000000E-07 2.00000000E+01 
+
+plot 3 500 500
+
+surf 3 sqc 0.00000000 0.00000000 0.64750000
+surf 8 pad 0.00000000 0.00000000 0.00000000 0.43350000 90.00000000 180.00000000
+surf 9 pad 0.00000000 0.00000000 0.00000000 0.43350000 0.00000000 90.00000000
+surf 11 pad 0.00000000 0.00000000 0.00000000 0.43350000 180.00000000 270.00000000
+surf 10 pad 0.00000000 0.00000000 0.00000000 0.43350000 270.00000000 0.00000000
+surf 1 cyl 0.00000000 0.00000000 0.43350000
+surf 2 cyl 0.00000000 0.00000000 0.53000000
+surf 12 px 0.00000000
+surf 13 py 0.00000000
+surf 14 px 0.00000000
+surf 15 py 0.00000000
+
+cell 4 0 fill pin_fuel1 -3 
+cell 5 pin_fuel1 fuel1  -8 
+cell 6 pin_fuel1 fuel2  -9 
+cell 8 pin_fuel1 fuel3  -11 
+cell 7 pin_fuel1 fuel4  -10 
+cell 9 pin_fuel1 coolant1  1  -2  -12  13 
+cell 10 pin_fuel1 coolant2  1  -2  12  13 
+cell 11 pin_fuel1 coolant3  1  -2  12  -13 
+cell 12 pin_fuel1 coolant4  1  -2  -12  -13 
+cell 13 pin_fuel1 coolant5  2  -3  -14  15 
+cell 14 pin_fuel1 coolant6  2  -3  14  15 
+cell 15 pin_fuel1 coolant7  2  -3  14  -15 
+cell 16 pin_fuel1 coolant8  2  -3  -14  -15 
+cell 23 0 outside 3 
+
+
+plot 3 500 500
+% ----- Surface for detectors
+surf 4 px -0.64750000
+surf 5 py 0.64750000
+surf 6 px 0.64750000
+surf 7 py -0.64750000
+
+% ----- Detectors ------
+%det top_left_fuel      dm fuel1    dc 5   de 2groups_grid dv 0.14759379
+%det top_right_fuel     dm fuel1    dc 6   de 2groups_grid dv 0.14759379
+%det bottom_right_fuel  dm fuel1    dc 7   de 2groups_grid dv 0.14759379
+%det bottom_left_fuel   dm fuel1    dc 8   de 2groups_grid dv 0.14759379
+%det top_left_c1      dm coolant    dc 9   de 2groups_grid dv 0.07302455408682713
+%det top_right_c1     dm coolant    dc 10  de 2groups_grid dv 0.07302455408682713
+%det bottom_right_c1  dm coolant    dc 11  de 2groups_grid dv 0.07302455408682713
+%det bottom_left_c1   dm coolant    dc 12  de 2groups_grid dv 0.07302455408682713
+%det top_left_c2      dm coolant    dc 13  de 2groups_grid dv 0.1986379059016567
+%det top_right_c2     dm coolant    dc 14  de 2groups_grid dv 0.1986379059016567
+%det bottom_right_c2  dm coolant    dc 15  de 2groups_grid dv 0.1986379059016567
+%det bottom_left_c2   dm coolant    dc 16  de 2groups_grid dv 0.1986379059016567

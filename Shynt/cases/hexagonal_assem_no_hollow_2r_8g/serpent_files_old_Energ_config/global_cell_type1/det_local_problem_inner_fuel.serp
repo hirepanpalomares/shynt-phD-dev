@@ -1,0 +1,145 @@
+set title ""
+
+mat inner_fuel sum tmp 453
+92235.03c 0.000101116
+92238.03c 0.019868
+94238.03c 1.78056e-05
+94239.03c 0.00245592
+94240.03c 0.000732245
+94241.03c 0.000196866
+94242.03c 6.83261e-05
+95241.03c 4.8183e-05
+8016.03c 0.046507
+
+mat na_coolant sum tmp 453
+Na-23.03c 0.0237718
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+
+
+set bc 2
+
+set pop 10000 1500 250
+
+set seed 
+
+ene fast_ene_str_0 1 1.00000000E-10 7.49000000E-04
+ene fast_ene_str_1 1 7.49000000E-04 1.50000000E-02
+ene fast_ene_str_2 1 1.50000000E-02 4.09000000E-02
+ene fast_ene_str_3 1 4.09000000E-02 1.11000000E-01
+ene fast_ene_str_4 1 1.11000000E-01 3.02000000E-01
+ene fast_ene_str_5 1 3.02000000E-01 8.21000000E-01
+ene fast_ene_str_6 1 8.21000000E-01 2.23000000E+00
+ene fast_ene_str_7 1 2.23000000E+00 2.00000000E+01
+
+
+surf 219 hexxc 0.00000000  0.00000000 0.49129500
+surf 226 cyl 0.00000000 0.00000000 0.35700000
+
+cell 68 0 fill pin_inner -219 
+cell 66 pin_inner inner_fuel  -226 
+cell 67 pin_inner na_coolant  226  -219 
+cell 1159 0 outside 219 
+
+% ----- Surface for detectors
+surf 220 py 0.49129500
+trans s 220 0.0 0.0 0.0 0.0 0.0 30
+surf 221 px 0.49129500
+surf 222 py -0.49129500
+trans s 222 0.0 0.0 0.0 0.0 0.0 -30
+surf 223 py -0.49129500
+trans s 223 0.0 0.0 0.0 0.0 0.0 30
+surf 224 px -0.49129500
+surf 225 py 0.49129500
+trans s 225 0.0 0.0 0.0 0.0 0.0 -30
+
+% ----- Detectors ------
+det total_rate_reg66_g0  de fast_ene_str_0 dr -1 inner_fuel dc 66  
+det j_in_reg66_g0 ds 226 -1 de fast_ene_str_0   dfl 1 1 
+det j_out_reg66_g0 ds 226 1 de fast_ene_str_0   dfl 1 3  dfl 2 1 
+det all_to_reg66_g0  de fast_ene_str_0 dr -1 inner_fuel dc 66   dfl 1 2  dfl 1 0 
+det reg66_to_reg67_g0  de fast_ene_str_0 dr -1 na_coolant dc 67   dfl 2 2  dfl 2 0 
+det reg66_to_surface220_g0 ds 220 1 de fast_ene_str_0   dfl 2 2  dfl 2 0 
+det reg66_to_surface221_g0 ds 221 1 de fast_ene_str_0   dfl 2 2  dfl 2 0 
+det reg66_to_surface222_g0 ds 222 -1 de fast_ene_str_0   dfl 2 2  dfl 2 0 
+det reg66_to_surface223_g0 ds 223 -1 de fast_ene_str_0   dfl 2 2  dfl 2 0 
+det reg66_to_surface224_g0 ds 224 -1 de fast_ene_str_0   dfl 2 2  dfl 2 0 
+det reg66_to_surface225_g0 ds 225 1 de fast_ene_str_0   dfl 2 2  dfl 2 0 
+det total_rate_reg66_g1  de fast_ene_str_1 dr -1 inner_fuel dc 66  
+det j_in_reg66_g1 ds 226 -1 de fast_ene_str_1   dfl 3 1 
+det j_out_reg66_g1 ds 226 1 de fast_ene_str_1   dfl 3 3  dfl 4 1 
+det all_to_reg66_g1  de fast_ene_str_1 dr -1 inner_fuel dc 66   dfl 3 2  dfl 3 0 
+det reg66_to_reg67_g1  de fast_ene_str_1 dr -1 na_coolant dc 67   dfl 4 2  dfl 4 0 
+det reg66_to_surface220_g1 ds 220 1 de fast_ene_str_1   dfl 4 2  dfl 4 0 
+det reg66_to_surface221_g1 ds 221 1 de fast_ene_str_1   dfl 4 2  dfl 4 0 
+det reg66_to_surface222_g1 ds 222 -1 de fast_ene_str_1   dfl 4 2  dfl 4 0 
+det reg66_to_surface223_g1 ds 223 -1 de fast_ene_str_1   dfl 4 2  dfl 4 0 
+det reg66_to_surface224_g1 ds 224 -1 de fast_ene_str_1   dfl 4 2  dfl 4 0 
+det reg66_to_surface225_g1 ds 225 1 de fast_ene_str_1   dfl 4 2  dfl 4 0 
+det total_rate_reg66_g2  de fast_ene_str_2 dr -1 inner_fuel dc 66  
+det j_in_reg66_g2 ds 226 -1 de fast_ene_str_2   dfl 5 1 
+det j_out_reg66_g2 ds 226 1 de fast_ene_str_2   dfl 5 3  dfl 6 1 
+det all_to_reg66_g2  de fast_ene_str_2 dr -1 inner_fuel dc 66   dfl 5 2  dfl 5 0 
+det reg66_to_reg67_g2  de fast_ene_str_2 dr -1 na_coolant dc 67   dfl 6 2  dfl 6 0 
+det reg66_to_surface220_g2 ds 220 1 de fast_ene_str_2   dfl 6 2  dfl 6 0 
+det reg66_to_surface221_g2 ds 221 1 de fast_ene_str_2   dfl 6 2  dfl 6 0 
+det reg66_to_surface222_g2 ds 222 -1 de fast_ene_str_2   dfl 6 2  dfl 6 0 
+det reg66_to_surface223_g2 ds 223 -1 de fast_ene_str_2   dfl 6 2  dfl 6 0 
+det reg66_to_surface224_g2 ds 224 -1 de fast_ene_str_2   dfl 6 2  dfl 6 0 
+det reg66_to_surface225_g2 ds 225 1 de fast_ene_str_2   dfl 6 2  dfl 6 0 
+det total_rate_reg66_g3  de fast_ene_str_3 dr -1 inner_fuel dc 66  
+det j_in_reg66_g3 ds 226 -1 de fast_ene_str_3   dfl 7 1 
+det j_out_reg66_g3 ds 226 1 de fast_ene_str_3   dfl 7 3  dfl 8 1 
+det all_to_reg66_g3  de fast_ene_str_3 dr -1 inner_fuel dc 66   dfl 7 2  dfl 7 0 
+det reg66_to_reg67_g3  de fast_ene_str_3 dr -1 na_coolant dc 67   dfl 8 2  dfl 8 0 
+det reg66_to_surface220_g3 ds 220 1 de fast_ene_str_3   dfl 8 2  dfl 8 0 
+det reg66_to_surface221_g3 ds 221 1 de fast_ene_str_3   dfl 8 2  dfl 8 0 
+det reg66_to_surface222_g3 ds 222 -1 de fast_ene_str_3   dfl 8 2  dfl 8 0 
+det reg66_to_surface223_g3 ds 223 -1 de fast_ene_str_3   dfl 8 2  dfl 8 0 
+det reg66_to_surface224_g3 ds 224 -1 de fast_ene_str_3   dfl 8 2  dfl 8 0 
+det reg66_to_surface225_g3 ds 225 1 de fast_ene_str_3   dfl 8 2  dfl 8 0 
+det total_rate_reg66_g4  de fast_ene_str_4 dr -1 inner_fuel dc 66  
+det j_in_reg66_g4 ds 226 -1 de fast_ene_str_4   dfl 9 1 
+det j_out_reg66_g4 ds 226 1 de fast_ene_str_4   dfl 9 3  dfl 10 1 
+det all_to_reg66_g4  de fast_ene_str_4 dr -1 inner_fuel dc 66   dfl 9 2  dfl 9 0 
+det reg66_to_reg67_g4  de fast_ene_str_4 dr -1 na_coolant dc 67   dfl 10 2  dfl 10 0 
+det reg66_to_surface220_g4 ds 220 1 de fast_ene_str_4   dfl 10 2  dfl 10 0 
+det reg66_to_surface221_g4 ds 221 1 de fast_ene_str_4   dfl 10 2  dfl 10 0 
+det reg66_to_surface222_g4 ds 222 -1 de fast_ene_str_4   dfl 10 2  dfl 10 0 
+det reg66_to_surface223_g4 ds 223 -1 de fast_ene_str_4   dfl 10 2  dfl 10 0 
+det reg66_to_surface224_g4 ds 224 -1 de fast_ene_str_4   dfl 10 2  dfl 10 0 
+det reg66_to_surface225_g4 ds 225 1 de fast_ene_str_4   dfl 10 2  dfl 10 0 
+det total_rate_reg66_g5  de fast_ene_str_5 dr -1 inner_fuel dc 66  
+det j_in_reg66_g5 ds 226 -1 de fast_ene_str_5   dfl 11 1 
+det j_out_reg66_g5 ds 226 1 de fast_ene_str_5   dfl 11 3  dfl 12 1 
+det all_to_reg66_g5  de fast_ene_str_5 dr -1 inner_fuel dc 66   dfl 11 2  dfl 11 0 
+det reg66_to_reg67_g5  de fast_ene_str_5 dr -1 na_coolant dc 67   dfl 12 2  dfl 12 0 
+det reg66_to_surface220_g5 ds 220 1 de fast_ene_str_5   dfl 12 2  dfl 12 0 
+det reg66_to_surface221_g5 ds 221 1 de fast_ene_str_5   dfl 12 2  dfl 12 0 
+det reg66_to_surface222_g5 ds 222 -1 de fast_ene_str_5   dfl 12 2  dfl 12 0 
+det reg66_to_surface223_g5 ds 223 -1 de fast_ene_str_5   dfl 12 2  dfl 12 0 
+det reg66_to_surface224_g5 ds 224 -1 de fast_ene_str_5   dfl 12 2  dfl 12 0 
+det reg66_to_surface225_g5 ds 225 1 de fast_ene_str_5   dfl 12 2  dfl 12 0 
+det total_rate_reg66_g6  de fast_ene_str_6 dr -1 inner_fuel dc 66  
+det j_in_reg66_g6 ds 226 -1 de fast_ene_str_6   dfl 13 1 
+det j_out_reg66_g6 ds 226 1 de fast_ene_str_6   dfl 13 3  dfl 14 1 
+det all_to_reg66_g6  de fast_ene_str_6 dr -1 inner_fuel dc 66   dfl 13 2  dfl 13 0 
+det reg66_to_reg67_g6  de fast_ene_str_6 dr -1 na_coolant dc 67   dfl 14 2  dfl 14 0 
+det reg66_to_surface220_g6 ds 220 1 de fast_ene_str_6   dfl 14 2  dfl 14 0 
+det reg66_to_surface221_g6 ds 221 1 de fast_ene_str_6   dfl 14 2  dfl 14 0 
+det reg66_to_surface222_g6 ds 222 -1 de fast_ene_str_6   dfl 14 2  dfl 14 0 
+det reg66_to_surface223_g6 ds 223 -1 de fast_ene_str_6   dfl 14 2  dfl 14 0 
+det reg66_to_surface224_g6 ds 224 -1 de fast_ene_str_6   dfl 14 2  dfl 14 0 
+det reg66_to_surface225_g6 ds 225 1 de fast_ene_str_6   dfl 14 2  dfl 14 0 
+det total_rate_reg66_g7  de fast_ene_str_7 dr -1 inner_fuel dc 66  
+det j_in_reg66_g7 ds 226 -1 de fast_ene_str_7   dfl 15 1 
+det j_out_reg66_g7 ds 226 1 de fast_ene_str_7   dfl 15 3  dfl 16 1 
+det all_to_reg66_g7  de fast_ene_str_7 dr -1 inner_fuel dc 66   dfl 15 2  dfl 15 0 
+det reg66_to_reg67_g7  de fast_ene_str_7 dr -1 na_coolant dc 67   dfl 16 2  dfl 16 0 
+det reg66_to_surface220_g7 ds 220 1 de fast_ene_str_7   dfl 16 2  dfl 16 0 
+det reg66_to_surface221_g7 ds 221 1 de fast_ene_str_7   dfl 16 2  dfl 16 0 
+det reg66_to_surface222_g7 ds 222 -1 de fast_ene_str_7   dfl 16 2  dfl 16 0 
+det reg66_to_surface223_g7 ds 223 -1 de fast_ene_str_7   dfl 16 2  dfl 16 0 
+det reg66_to_surface224_g7 ds 224 -1 de fast_ene_str_7   dfl 16 2  dfl 16 0 
+det reg66_to_surface225_g7 ds 225 1 de fast_ene_str_7   dfl 16 2  dfl 16 0 

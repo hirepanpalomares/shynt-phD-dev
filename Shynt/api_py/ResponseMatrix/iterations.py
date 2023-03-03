@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 
 from Shynt.api_py import energy
 
-from Shynt.api_py.ResponseMatrix.global_problem import solveGlobalProblem, solveGlobalProblem_sys
-from Shynt.api_py.ResponseMatrix.local_problem import solveLocalProblem, solveLocalProblem_sys
+from Shynt.api_py.ResponseMatrix.global_problem import solveGlobalProblem_bg
+from Shynt.api_py.ResponseMatrix.local_problem import solveLocalProblem_bg
 from Shynt.api_py.ResponseMatrix.matrix_utilities import getBlockMatrix, getInitializedPhi_system, getInitializedPhi_system_byGroup
 from Shynt.api_py.ResponseMatrix.build_J_source import buildJsource, buildJsource_sys, buildJsourceTBT
 from Shynt.api_py.ResponseMatrix.build_matrix_M import getM_matrix
@@ -15,10 +15,11 @@ from Shynt.api_py.ResponseMatrix.build_matrix_T import getMatrixT_system, getMat
 from Shynt.api_py.ResponseMatrix.build_matrix_U import getMatrixU_system, getMatrixU_system_byGroup
 from Shynt.api_py.ResponseMatrix.build_Phi_Source import buildPhiSource, buildPhiSource_sys, buildPhiSourceTBT
 from Shynt.api_py.ResponseMatrix.build_source_Q import SourceQ
+from Shynt.api_py.Probabilities.propagation import propagate_prob_uncertainty
 
 
 
-def solveKeff(root, xs, probabilities, mesh_info):
+def solveKeff(root, xs, probabilities, mesh_info, prob_sigma):
     energy_g = root.energy_grid.energy_groups
     coarse_nodes = root.model_cell.global_mesh.coarse_nodes
 
@@ -31,27 +32,22 @@ def solveKeff(root, xs, probabilities, mesh_info):
     numRegions = len(all_regions_order)
 
 
-    # Guessing of phi and k ------------------------------------------------------
-    # phi_guess = getInitializedPhi_system_byGroup(numRegions, energy_g)
-    # keff_guess = 1
-
-    # Building matrixes -----------------------------------------------------------
-    # matrixS = getMatrixS_system_byGroup(mesh_info, energy_g, xs, probabilities) # ready
-    # matrixU_bg = getMatrixU_system_byGroup(mesh_info, energy_g, probabilities) # ready
-    # matrixT_bg = getMatrixT_system_byGroup(mesh_info, energy_g, xs, probabilities) # read
-    # matrixR = getResponseMatrix_byGroup(mesh_info, energy_g, probabilities) # ready
-    # matrixM = getM_matrix(coarse_nodes_map, coarse_nodes, all_surfaces, mesh_info.type_system) # ready 
-    # inverse_IMR = calculate_inverseIMR(matrixM, matrixR, energy_g)
     
-
+    # Whole system ------------------------------------------------------------------
     matrixS = getMatrixS_system(mesh_info, energy_g, xs, probabilities) # ready 
+    print(f"matrix S ready, shape {matrixS.shape}")
     matrixU = getMatrixU_system(mesh_info, energy_g, probabilities) # ready
+    print(f"matrix U ready, shape {matrixU.shape}")
     matrixT = getMatrixT_system(mesh_info, energy_g, xs, probabilities) # read
+    print(f"matrix T ready, shape {matrixT.shape}")
     matrixR = getResponseMatrix_system(mesh_info, energy_g, probabilities) # ready    
+    print(f"matrix R ready, shape {matrixR.shape}")
     matrixM = getM_matrix(coarse_nodes_map, coarse_nodes, all_surfaces, mesh_info.type_system) # ready 
     matrixM_sys = [matrixM for g in range(energy_g)]
     matrixM_sys = getBlockMatrix(matrixM_sys)
+    print(f"matrix M ready, shape {matrixM_sys.shape}")
     inverse_IMR = calculate_inverseIMR_sys(matrixM_sys, matrixR)
+    print(f"matrix inverse ready, shape {inverse_IMR.shape}")
     
 
     # Building the source
@@ -121,7 +117,7 @@ def solveKeff(root, xs, probabilities, mesh_info):
         print(f"phi converge: {phi_converge:.8E}")
         print(f"convergence tolerance: {tolerance:.8E}")
         print("iteration:", iteration)
-        print(phi_new)
+        # print(phi_new)
 
         # update for the next iteration
         keff_prev = keff_new
@@ -129,9 +125,11 @@ def solveKeff(root, xs, probabilities, mesh_info):
         iteration += 1
         # inputtt = input()
         
+    # j_out_sys = np.matmul(np.linalg.inv(matrixM_sys), j_in_sys)
     # phi_output = order_flux_output(phi_new, mesh_info, energy_g)
     phi_output = order_flux_output_sys(phi_new, mesh_info, energy_g)
-
+    phi_uncertainty = propagate_prob_uncertainty(phi_new, mesh_info, energy_g, source_Q_vectors, xs, j_in_sys, prob_sigma)
+    phi_uncertainty = order_flux_output_sys(phi_uncertainty, mesh_info, energy_g)
     print(phi_output)
     flux_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_new, j_in_sys)
     current_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_new, j_in_sys)
@@ -139,6 +137,137 @@ def solveKeff(root, xs, probabilities, mesh_info):
     return  {
         "keff": keff_new,
         "phi": phi_output,
+        "phi_sigma": phi_uncertainty,
+        "keff_convergence": k_converge,
+        "flux_convergence": phi_converge, 
+        "iterations": iteration,
+        "phi_source": phi_source_array
+    }
+
+
+def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma):
+    energy_g = root.energy_grid.energy_groups
+    coarse_nodes = root.model_cell.global_mesh.coarse_nodes
+
+    # Useful mesh information ----------------------------------------------------
+    coarse_nodes_order = mesh_info.coarse_order
+    coarse_nodes_regions = mesh_info.coarse_region_rel
+    all_surfaces = mesh_info.all_surfaces_order
+    coarse_nodes_map = mesh_info.coarse_nodes_map
+    all_regions_order = mesh_info.all_regions_order
+    numRegions = len(all_regions_order)
+
+
+    # Guessing of phi and k ------------------------------------------------------
+    # phi_guess = getInitializedPhi_system_byGroup(numRegions, energy_g)
+    # keff_guess = 1
+
+
+    # ******************************************************************************
+    # *                            BUILDING MATRIXES                               *
+    # ******************************************************************************
+
+    # By energy group ------------------------------------------------------------
+    matrixS_bg = getMatrixS_system_byGroup(mesh_info, energy_g, xs, probabilities) # ready
+    matrixU_bg = getMatrixU_system_byGroup(mesh_info, energy_g, probabilities) # ready
+    matrixT_bg = getMatrixT_system_byGroup(mesh_info, energy_g, xs, probabilities) # read
+    matrixR_bg = getResponseMatrix_byGroup(mesh_info, energy_g, probabilities) # ready
+    matrixM = getM_matrix(coarse_nodes_map, coarse_nodes, all_surfaces, mesh_info.type_system) # ready 
+    inverse_IMR_bg = calculate_inverseIMR(matrixM, matrixR_bg, energy_g)
+    print("matrix shapes ----------------------------------------------------------")
+    print(f"matrix M , shape: {matrixM.shape}") 
+    for g in range(energy_g):
+       print(f"matrix S g{g}, shape: {matrixS_bg[g].shape}") 
+       print(f"matrix U g{g}, shape: {matrixU_bg[g].shape}") 
+       print(f"matrix T g{g}, shape: {matrixT_bg[g].shape}") 
+       print(f"matrix R g{g}, shape: {matrixR_bg[g].shape}") 
+
+    
+    
+
+    # Building the source
+    systemSource = SourceQ(coarse_nodes_order, coarse_nodes_regions, energy_g, xs) # scattering matrix and fission matrix per region
+    fission_source = systemSource.buildFissionSource(mesh_info, probabilities) # for power iteration
+    
+    # Guessing initial keff and phi
+    # phi_guess = getInitializedPhi_system(numRegions, energy_g)
+    phi_guess = getInitializedPhi_system_byGroup(numRegions, energy_g)
+
+    keff_guess = 1
+
+    keff_prev = keff_guess
+    phi_prev = phi_guess
+
+    tolerance = 1E-10
+    k_converge = 1
+    phi_converge = 1
+    
+    print() 
+    iteration = 1
+    k_array = []
+    phi_source_array = []
+    # print(matrixS)
+    # print(matrixT)
+    # print(matrixU) 
+    # print(matrixR)
+    # iii = input()
+    input()
+    while k_converge >= tolerance or phi_converge >= tolerance:
+        print("-"*50)
+
+        # Estimating the Source --------------------------------
+        source_Q_vectors = systemSource.calculate_Qvector(keff_prev, phi_prev, all_regions_order, fluxOrdered_bg=True) # checked
+
+
+        j_source = buildJsource(coarse_nodes_order, matrixU_bg, source_Q_vectors, energy_g)
+        phi_source = buildPhiSource(coarse_nodes_order, matrixT_bg, source_Q_vectors, energy_g)
+        
+        
+        # Solving the Global problem------------------------------
+        j_in = solveGlobalProblem_bg(energy_g, inverse_IMR_bg, matrixM, j_source) 
+        # Solving local problem: ---------------------------------
+        phi_new = solveLocalProblem_bg(matrixS_bg, j_in, phi_source, energy_g)
+        # ---------------------------------------------------------------------------------------
+
+
+        # power iteration -----------------------------------------
+        keff_new = power_iteration_bg(phi_new, phi_prev, keff_prev, fission_source, all_regions_order, energy_g)    
+        k_array.append(keff_new)
+
+
+
+        print("keff: ", keff_new)
+        # check convergence
+        k_converge, phi_converge = check_convergence(keff_prev, keff_new, phi_prev, phi_new, energy_g)
+        # k_converge, phi_converge = check_convergence_sys(keff_prev, keff_new, phi_prev, phi_new, energy_g)
+        print(f"keff converge: {k_converge:.8E}")
+        print(f"phi converge: {phi_converge:.8E}")
+        print(f"convergence tolerance: {tolerance:.8E}")
+        print("iteration:", iteration)
+        # print(phi_new)
+
+        # update for the next iteration
+        keff_prev = keff_new
+        phi_prev = phi_new
+        iteration += 1
+        # inputtt = input()
+    
+
+    print(phi_new)
+    raise SystemExit
+    # j_out_sys = np.matmul(np.linalg.inv(matrixM_sys), j_in_sys)
+    # phi_output = order_flux_output(phi_new, mesh_info, energy_g)
+    phi_output = order_flux_output_sys(phi_new, mesh_info, energy_g)
+    phi_uncertainty = propagate_prob_uncertainty(phi_new, mesh_info, energy_g, source_Q_vectors, xs, j_in_sys, prob_sigma)
+    phi_uncertainty = order_flux_output_sys(phi_uncertainty, mesh_info, energy_g)
+    print(phi_output)
+    flux_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_new, j_in_sys)
+    current_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_new, j_in_sys)
+
+    return  {
+        "keff": keff_new,
+        "phi": phi_output,
+        "phi_sigma": phi_uncertainty,
         "keff_convergence": k_converge,
         "flux_convergence": phi_converge, 
         "iterations": iteration,
@@ -290,7 +419,7 @@ def power_iteration_sys(phi_new, phi_prev, keff_prev, fission_source, all_region
     return k_new
 
 
-def power_iteration(phi_new, phi_prev, keff_prev, fission_source, all_regions, energy_g):
+def power_iteration_bg(phi_new, phi_prev, keff_prev, fission_source, all_regions, energy_g):
     
     phi_new = create_long_vector_flux(phi_new, energy_g, all_regions)
     phi_prev = create_long_vector_flux(phi_prev, energy_g, all_regions)

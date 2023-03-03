@@ -1,6 +1,6 @@
 import numpy as np
 
-def solveGlobalProblem(energy_g, inverse_IMR, mM, j_source_byGroup):
+def solveGlobalProblem_bg(energy_g, inverse_IMR, mM, j_source_byGroup):
     
     j_in = {}
     for g in range(energy_g):

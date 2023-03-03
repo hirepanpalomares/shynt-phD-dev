@@ -6,7 +6,7 @@ from Shynt.api_py.materials import Material
 
 from Shynt.api_py.Geometry.regions import Region
 from Shynt.api_py.Geometry.regions import SurfaceSide
-from .surfaces import InfiniteSquareCylinderZ
+from .surfaces import InfiniteSquareCylinderZ, Hexagon
 from .cell_counter import cell_ids
 
 
@@ -446,6 +446,8 @@ class Cell:
     @property
     def center(self):
         if isinstance(self.__region.surface, InfiniteSquareCylinderZ):
+            return self.__region.surface.center
+        elif isinstance(self.__region.surface, Hexagon):
             return self.__region.surface.center
 
 

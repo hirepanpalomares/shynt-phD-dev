@@ -9,10 +9,11 @@ from Shynt.api_py.Probabilities.probability_writer import write_excel
 
 class OutputFile:
 
-    def __init__(self, root, keff, flux, iter_number, convergence, mesh_info, nameOut, phi_src, probs):
+    def __init__(self, root, keff, flux, flux_sigma, iter_number, convergence, mesh_info, nameOut, phi_src, probs):
         self.root = root
         self.keff = keff
         self.flux = flux
+        self.flux_sigma = flux_sigma
         self.iterations = iter_number
         self.convergence_keff = convergence[0]
         self.convergence_flux = convergence[1]
@@ -73,7 +74,7 @@ class OutputFile:
         statement = ""
         for src in self.phi_src:
             for val in src:
-                statement += f"{val}, "
+                statement += f"{val},"
             statement += "\n"
         return statement
 
@@ -82,12 +83,13 @@ class OutputFile:
         coarse_nodes_ids = self.mesh_info.coarse_order
         fine_nodes = self.root.model_cell.local_mesh.fine_nodes
 
-        statement = "Energy_group, coarse_node_id, region_id, material, scalar_flux\n"
+        statement = "Energy_group,coarse_node_id,region_id,material,scalar_flux,sigma,volume\n"
         for g in range(numEner):
             for n_id in coarse_nodes_ids:
                 for reg_id, flux in self.flux[g][n_id].items():
                     mat = fine_nodes[n_id][reg_id].cell.content.name
-                    statement += f"{g+1}, {n_id}, {reg_id}, {mat}, {flux}\n"
+                    vol = fine_nodes[n_id][reg_id].cell.volume
+                    statement += f"{g+1},{n_id},{reg_id},{mat},{flux},{self.flux_sigma[g][n_id][reg_id]},{vol}\n"
         return statement
 
 

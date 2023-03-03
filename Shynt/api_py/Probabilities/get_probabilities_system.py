@@ -14,7 +14,7 @@ def get_probabilities(det_inputs, mesh_info, root, xs):
     
     coarse_node_scores, detector_relation = read_detectors_data(det_inputs)
     
-    probabilities_unique_nodes = calculate_probabilities_main_nodes(
+    probabilities_unique_nodes, prob_uncertainty = calculate_probabilities_main_nodes(
         det_inputs, 
         mesh_info, 
         coarse_nodes, 
@@ -41,14 +41,18 @@ def get_probabilities(det_inputs, mesh_info, root, xs):
 
     debugging_breakingPoint = True
 
-    probs = fill_probabilities(coarse_nodes, mesh_info, probabilities_unique_nodes)
+    probs, probs_sigma = fill_probabilities(coarse_nodes, mesh_info, probabilities_unique_nodes, prob_uncertainty)
 
-    return probs
+    return probs, probs_sigma
     
 
 
-def fill_probabilities(coarse_nodes, mesh_info, probabilities_unique_nodes):
+def fill_probabilities(coarse_nodes, mesh_info, probabilities_unique_nodes, prob_uncertainty):
     new_prob = {
+        "regions": {},
+        "surfaces": {}
+    }
+    new_prob_sigma = {
         "regions": {},
         "surfaces": {}
     }
@@ -70,37 +74,52 @@ def fill_probabilities(coarse_nodes, mesh_info, probabilities_unique_nodes):
                 "surfaces": {}
             } for s in surfaces
         })
+        new_prob_sigma["regions"].update({
+            r: {
+                "regions": {},
+                "surfaces": {}
+            } for r in regions
+        })
+        new_prob_sigma["surfaces"].update({
+            s: {
+                "regions": {},
+                "surfaces": {}
+            } for s in surfaces
+        })
         prob_id_eq = probabilities_unique_nodes[id_eq]
-
+        prob_sigma_id_eq = prob_uncertainty[id_eq]
         # Filling probabilities to every similar node
 
-        for reg in regions:
-            type_region = mesh_info.region_type_rel_switched[id_][reg]
-            reg_eq = mesh_info.region_type_rel[id_eq][type_region]
+        for r, reg_id in enumerate(regions):
+            reg_eq = mesh_info.equivalence_region_rel[reg_id]
             # sdfsd reg to reg
-            for reg_p in regions:
-                type_region_p = mesh_info.region_type_rel_switched[id_][reg_p]
-                reg_p_eq = mesh_info.region_type_rel[id_eq][type_region_p]
-                new_prob["regions"][reg]["regions"][reg_p] = prob_id_eq["regions"][reg_eq]["regions"][reg_p_eq]
+            for rp, regp_id in enumerate(regions):
+                reg_p_eq = mesh_info.equivalence_region_rel[regp_id]
+                new_prob["regions"][reg_id]["regions"][regp_id] = prob_id_eq["regions"][reg_eq]["regions"][reg_p_eq]
+                new_prob_sigma["regions"][reg_id]["regions"][regp_id] = prob_sigma_id_eq["regions"][reg_eq]["regions"][reg_p_eq]
+                
             # reg to surf
             for surf in surfaces:
                 surf_eq = mesh_info.equivalence_surface_rel[surf]
-                new_prob["regions"][reg]["surfaces"][surf] = prob_id_eq["regions"][reg_eq]["surfaces"][surf_eq]
+                new_prob["regions"][reg_id]["surfaces"][surf] = prob_id_eq["regions"][reg_eq]["surfaces"][surf_eq]
+                new_prob_sigma["regions"][reg_id]["surfaces"][surf] = prob_sigma_id_eq["regions"][reg_eq]["surfaces"][surf_eq]
     
         for surf in surfaces:
             surf_eq = mesh_info.equivalence_surface_rel[surf]
             # surface to region
-            for reg in regions:
-                type_region = mesh_info.region_type_rel_switched[id_][reg]
-                reg_eq = mesh_info.region_type_rel[id_eq][type_region]
-                new_prob["surfaces"][surf]["regions"][reg] = prob_id_eq["surfaces"][surf_eq]["regions"][reg_eq]
+            for r, reg_id in enumerate(regions):
+                reg_eq_id = mesh_info.equivalence_region_rel[reg_id]
+                new_prob["surfaces"][surf]["regions"][reg_id] = prob_id_eq["surfaces"][surf_eq]["regions"][reg_eq_id]
+                new_prob_sigma["surfaces"][surf]["regions"][reg_id] = prob_sigma_id_eq["surfaces"][surf_eq]["regions"][reg_eq_id]
+
             # surface to surface
             for surf_p in surfaces:
                 surf_p_eq = mesh_info.equivalence_surface_rel[surf_p]
                 new_prob["surfaces"][surf]["surfaces"][surf_p] = prob_id_eq["surfaces"][surf_eq]["surfaces"][surf_p_eq]
+                new_prob_sigma["surfaces"][surf]["surfaces"][surf_p] = prob_sigma_id_eq["surfaces"][surf_eq]["surfaces"][surf_p_eq]
 
 
-    return  new_prob
+    return  new_prob, new_prob_sigma
 
 def calculate_sum_probabilities(probabilities_unique_nodes, energy_g):
     sum_prob_unique_nodes = {}
@@ -126,6 +145,8 @@ def calculate_sum_probabilities(probabilities_unique_nodes, energy_g):
                 sum_prob_s += probabilities_unique_nodes[id_]["surfaces"][s]["surfaces"][sp]
             sum_prob_unique_nodes[id_]["surfaces"][s] = sum_prob_s
     return sum_prob_unique_nodes
+
+
 
 def check_reciprocity(probabilities, xs, energy_g, mesh_info):
     reciprocity = {}

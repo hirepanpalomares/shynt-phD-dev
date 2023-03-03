@@ -2,7 +2,7 @@ from Shynt.api_py.Drawer.cell_drawing import plot_cell
 import numpy as np
 import Shynt
 
-from Shynt.api_py.Geometry.mesh_helpers import make_mesh
+from Shynt.api_py.Mesh.mesh_helpers import make_mesh
 from Shynt.api_py.Geometry.cells import Cell
 from Shynt.api_py.Geometry.surfaces import InfiniteHexagonalCylinderYtype
 from Shynt.api_py.Geometry.universes import HexagonalLatticeTypeX, Pin
@@ -66,7 +66,7 @@ mo_100 = Isotope("Mo-100.03c")
 
 # Montecarlo params and libraries --------------------------------------
 # TODO seed to be defined according to first simulation of reference
-mc_params = MontecarloParams(10000, 1500, 250) 
+mc_params = MontecarloParams(20000, 3000, 1500) 
 libraries = SerpentLibraries(acelib='"jeff311/sss_jeff311u.xsdata"')
 ene_structure = [1.00E-10, 7.49E-04, 1.50E-02, 4.09E-02, 1.11E-01, 3.02E-01, 8.21E-01, 2.23E+00, 2.00E+01]
 energy_grid = Grid(ene_structure, name="fast_ene_str") # MeV
@@ -145,8 +145,13 @@ hex_wrap = InfiniteHexagonalCylinderYtype(0, 0, 8.22164, boundary="reflective")
 # Main problem cell
 assembly_cell = Cell("hex_assembly_problem", region=-hex_wrap, fill=assembly_hex)
 outside_cell = Cell("outside_world", region=+hex_wrap)
+
+local_mesh_type = {
+    "pie": ["inner_fuel", "na_coolant"],
+    "slices": [(0,90),(90,180),(180,270),(270,360)]
+}
 assembly_cell_meshed = make_mesh(
-    assembly_cell, global_mesh_type="pin_cell", local_mesh_type="material"
+    assembly_cell, global_mesh_type="pin_cell", local_mesh_type=local_mesh_type
 )
 
 # Total Universe (root)
@@ -157,5 +162,9 @@ root_universe = Shynt.universes.Root(
     libraries=libraries
 )
 
-# Shynt.run(root_universe)
+Shynt.run(
+    root_universe,
+    serp_dir='serp_files_20_000_3e3_15e2', 
+    name_out='20_000_3e3_15e2'
+)
 # plot_cell(assembly_cell, dimensions=(10000,10000), name="hexagonal_lattice_no_hollow")

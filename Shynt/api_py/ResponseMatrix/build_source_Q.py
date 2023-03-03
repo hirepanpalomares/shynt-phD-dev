@@ -123,7 +123,7 @@ class SourceQ:
 
 
 
-    def calculate_Qvector(self, keff, flux, total_regions):
+    def calculate_Qvector(self, keff, flux, total_regions, fluxOrdered_bg=False):
         """
             It returns a dictionary with the source terms in it:
 
@@ -136,7 +136,8 @@ class SourceQ:
             
             }
         """
-        flux = self.__orderFlux(flux, total_regions)
+        if not fluxOrdered_bg:
+            flux = self.__orderFlux(flux, total_regions)
 
         # change order of fluxes
         numRegions = len(total_regions)

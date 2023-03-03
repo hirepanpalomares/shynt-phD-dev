@@ -7,5 +7,8 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-Shynt.run(root_universe)
+Shynt.run(
+  root_universe,
+  serp_dir='serp_files_'
+)
 # plot_cell(assembly_cell, name="hex_lattice_2r", dimensions=(7000,7000))

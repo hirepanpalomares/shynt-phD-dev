@@ -63,6 +63,37 @@ def getMatrixS_system(mesh_info, energy_g, xs, probabilities):
 
     return getBlockMatrix(matrix_S_system_byGroup)
 
+def getMatrixS_system_wo_prob_byGroup(mesh_info, energy_g, xs):
+ 
+    coarse_nodes = mesh_info.coarse_order
+    coarse_nodes_regions = mesh_info.coarse_region_rel
+    coarse_nodes_surfaces = mesh_info.coarse_surface_rel
+    surface_areas = mesh_info.all_surfaces_area
+    regions_volume = mesh_info.all_regions_vol
+
+    matrix_S_system_byGroup = {}
+    for g in range(energy_g):
+        systemMatrixes = []
+        for c_id in coarse_nodes:
+            regions = coarse_nodes_regions[c_id]
+            surfaces = coarse_nodes_surfaces[c_id]
+            # for each coarse node
+            xs_node = {r: xs[r] for r in regions}
+
+            mS = build_S_wo_prob(  
+                xs_node,
+                surfaces,
+                surface_areas,
+                regions,
+                regions_volume,
+                g
+            )
+            systemMatrixes.append(mS)
+        big_matrix_S = getBlockMatrix(systemMatrixes)
+        matrix_S_system_byGroup[g] = big_matrix_S
+
+    return matrix_S_system_byGroup
+
 
 def getMatrixS_system_byGroup(mesh_info, energy_g, xs, probabilities):
  
@@ -114,5 +145,24 @@ def build_S(xs, probabilities, surfaces, surface_areas, regions, regions_volume,
             area_a = surface_areas[s_id]
             p_a_j = probabilities["surfaces"][s_id]["regions"][region_j_id][g]
             mS[j][a] =  area_a * p_a_j / (xsTotal_j * vol_j)
+    
+    return mS
+
+
+def build_S_wo_prob(xs, surfaces, surface_areas, regions, regions_volume, g):
+    numReg = len(regions)
+    numSurf = len(surfaces)
+
+    matrix_S_shape = (numReg, numSurf)
+    mS = np.zeros(matrix_S_shape)
+
+    for j in range(numReg):
+        region_j_id = regions[j]
+        vol_j = regions_volume[region_j_id]
+        xsTotal_j = xs[region_j_id]["total"][g]
+        for a in range(numSurf):
+            s_id = surfaces[a]
+            area_a = surface_areas[s_id]
+            mS[j][a] =  area_a / (xsTotal_j * vol_j)
     
     return mS

@@ -87,10 +87,10 @@ class MeshInfo:
                 self.equal_nodes_rel[node_id] = head
         
         for n_id, n_eq_id in self.equal_nodes_rel.items():
-            for reg in self.coarse_region_rel[n_id]:
-                type_reg = self.region_type_rel_switched[n_id][reg]
-                reg_eq = self.region_type_rel[n_eq_id][type_reg]
-                self.equivalence_region_rel[reg] = reg_eq
+            type_regs = list(self.region_type_rel_switched[n_eq_id].keys())
+            for r, reg_id in enumerate(self.coarse_region_rel[n_id]):
+                reg_eq = type_regs[r]
+                self.equivalence_region_rel[reg_id] = reg_eq
 
         for n_id, n_eq_id in self.equal_nodes_rel.items():
             node_ = self.__coarse_nodes[n_id]

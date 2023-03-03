@@ -2,7 +2,7 @@ from locale import normalize
 import numpy as np
 import matplotlib as mpl
 from Shynt.api_py.Postprocess import process_files as postprocess
-from Shynt.api_py.Geometry.mesh_info import MeshInfo
+from Shynt.api_py.Mesh.mesh_info import MeshInfo
 from hex_assem import root_universe
 from Shynt.api_py.Postprocess import normalize as norm
 from Shynt.api_py.Drawer.cell_drawing import plot_cell

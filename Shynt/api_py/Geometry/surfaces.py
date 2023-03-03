@@ -127,6 +127,8 @@ class PlaneX(Surface):
             "m": "inf"
         }
         self.__isRotated = False
+        self.__rotationAngle = None
+        self.__rotationRefPoint = None
         self.serpent_syntax = f"surf {self.id} px {format(x0, '.8f')}\n"
 
     def useFunction(self, var_):
@@ -151,6 +153,8 @@ class PlaneX(Surface):
             return 0
         
         angle = math.radians(angle)
+        self.__rotationAngle = angle
+        self.__rotationRefPoint = ref_point
         xc, yc = ref_point # TODO check that the refpoint is on the plane
         # TODO choose a point over the line (plane) instead just adding one
         x0 = xc     # This only works if the plane hasn't been rotated
@@ -221,12 +225,14 @@ class PlaneX(Surface):
         except AssertionError:
             return True
     
-    def clone(self, clone_vector=None):
+    def clone(self, new_center_x, new_center_y, clone_vector=None):
         new_x0 = self.__x0
         if clone_vector:
             new_x0 = self.__x0 + clone_vector[0]
         surf_clone = PlaneX(new_x0, isClone=True)
         surf_clone.id = super().id
+        if self.__isRotated:
+            surf_clone.rotate(self.__rotationAngle, ref_point=self.__rotationRefPoint)
         return surf_clone
     
     @property
@@ -273,6 +279,7 @@ class PlaneY(Surface):
         }
         self.__isRotated = False
         self.__rotationAngle = None
+        self.__rotationRefPoint = None
         
 
     def useFunction(self, var_):
@@ -296,6 +303,7 @@ class PlaneY(Surface):
         except AssertionError:
             return 0
         self.__rotationAngle = angle
+        self.__rotationRefPoint = ref_point
         angle = math.radians(angle)
         xc, yc = ref_point # TODO checck that the refpoint is on the plane
         # TODO choose a point over the line (plane) instead just adding one
@@ -370,11 +378,13 @@ class PlaneY(Surface):
         else:
             self.__y0 += y_t
     
-    def clone(self, clone_vector=None):
+    def clone(self, new_center_x, new_center_y, clone_vector=None):
         new_y0 = self.__y0
         if clone_vector:
             new_y0 = self.__y0 + clone_vector[1]
         surf_clone = PlaneY(new_y0, isClone=True)
+        if self.__isRotated:
+            surf_clone.rotate(self.__rotationAngle, ref_point=self.__rotationRefPoint)
         surf_clone.id = super().id
         return surf_clone
     
@@ -427,6 +437,7 @@ class PlaneZ(Surface):
     def z0(self):
         return self.__z0
 
+
 class PlaneParametric(Surface):
 
     def __init__(self, x0, y0, z0, x1, y1, z1, x2, y2, z2, type_surface="", name="", isClone=False):
@@ -461,6 +472,7 @@ class PlaneParametric(Surface):
         serpent_syntax += f"{format(self.__x1, '.8f')} {format(self.__y1, '.8f')} {format(self.__z1, '.8f')} "
         serpent_syntax += f"{format(self.__x2, '.8f')} {format(self.__y2, '.8f')} {format(self.__z2, '.8f')}\n"
         return serpent_syntax
+
 
 class InfiniteCylinderZ(Surface):
 
@@ -1031,6 +1043,72 @@ class PieQuadrant(Surface):
     def surf_h_plane(self):
         return self.__surf_h_plane
 
+    @property
+    def boundary(self):
+        return self.__boundary
+
+
+
+class CylinderPad(Surface):
+    
+    def __init__(self, x0, y0, r1, r2, th1, th2, boundary=None, name="", isClone=False):
+        super().__init__(type_surface="pie_surface", name=name, isClone=isClone)
+        self.__x0 = x0
+        self.__y0 = y0
+        self.__r1 = r1
+        self.__r2 = r2
+        self.__th1 = th1
+        self.__th2 = th2
+
+        self.__boundary = boundary
+        self.__isClone = isClone
+
+    def clone(self, center_x, center_y, clone_vector=None):
+        """
+            It clones the surface: same id, same radius, same angles but in a new center
+        """
+    
+        clone_pad = CylinderPad(
+            self.__x0, self.__y0, self.__r1, self.__r2, self.__th1, self.__th2,
+            isClone=True
+        )
+        
+        clone_pad.id = super().id
+
+        
+        return clone_pad
+    
+
+
+    @property
+    def serpent_syntax_exact_position(self):
+        serpent_syntax = f"surf {self.id} pad "
+        serpent_syntax += f"{format(self.__x0, '.8f')} {format(self.__y0, '.8f')} " 
+        serpent_syntax += f"{format(self.__r1, '.8f')} {format(self.__r2, '.8f')} " 
+        serpent_syntax += f"{format(self.__th1, '.8f')} {format(self.__th2, '.8f')}\n" 
+        return serpent_syntax
+
+    @property
+    def serpent_syntax_standard_position(self):
+        serpent_syntax = f"surf {self.id} pad "
+        serpent_syntax += f"0.0000 0.0000 " 
+        serpent_syntax += f"{format(self.__r1, '.8f')} {format(self.__r2, '.8f')} " 
+        serpent_syntax += f"{format(self.__th1, '.8f')} {format(self.__th2, '.8f')}\n" 
+        return serpent_syntax
+
+
+    @property
+    def center_x(self):
+        return self.__center_x
+    
+    @property
+    def center_y(self):
+        return self.__center_y
+    
+    @property
+    def center(self):
+        return (self.__center_x, self.__center_y)
+    
     @property
     def boundary(self):
         return self.__boundary

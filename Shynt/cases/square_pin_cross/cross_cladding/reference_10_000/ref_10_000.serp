@@ -1,0 +1,125 @@
+set title ""
+
+
+mat fuel1 -10.424    rgb  0  102  255   %blue
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c  -0.1185
+
+
+mat fuel2 -10.424    rgb  255 255 102    %yellow
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c  -0.1185
+
+
+mat fuel3 -10.424    rgb  255  102  0    %orange
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c  -0.1185
+
+
+mat fuel4 -10.424    rgb   102 51 153   %purple
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c  -0.1185
+
+
+mat coolant1 -0.44376 moder lwtr 1001   rgb  102 204 255  % light blue
+8016.06c 0.33333
+1001.06c 0.66667
+
+mat coolant2 -0.44376 moder lwtr 1001   rgb  204   0 204  % purple
+8016.06c 0.33333
+1001.06c 0.66667
+
+mat coolant3 -0.44376 moder lwtr 1001   rgb  204  51   0 % brown
+8016.06c 0.33333
+1001.06c 0.66667
+
+mat coolant4 -0.44376 moder lwtr 1001   rgb  255 153 255 % pink
+8016.06c 0.33333
+1001.06c 0.66667
+
+mat clad1 -7.5 rgb 110 95 65 
+40090.06c 0.507061
+40091.06c 0.111809
+40092.06c 0.172781
+40094.06c 0.178911
+40096.06c 0.0294379
+
+
+mat clad2 -7.5 rgb 80 95 65 % brown
+40090.06c 0.507061
+40091.06c 0.111809
+40092.06c 0.172781
+40094.06c 0.178911
+40096.06c 0.0294379
+
+mat clad3 -7.5 rgb 50 95 65 % brown
+40090.06c 0.507061
+40091.06c 0.111809
+40092.06c 0.172781
+40094.06c 0.178911
+40096.06c 0.0294379
+
+mat clad4 -7.5 rgb 140 95 65 % brown
+40090.06c 0.507061
+40091.06c 0.111809
+40092.06c 0.172781
+40094.06c 0.178911
+40096.06c 0.0294379
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+therm lwtr lwj3.11t
+
+set bc 2
+
+set pop 10000 1500 500
+
+ene 2groups_grid 1 0.00000000E+00 6.25000000E-07 2.00000000E+01 
+
+% ------- pad top left (TL) -------------------
+surf TL1_cd pad  0.0000 0.0000   0.4335 0.5000  90 180
+
+% ------- pad top right (TR) -------------------
+surf TR1_cd pad  0.0000 0.0000   0.4335 0.5000   0  90
+
+% ------- pad bottom right (BR) -------------------
+surf BR1_cd pad  0.0000 0.0000   0.4335 0.5000  270  0
+
+% ------- pad bottom left (BL) -------------------
+surf BL1_cd pad  0.0000 0.0000   0.4335 0.5000  180 270
+
+
+
+surf 2 sqc 0.00000000 0.00000000 0.64750000
+surf 1 cyl 0.00000000 0.00000000 0.43350000
+surf 3 cyl 0.00000000 0.00000000 0.50000000
+
+
+cell f1 pin_fuel1 fuel1  -1
+cell cd_1 pin_fuel1 clad1  -TL1_cd
+cell cd_2 pin_fuel1 clad2  -TR1_cd
+cell cd_3 pin_fuel1 clad3  -BR1_cd
+cell cd_4 pin_fuel1 clad4  -BL1_cd
+cell c1 pin_fuel1 coolant1  3 
+
+
+
+cell 3 0 fill pin_fuel1 -2 
+cell 5 0 outside 2 
+
+plot 3 500 500
+
+
+% ----- Detectors ------
+det fuel               dm fuel1    dc f1    de 2groups_grid dv 0.59037516
+
+det top_left_clad      dm clad1    dc cd_1  de 2groups_grid dv 0.04875575
+det top_right_clad     dm clad2    dc cd_2  de 2groups_grid dv 0.04875575
+det bottom_right_clad  dm clad3    dc cd_3  de 2groups_grid dv 0.04875575
+det bottom_left_clad   dm clad4    dc cd_4  de 2groups_grid dv 0.04875575
+
+det coolant            dm coolant1 dc c1    de 2groups_grid dv 0.89162683

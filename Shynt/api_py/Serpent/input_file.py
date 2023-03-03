@@ -21,7 +21,7 @@ import sys
 class SerpentInputFile():
 
     def __init__(self, coarse_node, regions, name, root: Root, xs_generation=False) -> None:
-        print(name)
+        # print(name)
         self.coarse_node = coarse_node
         self.cell = coarse_node.cell
         # self.fictional_surfaces = coarse_node.fictional_surfaces
@@ -94,7 +94,7 @@ class SerpentInputFile():
         
         self.__file.write("\n\n")
         for s_id, surf in self.surfaces.items():
-            self.__file.write(surf.serpent_syntax_exact_position)
+            self.__file.write(surf.serpent_syntax_standard_position)
             self.surfaces_ids.append(s_id)
         
         # Write all cells inside the cell
@@ -126,7 +126,7 @@ class SerpentInputFile():
 
 class SerpentInputFileDetectorsRegion(SerpentInputFile):
     
-    def __init__(self, coarse_node, regions, name, root, reg_id, type_reg):
+    def __init__(self, coarse_node, regions, name, root, reg_id):
         super().__init__(coarse_node, regions, name, root)
         self.detector_flags = []
         self.surfaces_syntax = []
@@ -176,6 +176,8 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
             self.specific = "region_fuel"
 
             if self.root.model_cell.local_mesh.type == "fuel_cross":
+                self.__generate_fuel_detectors_cross_mesh(regions_dict)
+            elif "pie" in self.root.model_cell.local_mesh.type:
                 self.__generate_fuel_detectors_cross_mesh(regions_dict)
             elif self.root.model_cell.local_mesh.type == "material":
                 self.__generate_fuel_detectors_mat_mesh(regions_dict)
@@ -338,10 +340,7 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
         
         fuel_cell = regions_dict[self.region_id].cell
         bin_name = self.energy_grid.name
-        pie_surface = fuel_cell.region.surface
-        quadrant = pie_surface.quadrant
-        surf_v_side = pie_surface.surf_v_plane
-        surf_h_side = pie_surface.surf_h_plane
+        fuel_cell_surf = fuel_cell.region.surface
 
         # * Total reaction rate for each energy_bin ----------------------------------------------
         name = f"total_rate_reg{fuel_cell.id}"
@@ -355,92 +354,34 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
         self.detectors_relation["regions"][self.region_id]["total"] = det
 
         # * Surface detector. Inward neutrons to the fuel through the circle ---------------------
-        surf_circle = pie_surface.surf_circle
+        
         name = f"j_in_reg{fuel_cell.id}"
         det = Detector(
             name, 
-            surface=(surf_circle.id, self.surface_direction[surf_circle.id]["inward"]),
+            surface=(fuel_cell_surf.id, self.surface_direction[fuel_cell_surf.id]["inward"]),
             flags=[(self.flag_counter, "1")],
             energy_grid=bin_name
         )
-        flag_j_in_thr_circle = self.flag_counter
-        flag_relation[f"j_in_circle{fuel_cell.id}"] = self.flag_counter
+        flag_j_in = self.flag_counter
+        flag_relation[f"j_in_reg{fuel_cell.id}"] = self.flag_counter
         self.detectors.append(det)
-        self.detectors_relation["regions"][self.region_id]["incoming_circle"] = det
-
-        # * Surface detector. Inward neutrons to the fuel through the vertical side --------------
-        surf_v_side = pie_surface.surf_v_plane
-        name = f"j_in_reg{fuel_cell.id}_through_v_side"
-        det = Detector(
-            name, 
-            surface=(surf_v_side.id, self.surface_direction[surf_v_side.id]["inward"]),
-            flags=[(self.flag_counter, "1")],
-            energy_grid=bin_name
-        )
-        flag_j_in_thr_v_side = self.flag_counter
-        flag_relation[f"j_in_v_side{fuel_cell.id}"] = self.flag_counter
-        self.detectors.append(det)
-        self.detectors_relation["regions"][self.region_id]["incoming_v_side"] = det
-
-        # * Surface detector. Inward neutrons to the fuel through the horizontal side ------------
-        surf_h_side = pie_surface.surf_h_plane
-        name = f"j_in_reg{fuel_cell.id}_through_h_side"
-        det = Detector(
-            name, 
-            surface=(surf_h_side.id, self.surface_direction[surf_h_side.id]["inward"]),
-            flags=[(self.flag_counter, "1")],
-            energy_grid=bin_name
-        )
-        flag_j_in_thr_h_side = self.flag_counter
-        flag_relation[f"j_in_h_side{fuel_cell.id}"] = self.flag_counter
-        self.detectors.append(det)
-        self.detectors_relation["regions"][self.region_id]["incoming_h_side"] = det
+        self.detectors_relation["regions"][self.region_id]["incoming"] = det
 
 
         # !Surface detector. Outward neutrons from the fuel ---------------------------------------
         # * Through Circle ----------------------------------------------------------------------
-        name = f"j_out_reg{fuel_cell.id}_thr_circle"
+        name = f"j_out_reg{fuel_cell.id}"
         det = Detector(
             name, 
-            surface=(surf_circle.id, self.surface_direction[surf_circle.id]["outward"]),
+            surface=(fuel_cell_surf.id, self.surface_direction[fuel_cell_surf.id]["outward"]),
             flags=[(self.flag_counter, "3"), (self.flag_counter+1, "1")],
             energy_grid=bin_name
         )
         flag_relation[name] = self.flag_counter + 1
         flag_j_out = self.flag_counter + 1
         self.detectors.append(det)
-        self.detectors_relation["regions"][self.region_id]["outcoming_circle"] = det
+        self.detectors_relation["regions"][self.region_id]["outcoming"] = det
         
-
-        # * Through V-side ----------------------------------------------------------------------
-        neutron_J_dir = pie_surface.get_neutron_current_directions() #! Getting directions of neutron currents 
-        name = f"j_out_reg{fuel_cell.id}_thr_v_side"
-        det = Detector(
-            name, 
-            surface=(surf_v_side.id, neutron_J_dir[surf_v_side.id]["outward"]),
-            flags=[(self.flag_counter, "3"), (self.flag_counter+1, "1")],
-            energy_grid=bin_name
-        )
-        flag_relation[name] = self.flag_counter + 1
-        flag_j_out = self.flag_counter + 1
-        self.detectors.append(det)
-        self.detectors_relation["regions"][self.region_id]["outcoming_v_side"] = det
-        
-
-        # * Through H-side ----------------------------------------------------------------------
-        name = f"j_out_reg{fuel_cell.id}_thr_h_side"
-        det = Detector(
-            name, 
-            surface=(surf_h_side.id, neutron_J_dir[surf_h_side.id]["outward"]),
-            flags=[(self.flag_counter, "3"), (self.flag_counter+1, "1")],
-            energy_grid=bin_name
-        )
-        flag_relation[name] = self.flag_counter + 1
-        flag_j_out = self.flag_counter + 1
-        self.detectors.append(det)
-        self.detectors_relation["regions"][self.region_id]["outcoming_h_side"] = det
-        self.flag_counter += 2
-
 
         # everything to region --------------------------------------------------------
         name = f"all_to_reg{fuel_cell.id}"
@@ -448,13 +389,13 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
             name,
             cells=[fuel_cell.id],
             response=("-1", fuel_cell.content.name),
-            flags=[(flag_j_in_thr_circle, "2"), (flag_j_in_thr_circle, "0")],
+            flags=[(flag_j_in, "2"), (flag_j_in, "0")],
             energy_grid=bin_name
         )
         self.detectors.append(det)
         self.detectors_relation["regions"][self.region_id]["all_to_fuelReg"] = det
 
-        # Fuel to coolant (or other regions)
+        # Fuel to  other regions
         for reg in self.regions:
             flags = [(flag_j_out, "2"), (flag_j_out, "0")]
             name = f"reg{fuel_cell.id}_to_reg{reg.cell.id}"
@@ -487,7 +428,7 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
         flag_relation = { }
         coolant_cell = regions_dict[self.region_id].cell
         bin_name = self.energy_grid.name
-        print("non Fuel detectors")
+        # print("non Fuel detectors")
         # Total reaction rate for each energy_bin
         name = f"total_rate_reg{coolant_cell.id}"
         det = Detector(
@@ -550,7 +491,7 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
         # COOLANT -----> SURFACES
         for s in self.closing_surface_ids:
             
-            name = f"reg{reg.cell.id}_surface{s}" # it should be coolant_cell.id but it cause conflicts with all the serpent files ran in the past
+            name = f"reg{self.region_id}_surface{s}" # it should be coolant_cell.id but it cause conflicts with all the serpent files ran in the past
             det = Detector(
                 name, 
                 surface=(s, self.surface_direction[s]["outward"]),

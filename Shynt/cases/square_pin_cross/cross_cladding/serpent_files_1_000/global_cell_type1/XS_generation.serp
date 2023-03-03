@@ -1,0 +1,63 @@
+set title ""
+
+mat fuel1 -10.424 
+92235.09c -0.015867
+92238.09c -0.86563
+8016.09c -0.1185
+
+mat clading -7.5 
+40090.06c 0.507061
+40091.06c 0.111809
+40092.06c 0.172781
+40094.06c 0.178911
+40096.06c 0.0294379
+
+mat coolant -0.44376 moder lwtr 1001
+8016.06c 0.33333
+1001.06c 0.66667
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+therm lwtr lwj3.11t
+
+set bc 2
+
+set pop 1000 1500 500
+
+ene 2groups_grid 1 0.00000000E+00 6.25000000E-07 2.00000000E+01 
+
+
+surf 3 sqc 0.00000000 0.00000000 0.64750000
+surf 1 cyl 0.00000000 0.00000000 0.43350000
+surf 8 pad 0.00000000 0.00000000 0.43350000 0.50000000 90.00000000 180.00000000
+surf 9 pad 0.00000000 0.00000000 0.43350000 0.50000000 0.00000000 90.00000000
+surf 10 pad 0.00000000 0.00000000 0.43350000 0.50000000 270.00000000 0.00000000
+surf 11 pad 0.00000000 0.00000000 0.43350000 0.50000000 180.00000000 270.00000000
+surf 2 cyl 0.00000000 0.00000000 0.50000000
+
+cell 17 u4gcu_1 fuel1 -1 
+cell 18 pin_fuel1 fill u4gcu_1 -1 
+
+cell 19 u4gcu_2 clading -8 
+cell 20 pin_fuel1 fill u4gcu_2 -8 
+
+cell 21 u4gcu_3 clading -9 
+cell 22 pin_fuel1 fill u4gcu_3 -9 
+
+cell 23 u4gcu_4 clading -10 
+cell 24 pin_fuel1 fill u4gcu_4 -10 
+
+cell 25 u4gcu_5 clading -11 
+cell 26 pin_fuel1 fill u4gcu_5 -11 
+
+cell 27 u4gcu_6 coolant 2  -3 
+cell 28 pin_fuel1 fill u4gcu_6 2  -3 
+
+cell 29 0 fill pin_fuel1  -3 
+
+
+set gcu u4gcu_1 u4gcu_2 u4gcu_3 u4gcu_4 u4gcu_5 u4gcu_6 
+cell 30 0 outside 3 
+
+
+set nfg 2groups_grid
