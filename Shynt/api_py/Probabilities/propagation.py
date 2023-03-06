@@ -25,7 +25,7 @@ def propagate_prob_uncertainty(phi_new, mesh_info, energy_g, sourceQ, xs, j_in_s
       j_g.append(j_in_sys[index_jin])
     j_byGroup[g] = np.array(j_g)
 
-
+  
   
   phi_sigma = []
   for g in range(energy_g):

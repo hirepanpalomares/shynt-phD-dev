@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 
 from Shynt.api_py import energy
 
-from Shynt.api_py.ResponseMatrix.global_problem import solveGlobalProblem_bg
-from Shynt.api_py.ResponseMatrix.local_problem import solveLocalProblem_bg
+from Shynt.api_py.ResponseMatrix.global_problem import solveGlobalProblem_bg, solveGlobalProblem_sys
+from Shynt.api_py.ResponseMatrix.local_problem import solveLocalProblem_bg, solveLocalProblem_sys
 from Shynt.api_py.ResponseMatrix.matrix_utilities import getBlockMatrix, getInitializedPhi_system, getInitializedPhi_system_byGroup
 from Shynt.api_py.ResponseMatrix.build_J_source import buildJsource, buildJsource_sys, buildJsourceTBT
 from Shynt.api_py.ResponseMatrix.build_matrix_M import getM_matrix
@@ -82,18 +82,6 @@ def solveKeff(root, xs, probabilities, mesh_info, prob_sigma):
         # Estimating the Source --------------------------------
         source_Q_vectors = systemSource.calculate_Qvector(keff_prev, phi_prev, all_regions_order) # checked
 
-
-        # j_source = buildJsource(coarse_nodes_order, matrixU_bg, source_Q_vectors, energy_g)
-        # phi_source = buildPhiSource(coarse_nodes_order, matrixT_bg, source_Q_vectors, energy_g)
-        # j_sourceTBT = buildJsourceTBT(energy_g, mesh_info, probabilities, xs, keff_prev, phi_prev)
-        # phi_sourceTBT = buildPhiSourceTBT(energy_g, mesh_info, probabilities, xs, keff_prev, phi_prev)
-        
-        # Solving the Global problem------------------------------
-        # j_in = solveGlobalProblem(energy_g, inverse_IMR, matrixM, j_source) 
-        # Solving local problem: ---------------------------------
-        # phi_new = solveLocalProblem(matrixS, j_in, phi_source, energy_g)
-        # ---------------------------------------------------------------------------------------
-
         j_source_sys = buildJsource_sys(matrixU, source_Q_vectors, energy_g)
         phi_source_sys = buildPhiSource_sys(matrixT, source_Q_vectors, energy_g)
         
@@ -104,7 +92,6 @@ def solveKeff(root, xs, probabilities, mesh_info, prob_sigma):
 
         # power iteration -----------------------------------------
         keff_new = power_iteration_sys(phi_new, phi_prev, keff_prev, fission_source, all_regions_order, energy_g)    
-        # keff_new = power_iteration(phi_new, phi_prev, keff_prev, fission_source, all_regions_order, energy_g)    
         k_array.append(keff_new)
 
 
@@ -206,12 +193,7 @@ def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma):
     iteration = 1
     k_array = []
     phi_source_array = []
-    # print(matrixS)
-    # print(matrixT)
-    # print(matrixU) 
-    # print(matrixR)
-    # iii = input()
-    input()
+   
     while k_converge >= tolerance or phi_converge >= tolerance:
         print("-"*50)
 
@@ -254,15 +236,14 @@ def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma):
     
 
     print(phi_new)
-    raise SystemExit
     # j_out_sys = np.matmul(np.linalg.inv(matrixM_sys), j_in_sys)
-    # phi_output = order_flux_output(phi_new, mesh_info, energy_g)
-    phi_output = order_flux_output_sys(phi_new, mesh_info, energy_g)
+    j_in_sys = create_long_vector_jin(j_in)
+    phi_output = order_flux_output(phi_new, mesh_info, energy_g)
     phi_uncertainty = propagate_prob_uncertainty(phi_new, mesh_info, energy_g, source_Q_vectors, xs, j_in_sys, prob_sigma)
     phi_uncertainty = order_flux_output_sys(phi_uncertainty, mesh_info, energy_g)
-    print(phi_output)
-    flux_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_new, j_in_sys)
-    current_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_new, j_in_sys)
+    phi_sys = create_long_vector_phi_sys(phi_new)
+    flux_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_sys, j_in_sys)
+    current_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_sys, j_in_sys)
 
     return  {
         "keff": keff_new,
@@ -440,7 +421,7 @@ def create_long_vector_flux(phi, energy_g, all_regions):
         The order of the long vector is the following:
 
         phi = [
-            phi_r1_g1, phi_r1_g2, phi_r2_g1, phi_r2_g2
+            phi_r1_g1, phi_r2_g1, phi_r1_g2, phi_r2_g2
         ]
     """
     numRegions = len(all_regions)
@@ -454,6 +435,34 @@ def create_long_vector_flux(phi, energy_g, all_regions):
             vector[index] = flux_val
 
     return vector
+
+
+def create_long_vector_jin(j_in):
+    """
+        The order of the long vector is the following:
+
+        j_in = [
+            j_in_r1_g1, j_in_r2_g1, j_in_r1_g2, j_in_r2_g2, ...,
+        ]
+    """
+    j_in_long = np.array([])
+    for g, j_in_g in j_in.items():
+        j_in_long = np.concatenate((j_in_long, j_in_g), axis=0)
+    return j_in_long
+
+
+def create_long_vector_phi_sys(phi):
+    """
+        The order of the long vector is the following:
+
+        phi = [
+            phi_r1_g1, phi_r2_g1, phi_r1_g2, phi_r2_g2, ...,
+        ]
+    """
+    phi_long = np.array([])
+    for g, phi_g in phi.items():
+        phi_long = np.concatenate((phi_long, phi_g), axis=0)
+    return phi_long
 
 
 def order_flux_output(flux_group, mesh_info, energy_g):
