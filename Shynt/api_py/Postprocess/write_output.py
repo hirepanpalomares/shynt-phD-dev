@@ -82,14 +82,23 @@ class OutputFile:
         numEner = self.root.energy_grid.energy_groups
         coarse_nodes_ids = self.mesh_info.coarse_order
         fine_nodes = self.root.model_cell.local_mesh.fine_nodes
-
-        statement = "Energy_group,coarse_node_id,region_id,material,scalar_flux,sigma,volume\n"
-        for g in range(numEner):
-            for n_id in coarse_nodes_ids:
-                for reg_id, flux in self.flux[g][n_id].items():
-                    mat = fine_nodes[n_id][reg_id].cell.content.name
-                    vol = fine_nodes[n_id][reg_id].cell.volume
-                    statement += f"{g+1},{n_id},{reg_id},{mat},{flux},{self.flux_sigma[g][n_id][reg_id]},{vol}\n"
+        statement = ""
+        if self.flux_sigma:
+            statement = "Energy_group,coarse_node_id,region_id,material,scalar_flux,sigma,volume\n"
+            for g in range(numEner):
+                for n_id in coarse_nodes_ids:
+                    for reg_id, flux in self.flux[g][n_id].items():
+                        mat = fine_nodes[n_id][reg_id].cell.content.name
+                        vol = fine_nodes[n_id][reg_id].cell.volume
+                        statement += f"{g+1},{n_id},{reg_id},{mat},{flux},{self.flux_sigma[g][n_id][reg_id]},{vol}\n"
+        else:
+            statement = "Energy_group,coarse_node_id,region_id,material,scalar_flux,volume\n"
+            for g in range(numEner):
+                for n_id in coarse_nodes_ids:
+                    for reg_id, flux in self.flux[g][n_id].items():
+                        mat = fine_nodes[n_id][reg_id].cell.content.name
+                        vol = fine_nodes[n_id][reg_id].cell.volume
+                        statement += f"{g+1},{n_id},{reg_id},{mat},{flux},{vol}\n"
         return statement
 
 

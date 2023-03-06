@@ -248,22 +248,23 @@ def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma):
         phi_prev = phi_new
         iteration += 1
         # inputtt = input()
+        break
     
 
     print(phi_new)
     # j_out_sys = np.matmul(np.linalg.inv(matrixM_sys), j_in_sys)
     j_in_sys = create_long_vector_jin(j_in)
     phi_output = order_flux_output(phi_new, mesh_info, energy_g)
-    phi_uncertainty = propagate_prob_uncertainty(phi_new, mesh_info, energy_g, source_Q_vectors, xs, j_in_sys, prob_sigma)
-    phi_uncertainty = order_flux_output_sys(phi_uncertainty, mesh_info, energy_g)
+    # phi_uncertainty = propagate_prob_uncertainty(phi_new, mesh_info, energy_g, source_Q_vectors, xs, j_in_sys, prob_sigma)
+    # phi_uncertainty = order_flux_output_sys(phi_uncertainty, mesh_info, energy_g)
     phi_sys = create_long_vector_phi_sys(phi_new)
-    flux_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_sys, j_in_sys)
-    current_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_sys, j_in_sys)
+    # flux_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_sys, j_in_sys)
+    # current_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, phi_sys, j_in_sys)
 
     return  {
         "keff": keff_new,
         "phi": phi_output,
-        "phi_sigma": phi_uncertainty,
+        "phi_sigma": False,
         "keff_convergence": k_converge,
         "flux_convergence": phi_converge, 
         "iterations": iteration,
