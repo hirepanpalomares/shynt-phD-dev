@@ -80,17 +80,25 @@ def solveKeff(root, xs, probabilities, mesh_info, prob_sigma):
         print("-"*50)
 
         # Estimating the Source --------------------------------
+        print("Estimating source ...")
         source_Q_vectors = systemSource.calculate_Qvector(keff_prev, phi_prev, all_regions_order) # checked
 
+        print("Estimating J source ...")
         j_source_sys = buildJsource_sys(matrixU, source_Q_vectors, energy_g)
+
+        print("Estimating Phi source ...")
         phi_source_sys = buildPhiSource_sys(matrixT, source_Q_vectors, energy_g)
         
         phi_source_array.append(phi_source_sys)
 
+        print("Solving Global Problem ...")
         j_in_sys = solveGlobalProblem_sys(energy_g, inverse_IMR, matrixM_sys, j_source_sys) 
+        
+        print("Solving Local Problem ...")
         phi_new = solveLocalProblem_sys(matrixS, j_in_sys, phi_source_sys)
 
         # power iteration -----------------------------------------
+        print("Calculating new Keff ...")
         keff_new = power_iteration_sys(phi_new, phi_prev, keff_prev, fission_source, all_regions_order, energy_g)    
         k_array.append(keff_new)
 
