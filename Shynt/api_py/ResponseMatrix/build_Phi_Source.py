@@ -2,7 +2,7 @@ import numpy as np
 
 
 
-def buildPhiSource(coarse_nodes, matrixT, source, energy_g):
+def buildPhiSource(matrixT, source, energy_g):
     """
         This method builds the phi source vector of the system
         by energy group
@@ -24,17 +24,7 @@ def buildPhiSource(coarse_nodes, matrixT, source, energy_g):
         phi_s = np.matmul(mT, q_vector)
         phi_source[g] = phi_s
         # -------------------------------------
-        rows_U, cols_U = mT.shape
-        newMatU = np.zeros(mT.shape)
-        source_phi = np.zeros(rows_U)
-        for r in range(rows_U):
-            term = 0
-            for c in range(cols_U):
-                newMatU[r][c] = mT[r][c] * q_vector[c]
-                term += mT[r][c] * q_vector[c]
-            source_phi[r] = term
-        a = 0
-    
+       
     # print(phi_source)
     return phi_source
 

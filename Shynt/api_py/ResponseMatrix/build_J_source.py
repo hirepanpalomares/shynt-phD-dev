@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def buildJsource(coarse_nodes, matrixU, source, energy_g):
+def buildJsource(matrixU, source, energy_g):
     """
         Calculate the vector J_source 
 
@@ -24,22 +24,8 @@ def buildJsource(coarse_nodes, matrixU, source, energy_g):
         j_s_matmul = np.matmul(matU, q_vector)
         j_source[g] = j_s_matmul
         # -------------------------------------
-        rows_U, cols_U = matU.shape
-        newMatU = np.zeros(matU.shape)
-        source_j = np.zeros(rows_U)
-        for r in range(rows_U):
-            term = 0
-            for c in range(cols_U):
-                newMatU[r][c] = matU[r][c] * q_vector[c]
-                term += matU[r][c] * q_vector[c]
-            source_j[r] = term
-        a = 0
-
-    # print(total_j_source)
-    # print(j_source)
-
+       
     return j_source
-    # return total_j_source
 
 def get_source_sys(source):
     q_sys = []
