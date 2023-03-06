@@ -214,9 +214,9 @@ def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma):
 
 
         print("Estimating J source ...")
-        j_source = buildJsource(coarse_nodes_order, matrixU_bg, source_Q_vectors, energy_g)
+        j_source = buildJsource(matrixU_bg, source_Q_vectors, energy_g)
         print("Estimating Phi source ...")
-        phi_source = buildPhiSource(coarse_nodes_order, matrixT_bg, source_Q_vectors, energy_g)
+        phi_source = buildPhiSource(matrixT_bg, source_Q_vectors, energy_g)
         
         
         # Solving the Global problem------------------------------
