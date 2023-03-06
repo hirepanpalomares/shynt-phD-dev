@@ -248,7 +248,6 @@ def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma):
         phi_prev = phi_new
         iteration += 1
         # inputtt = input()
-        break
     
 
     print(phi_new)
