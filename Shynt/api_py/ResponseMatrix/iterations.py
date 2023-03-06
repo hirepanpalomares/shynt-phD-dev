@@ -205,20 +205,27 @@ def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma):
     while k_converge >= tolerance or phi_converge >= tolerance:
         print("-"*50)
 
+        
+
+
         # Estimating the Source --------------------------------
+        print("Estimating source ...")
         source_Q_vectors = systemSource.calculate_Qvector(keff_prev, phi_prev, all_regions_order, fluxOrdered_bg=True) # checked
 
 
+        print("Estimating J source ...")
         j_source = buildJsource(coarse_nodes_order, matrixU_bg, source_Q_vectors, energy_g)
+        print("Estimating Phi source ...")
         phi_source = buildPhiSource(coarse_nodes_order, matrixT_bg, source_Q_vectors, energy_g)
         
         
         # Solving the Global problem------------------------------
+        print("Solving Global Problem ...")
         j_in = solveGlobalProblem_bg(energy_g, inverse_IMR_bg, matrixM, j_source) 
         # Solving local problem: ---------------------------------
+        print("Solving Local Problem ...")
         phi_new = solveLocalProblem_bg(matrixS_bg, j_in, phi_source, energy_g)
         # ---------------------------------------------------------------------------------------
-
 
         # power iteration -----------------------------------------
         keff_new = power_iteration_bg(phi_new, phi_prev, keff_prev, fission_source, all_regions_order, energy_g)    
