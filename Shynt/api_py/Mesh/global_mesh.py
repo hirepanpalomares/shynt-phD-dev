@@ -499,7 +499,7 @@ class SquareMesh(GlobalMesh):
     fuel_cell = Cell(
       name="fuel_top_type_hexagonal_square_mesh", 
       fill=fuel_mat,
-      volume=vol_coolant,
+      volume=vol_fuel,
       region=region_fuel
     )
     cells = {
@@ -549,7 +549,7 @@ class SquareMesh(GlobalMesh):
     plane = PlaneX(x1)
     plane.rotate(angle=-30, ref_point=(x1, y1))
     
-    distance_to_plane = plane.useFunction(y2, given="y")
+    distance_to_plane = plane.useFunction(y2, given="y") - x1
     volume_void = distance_to_plane * (y2-y1) / 2
     volume_fuel = circle_pad.volume
     volume_coolant = rectangle_surf.volume - volume_fuel - volume_void
@@ -646,8 +646,8 @@ class SquareMesh(GlobalMesh):
 
     volume_fuel1 = circle_pad1.volume
     volume_fuel2 = circle_pad2.volume
-    volume_cool1 = (rectangle_surf.volume - volume_fuel1 - volume_fuel2 / 2)
-    volume_cool2 = (rectangle_surf.volume - volume_fuel1 - volume_fuel2 / 2)
+    volume_cool1 = (rectangle_surf.volume - volume_fuel1 - volume_fuel2) / 2
+    volume_cool2 = (rectangle_surf.volume - volume_fuel1 - volume_fuel2) / 2
     
     region_fuel1 = -circle_pad1
     region_fuel2 = -circle_pad2
