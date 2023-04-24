@@ -48,6 +48,14 @@ def get_probabilities(det_inputs, mesh_info, root, xs):
 
 
 def fill_probabilities(coarse_nodes, mesh_info, probabilities_unique_nodes, prob_uncertainty):
+    """
+        This method replicates the probabilities of the main nodes
+        to those nodes that belong to the same type.
+
+        TO do this, the method relies on the variables:
+            - mesh_info.equivalence_region_rel
+            - mesh_info.equivalence_surface_rel
+    """
     new_prob = {
         "regions": {},
         "surfaces": {}
@@ -92,7 +100,7 @@ def fill_probabilities(coarse_nodes, mesh_info, probabilities_unique_nodes, prob
 
         for r, reg_id in enumerate(regions):
             reg_eq = mesh_info.equivalence_region_rel[reg_id]
-            # sdfsd reg to reg
+            # reg to reg
             for rp, regp_id in enumerate(regions):
                 reg_p_eq = mesh_info.equivalence_region_rel[regp_id]
                 new_prob["regions"][reg_id]["regions"][regp_id] = prob_id_eq["regions"][reg_eq]["regions"][reg_p_eq]

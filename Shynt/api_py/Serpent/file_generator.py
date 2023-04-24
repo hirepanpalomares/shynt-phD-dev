@@ -6,6 +6,7 @@ from Shynt.api_py.Serpent.input_file import SerpentInputFileDetectorsXsGeneratio
 
 import os
 import sys
+import numpy as np
 from pathlib import Path
 
 
@@ -18,15 +19,19 @@ def generate_serpent_files(root, different_node_bins, serp_dir="serpent_files"):
                     <class Universe>.global_mesh and <class Universe>.local_mesh already 
                     defined
     """
+    print("generate_serpent_files_function")
 
     global_cells = root.model_cell.global_mesh.coarse_nodes
     local_cells = root.model_cell.local_mesh.fine_nodes
 
+    map_mesh = root.model_cell.global_mesh.coarse_nodes_map
+    print(map_mesh)
 
-    
+    print_different_node_bins = [print(bb) for bb in different_node_bins]
     coarse_nodes_to_files = [global_cells[bin_[0]] for bin_ in different_node_bins]
     
-    
+    print_coarse_nodes_to_files = [print(i) for i in coarse_nodes_to_files  ]
+
     
     """
         The cells in cells_to_files are generated with a new geometry, i.e. 
@@ -36,13 +41,18 @@ def generate_serpent_files(root, different_node_bins, serp_dir="serpent_files"):
     """
     coarse_nodes_clones = {}
     
-    for coarse_node in coarse_nodes_to_files:
-        cell_center = coarse_node.cell.center
-        clone_vector = (0.0 - cell_center[0], 0.0 - cell_center[1])
-        cell_clone = coarse_node.cell.clone(0.0, 0.0, clone_vector=clone_vector) # New center in 0.0, 0.0
-        coarse_node.cell = cell_clone
-        coarse_nodes_clones[coarse_node.id] = coarse_node
+    # ! The proccess of cloning is taking too much time debugging it, SO NO CLONES
+    # for coarse_node in coarse_nodes_to_files:
+    #     print()
+    #     # print(coarse_node.)
+    #     print(coarse_node.cell.content.cells)
+    #     cell_center = coarse_node.cell.center
+    #     clone_vector = (0.0 - cell_center[0], 0.0 - cell_center[1])
+    #     cell_clone = coarse_node.cell.clone(0.0, 0.0, clone_vector=clone_vector) # New center in 0.0, 0.0
+    #     coarse_node.cell = cell_clone
+    #     coarse_nodes_clones[coarse_node.id] = coarse_node
         
+    # raise SystemExit
 
     det_files, xs_files = input_generator(coarse_nodes_to_files, local_cells, root, serp_dir=serp_dir)
 
@@ -76,6 +86,8 @@ def input_generator(coarse_nodes, fine_nodes, root, serp_dir="serpent_files"):
     
     for coarse_n in coarse_nodes:
         # Loop for every coarse_node
+        # print("-"*100)
+        # print(coarse_n.cell.content.cells)
         det_files[coarse_n.id] = []
 
         coarse_n.cell.universe = 0 # To adjust the root universe to the cell under study
@@ -97,6 +109,9 @@ def input_generator(coarse_nodes, fine_nodes, root, serp_dir="serpent_files"):
             """
             cell = reg.cell
             material = cell.content.name
+            if material == "void": continue
+            print("file")
+            print(material)
             name_file = f"{global_cell_dir}/det_local_problem_{material}_{reg_id}.serp"
             
             serpent_input = SerpentInputFileDetectorsRegion(
@@ -105,7 +120,7 @@ def input_generator(coarse_nodes, fine_nodes, root, serp_dir="serpent_files"):
             
             det_files[coarse_n.id].append(serpent_input)
 
-
+        print("-----"*50)
         # Additional file for the surfaces
         name_surfaces_file = f"{global_cell_dir}/det_local_problem_surfaces.serp"
         surf_serpent_input = SerpentInputFileDetectorsSurface(coarse_n, fine_nodes[coarse_n.id], name_surfaces_file, root)

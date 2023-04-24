@@ -2,27 +2,29 @@ from Shynt.api_py.Geometry.surfaces import PieQuadrant
 
 
 class Region:
-    """ Class used to represent the euclidean space generated
-    by the intersection of two SurfaceSides.
+    """ 
+        Class used to represent the euclidean space generated
+        by the intersection of two SurfaceSides.
 
-    The Region is respresented as a binary tree having as childs
-    two different SurfaceSide classes and boolean operation as 
-    atribute
+        The Region is respresented as a binary tree having as childs
+        two different SurfaceSide classes and boolean operation as 
+        atribute
 
-    Parameters
-    -----------------
-    child1      :   Child SurfaceSide or Region of the binary tree
-    child2      :   Child SurfaceSide or Region of the binary tree
-    operation   :   Atribute of the root of the binary tree, is the
-                    boolean operation involving the 2 childs
-    -----------------
-    #TODO:     Implement the case when the two childs are already region instances
-    #TODO:     Implement A or B ----> Boolean union  __or__
-    #TODO:     Implement A xor B ----> Boolean opposite to or __xor__ (Might not be used in reactor physics)
-    #TODO:     Implement A - B ----> Boolean negation
-
+        Parameters
+        -----------------
+        child1      :   Child SurfaceSide or Region of the binary tree
+        child2      :   Child SurfaceSide or Region of the binary tree
+        operation   :   Atribute of the root of the binary tree, is the
+                        boolean operation involving the 2 childs
+        -----------------
+        #TODO:     Implement the case when the two childs are already region instances
+        #TODO:     Implement A or B ----> Boolean union  __or__
+        #TODO:     Implement A xor B ----> Boolean opposite to or __xor__ (Might not be used in reactor physics)
+        #TODO:     Implement A - B ----> Boolean negation
 
     """
+
+
     def __init__(self, child1=None, child2=None, operation=""):
         self.child1 = child1
         self.child2 = child2
@@ -167,7 +169,7 @@ class Region:
         return syntax
 
 
-    def point_in_region(self):
+    def get_point_in_region(self):
         percentage = 0.01
 
         # point_in_region = False
@@ -178,7 +180,7 @@ class Region:
         #     point_in_region = self.child2.isPointInsideRegion(point)
         #     percentage -= 0.01
             # point2 = self.child2.point_in_region()
-        point = self.child1.point_in_region(percentage)
+        point = self.child1.get_point_in_region(percentage)
         return point
 
     @property
@@ -251,7 +253,7 @@ class SurfaceSide(Region):
     def scale(self, scale_f):
         self.surface.scale(scale_f)
 
-    def point_in_region(self, percentage=0.1):
+    def get_point_in_region(self, percentage=0.1):
         from Shynt.api_py.Geometry.surfaces import InfiniteCylinderZ, InfiniteSquareCylinderZ
         from Shynt.api_py.Geometry.surfaces import InfiniteHexagonalCylinderXtype, InfiniteHexagonalCylinderYtype
         point = None

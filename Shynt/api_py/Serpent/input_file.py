@@ -46,16 +46,25 @@ class SerpentInputFile():
             self.__file.write("\n\nset bc 2\n")
             self.__write_mc_params()
             self.__write_energy_grid()
-            self.__write_geometry()
-            self.__write_outside_cell()
-    
+            if self.xs_generation:
+                cell_syntax, gcu_rel = self.coarse_node.xs_generation_geometry()
+                print(gcu_rel)
+                self.xs_gcu = gcu_rel
+                self.__file.write(cell_syntax)
+            else:
+                self.__file.write(self.coarse_node.serpent_geometry())
+
+
     def __write_title(self):
-        self.__file.write(f"set title \"{self.cell.name}\"\n\n")
+        file_title = self.name.split("/")[-2] + "/" + self.name.split("/")[-1]
+        self.__file.write(f"set title \"{file_title}\"\n\n")
 
 
     def __write_material(self):
         materials = get_materials_in_cell(self.cell)
         for mat_name, material in materials.items():
+            if mat_name == "void":
+                continue
             syntax = material.serpent_syntax
             self.__file.write(syntax+"\n")
 
@@ -78,9 +87,12 @@ class SerpentInputFile():
 
     def __write_geometry(self):
         """
+            ! Deprecated ------------------------------------------------------------
             # Consider if it is better to print the geometry from the local problems
         """
+
         # Looking for the surfaces in the cell  ---------------------------------
+
         surfaces = get_all_surfaces_in_a_cell(self.cell)
         for s_id, s in surfaces.items():
             if isinstance(s, PieQuadrant):
@@ -108,6 +120,9 @@ class SerpentInputFile():
 
 
     def __write_outside_cell(self):
+        """
+            ! Deprecated --------------------------------------------------------
+        """
         # Write outside cell
         try:
             reg = self.cell.region 
@@ -161,9 +176,9 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
 
     def __write_detectors(self):
         # Getting surfaces for detectors -----------------------------------------
+
         self.__file.write("% ----- Surface for detectors\n")
         surface_for_detectors = self.__get_surface_for_detectors()      
-
         self.__file.write(surface_for_detectors)
         
         # getting detectors
@@ -179,7 +194,7 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
                 self.__generate_fuel_detectors_cross_mesh(regions_dict)
             elif "pie" in self.root.model_cell.local_mesh.type:
                 self.__generate_fuel_detectors_cross_mesh(regions_dict)
-            elif self.root.model_cell.local_mesh.type == "material":
+            elif self.root.model_cell.local_mesh.type == "cell":
                 self.__generate_fuel_detectors_mat_mesh(regions_dict)
         else: # Is not Fuel
             # Non-fuel detectors ----------------------------------------------------
@@ -200,20 +215,48 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
             raise SystemExit
 
     def __get_surface_for_detectors(self):
-        surface_for_detectors = ""
+        """
+            
+        """
         closing_surf = self.cell.region.surface 
+        surfaces = self.coarse_node.geometry_info["surfaces_for_detectors"]
+        surfaces_boundary = surfaces["boundary"]
+        self.closing_surface_ids = list(surfaces_boundary.keys())
+        # self.surface_direction = closing_surf.get_neutron_current_directions()
+        self.surface_direction = surfaces["current_directions"]
+
+
+        surfaces_to_write = ""
+        for id_, syntax in surfaces_boundary.items():
+            surfaces_to_write += syntax
+
+        fuel_surfaces = surfaces["fuel"]
+        for id_, syntax in fuel_surfaces.items():
+            self.surface_direction[id_] = {"inward": "-1", "outward": "1"}
+            surfaces_to_write += syntax + "\n"
+
+        # ? build fuel cells relation ---------------
+        universe_cells = self.cell.content.cells
+        for c_id, cell in universe_cells.items():
+            if isinstance(cell.content, Material):
+                if cell.content.isFuel:
+                    self.isFuel_relation[cell.id] = (cell.content.name, True)
+                else:
+                    self.isFuel_relation[cell.id] = (cell.content.name, False)
+
+        return surfaces_to_write
+        # ! -----------------------------
+        # ! This part might be deprecated in the future because 
+        # ! I find an easier way to get this (see above)
+    
+        surface_for_detectors_syntax = closing_surf.get_surface_for_detectors_serpent_syntax()
 
         # surfaces_in_closing = self.coarse_node.fictional_surfaces
         surfaces_in_closing = closing_surf.get_surface_relation()
-        if isinstance(closing_surf, InfiniteHexagonalCylinderXtype) or isinstance(closing_surf, InfiniteHexagonalCylinderYtype):
-            self.closing_surface_ids = list(surfaces_in_closing.keys())
-        else:
-            self.closing_surface_ids = list(surfaces_in_closing.keys())
+        self.closing_surface_ids = list(surfaces_in_closing.keys())
 
         self.surface_direction = closing_surf.get_neutron_current_directions()
 
-        for surf in surfaces_in_closing.values():
-            surface_for_detectors += surf.serpent_syntax_exact_position
 
         # Adding surfaces used by detectors from inside the pin cell
         self.material_cell_ids_relation = {}
@@ -229,18 +272,21 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
                             pie_surfs_J_dir = surf.get_neutron_current_directions()
                             for ps_id, ps in pie_surfs.items():
                                 if ps_id not in self.surfaces_ids:
-                                    surface_for_detectors += ps.serpent_syntax_exact_position
+                                    pass
+                                    surface_for_detectors_syntax += ps.serpent_syntax_exact_position
                                 self.surface_direction[ps_id] = pie_surfs_J_dir[ps_id]
-
                         else:
                             if surf.id not in self.surfaces_ids:
-                                surface_for_detectors += surf.serpent_syntax_exact_position
+                                pass
+                                surface_for_detectors_syntax += surf.serpent_syntax_exact_position
                             self.surface_direction[surf.id] = {"inward": "-1", "outward": "1"}
                     self.isFuel_relation[cell.id] = (cell.content.name, True)
                 else:
                     self.isFuel_relation[cell.id] = (cell.content.name, False)
-        return surface_for_detectors
-    
+        return surface_for_detectors_syntax
+
+
+
     def __generate_fuel_detectors_mat_mesh(self, regions_dict):
         flag_relation = { }
         
@@ -257,6 +303,7 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
             energy_grid=bin_name
         )
         self.detectors_relation["regions"][self.region_id]["total"] = det
+        self.detectors.append(det)
 
 
         surface_id = fuel_cell.region.surface.id
@@ -287,7 +334,7 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
         self.flag_counter += 2
 
 
-        # Surf and coolant to fuel
+        # All to fuel
         name = f"all_to_reg{fuel_cell.id}"
         det = Detector(
             name, 
@@ -302,6 +349,8 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
 
         # Fuel to coolant (or other regions)
         for reg in self.regions:
+            if reg.cell.content.name == "void":
+                continue
             if reg.cell.id != self.region_id:
                 name = f"reg{fuel_cell.id}_to_reg{reg.cell.id}"
                 det = Detector(
@@ -467,6 +516,8 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
         # Fuel to coolant (or other regions)
 
         for reg in self.regions:
+            if reg.cell.content.name == "void":
+                continue
             if reg.cell.id != self.region_id:
                 # for a region that is different to the current coolant region
                 # if it is another coolant region check the implementation for
@@ -522,6 +573,8 @@ class SerpentInputFileDetectorsSurface(SerpentInputFile):
         self.flag_counter = 1
         self.detectors_relation = { }
         self.specific = "surfaces"
+
+
         with open(self.name, "a") as self.__file:
             # self.__write_outside_cell()
             self.__write_detectors()
@@ -553,23 +606,48 @@ class SerpentInputFileDetectorsSurface(SerpentInputFile):
             raise SystemExit
 
     def __get_surface_for_detectors(self):
-        surface_for_detectors = ""
+        # surface_for_detectors = ""
+        # closing_surf = self.cell.region.surface 
+
+        # # surfaces_in_closing = self.coarse_node.fictional_surfaces
+        # surfaces_in_closing = closing_surf.get_surface_relation()
+        # if isinstance(closing_surf, InfiniteHexagonalCylinderXtype) or isinstance(closing_surf, InfiniteHexagonalCylinderYtype):
+        #     self.closing_surface_ids = list(surfaces_in_closing.keys())
+        # else:
+        #     self.closing_surface_ids = list(surfaces_in_closing.keys())
+
+        # self.surface_direction = closing_surf.get_neutron_current_directions()
+
+        # for surf in surfaces_in_closing.values():
+        #     surface_for_detectors += surf.serpent_syntax_exact_position
+
         closing_surf = self.cell.region.surface 
+        surfaces = self.coarse_node.geometry_info["surfaces_for_detectors"]
+        surfaces_boundary = surfaces["boundary"]
+        self.closing_surface_ids = list(surfaces_boundary.keys())
+        # self.surface_direction = closing_surf.get_neutron_current_directions()
+        self.surface_direction = surfaces["current_directions"]
 
-        # surfaces_in_closing = self.coarse_node.fictional_surfaces
-        surfaces_in_closing = closing_surf.get_surface_relation()
-        if isinstance(closing_surf, InfiniteHexagonalCylinderXtype) or isinstance(closing_surf, InfiniteHexagonalCylinderYtype):
-            self.closing_surface_ids = list(surfaces_in_closing.keys())
-        else:
-            self.closing_surface_ids = list(surfaces_in_closing.keys())
 
-        self.surface_direction = closing_surf.get_neutron_current_directions()
+        surfaces_to_write = ""
+        for id_, syntax in surfaces_boundary.items():
+            surfaces_to_write += syntax
 
-        for surf in surfaces_in_closing.values():
-            surface_for_detectors += surf.serpent_syntax_exact_position
+        fuel_surfaces = surfaces["fuel"]
+        for id_, syntax in fuel_surfaces.items():
+            self.surface_direction[id_] = {"inward": "-1", "outward": "1"}
+            surfaces_to_write += syntax + "\n"
 
-        
-        return surface_for_detectors
+        # ? build fuel cells relation ---------------
+        universe_cells = self.cell.content.cells
+        for c_id, cell in universe_cells.items():
+            if isinstance(cell.content, Material):
+                if cell.content.isFuel:
+                    self.isFuel_relation[cell.id] = (cell.content.name, True)
+                else:
+                    self.isFuel_relation[cell.id] = (cell.content.name, False)
+
+        return surfaces_to_write
     
     def __helper_surface_detectors(self, regions_dict):
         
@@ -605,6 +683,8 @@ class SerpentInputFileDetectorsSurface(SerpentInputFile):
         
         # Surf to regions
         for reg in self.regions:
+            if reg.cell.content.name == "void":
+                continue
             for s in self.closing_surface_ids:
                 name = f"surface_{s}_to_reg{reg.cell.id}"
                 det = Detector(
@@ -794,7 +874,6 @@ class SerpentInputFileReferenceFlux():
         return self.surfaces_syntax
     
     
-
 
 
 

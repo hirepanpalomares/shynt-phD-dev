@@ -142,13 +142,11 @@ def solveKeff(root, xs, probabilities, mesh_info, prob_sigma):
 
 def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma):
     energy_g = root.energy_grid.energy_groups
-    coarse_nodes = root.model_cell.global_mesh.coarse_nodes
+    global_mesh = root.model_cell.global_mesh
 
     # Useful mesh information ----------------------------------------------------
     coarse_nodes_order = mesh_info.coarse_order
     coarse_nodes_regions = mesh_info.coarse_region_rel
-    all_surfaces = mesh_info.all_surfaces_order
-    coarse_nodes_map = mesh_info.coarse_nodes_map
     all_regions_order = mesh_info.all_regions_order
     numRegions = len(all_regions_order)
 
@@ -167,7 +165,7 @@ def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma):
     matrixU_bg = getMatrixU_system_byGroup(mesh_info, energy_g, probabilities) # ready
     matrixT_bg = getMatrixT_system_byGroup(mesh_info, energy_g, xs, probabilities) # read
     matrixR_bg = getResponseMatrix_byGroup(mesh_info, energy_g, probabilities) # ready
-    matrixM = getM_matrix(coarse_nodes_map, coarse_nodes, all_surfaces, mesh_info.type_system) # ready 
+    matrixM = getM_matrix(global_mesh, mesh_info) # ready 
     inverse_IMR_bg = calculate_inverseIMR(matrixM, matrixR_bg, energy_g)
     print("matrix shapes ----------------------------------------------------------")
     print(f"matrix M , shape: {matrixM.shape}") 

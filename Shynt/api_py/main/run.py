@@ -34,14 +34,17 @@ def run(root, server=True, name_out="", serp_dir="serpent_files"):
         mesh_info.type_system = "hexagonal"
     elif isinstance(model_cell.region.surface, InfiniteHexagonalCylinderYtype):
         mesh_info.type_system = "hexagonal"
-    # elif isinstance(model_cell.content, HexagonalLatticeTypeY):
-    #     mesh_info.type_system = "hexagonal_y"
     
+    # ? Checking mesh info --------------------------------------------------------------------------
+    # print(mesh_info.equal_nodes_rel)
+    # print(mesh_info.coarse_region_rel)
+    # print(mesh_info.region_type_rel_switched)
+    # ? ---------------------------------------------------------------------------------------------
+
+
 
     # Generate local problems files, and file for cross section generation
     det_inputs, xs_inputs = generate_serpent_files(root, mesh_info.equal_nodes, serp_dir=serp_dir)
-    
-    # raise SystemExit    
     # Running generated files
     run_detector_files(det_inputs)
     run_xs_files(xs_inputs)
@@ -52,9 +55,9 @@ def run(root, server=True, name_out="", serp_dir="serpent_files"):
     probabilities, prob_sigma = get_probabilities(det_inputs, mesh_info, root, xs)
     
     
+    
     reset_surface_counter()
     reset_cell_counter()
-    # raise SystemExit
     
     # Run detector files 
     # Solve iterative method ----------------------------------------------------

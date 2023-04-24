@@ -85,6 +85,17 @@ def draw_square(surf, img, y_max):
     return img
 
 
+def draw_square_from_points(x1, x2, y1, y2, img):
+    # print(x1, x2, y1, y2)
+
+    draw = ImageDraw.Draw(img)
+    points = [
+        (x1,y1), (x2,y1), (x2,y2), (x1,y2)
+    ]
+    draw.polygon(points, outline=(221, 51, 199), width=1)
+    return img
+
+
 def draw_hexagon_x(surf, img, y_max):
     draw = ImageDraw.Draw(img)
 

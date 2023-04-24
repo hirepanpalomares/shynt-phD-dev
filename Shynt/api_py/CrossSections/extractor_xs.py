@@ -20,7 +20,10 @@ def get_cross_sections(energy_g, xs_inputs, fine_nodes):
         res = serpentTools.read(resFile)
         xs[id_coarse] = {}
         for f_node in fine_nodes[id_coarse].values():
+
             cell = f_node.cell
+            if cell.content.name == "void":
+                continue
             gcu_name = xs_inp.xs_gcu[cell.id]
             universe = res.getUniv(gcu_name, burnup=0)
 

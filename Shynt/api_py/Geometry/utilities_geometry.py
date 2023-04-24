@@ -2,11 +2,10 @@
 
 from Shynt.api_py.Geometry.regions import SurfaceSide
 from Shynt.api_py.materials import Material
-from Shynt.api_py.Geometry.surfaces import Hexagon, InfiniteCylinderZ, InfiniteSquareCylinderZ
+from Shynt.api_py.Geometry.surfaces import Hexagon, InfiniteCylinderZ, InfiniteSquareCylinderZ, InfiniteRectangleCylinderZ
 
 
-
-def is_pin_in_array(pin, arr, global_nodes, local_nodes):
+def is_pin_in_bin(pin, arr, global_nodes, local_nodes):
     """
         Function that tells if a pin is in an array 
         returns True if in the array exist a similar pin
@@ -26,11 +25,12 @@ def is_pin_in_array(pin, arr, global_nodes, local_nodes):
         num_local_pin = len(local_nodes[pin])
         if num_local_other == num_local_pin:
             # check that the pin is the same
-            pin_array = global_nodes[other].cell.content
-            pin_compare = global_nodes[pin].cell.content
-            if pin_array == pin_compare:
-                return True
-    
+            
+            # pin_array = global_nodes[other].cell.content
+            # pin_compare = global_nodes[pin].cell.content
+            # if pin_array == pin_compare:
+            #     return True
+            return True
     return False
 
 
@@ -46,32 +46,38 @@ def get_equal_nodes(global_nodes, local_nodes):
 
         ****************************************************************
 
-            At the moment it only works when the global cells are
-            cells with a Pin universe as content
+            
         
         ****************************************************************
     """
 
-    bins = []
-    # bins = {}
-    for id_, cell in global_nodes.items():
-        # sweep cells
+    # bins = []
+    bins = {}
+    for id_, coarse_node in global_nodes.items(): # sweep cells
+        #! This part is only here to help me with the hexagon ---------------------------------
+        if coarse_node.geometry_info["type"] not in bins:
+            bins[coarse_node.geometry_info["type"]] = [id_]
+        else:
+            bins[coarse_node.geometry_info["type"]].append(id_)
+        #!----------------------------------------------------------------------------------------
+        continue
+        #? This part is when it works with only global nodes in form of pins ----------------------
         found = False
-        for b in range(len(bins)):
-            # sweep bins
-            if is_pin_in_array(id_, bins[b], global_nodes, local_nodes):
-                bins[b].append(id_)
-                found = True
-                break
+        print(len(local_nodes[id_]))
+        for b in range(len(bins)): # sweep bins
+            found =  is_pin_in_bin(id_, bins[b], global_nodes, local_nodes)
+            bins[b].append(id_)
+            break
         if not found:
             # add new bin
             bins.append([id_])
+        #? ----------------------------------------------------------------------------------------
     
     
     return bins
 
 
-def get_surface_equality(node, node_base):
+def get_surface_equality(node, node_base, symetry=None):
     """
         returns the relation of which surfaces correspond to one
         equal node
@@ -98,6 +104,44 @@ def get_surface_equality(node, node_base):
             cell_surface.surf_E.id: base_cell_surface.surf_E.id,
             cell_surface.surf_F.id: base_cell_surface.surf_F.id,
         }
+    if isinstance(cell_surface, InfiniteRectangleCylinderZ) and isinstance(base_cell_surface, InfiniteRectangleCylinderZ):
+        # print("sdadasd")  
+        # print(node_base.id)
+        # print(node.geometry_info["symmetry"])
+        symmetry = node.geometry_info["symmetry"][node_base.id]
+        if "same" in symmetry:
+            return {
+                cell_surface.surf_top.id: base_cell_surface.surf_top.id,
+                cell_surface.surf_right.id: base_cell_surface.surf_right.id,
+                cell_surface.surf_bottom.id: base_cell_surface.surf_bottom.id,
+                cell_surface.surf_left.id: base_cell_surface.surf_left.id,
+            }
+        elif "mirror" in symmetry:
+            if symmetry["mirror"] == "right":
+                return {
+                    cell_surface.surf_top.id: base_cell_surface.surf_top.id,
+                    cell_surface.surf_right.id: base_cell_surface.surf_left.id,
+                    cell_surface.surf_bottom.id: base_cell_surface.surf_bottom.id,
+                    cell_surface.surf_left.id: base_cell_surface.surf_right.id,
+                }    
+            elif symmetry["mirror"] == "right_down":
+                return {
+                    cell_surface.surf_top.id: base_cell_surface.surf_bottom.id,
+                    cell_surface.surf_right.id: base_cell_surface.surf_left.id,
+                    cell_surface.surf_bottom.id: base_cell_surface.surf_top.id,
+                    cell_surface.surf_left.id: base_cell_surface.surf_right.id,
+                }
+            elif symmetry["mirror"] == "down":
+                return {
+                    cell_surface.surf_top.id: base_cell_surface.surf_bottom.id,
+                    cell_surface.surf_right.id: base_cell_surface.surf_right.id,
+                    cell_surface.surf_bottom.id: base_cell_surface.surf_top.id,
+                    cell_surface.surf_left.id: base_cell_surface.surf_left.id,
+                }
+            else:
+                raise SystemError
+    
+    
 
 
 def get_all_surfaces_in_a_cell(cell, surfaces=None):
@@ -125,7 +169,7 @@ def get_all_surfaces_in_a_cell(cell, surfaces=None):
 
 def get_all_surfaces_in_a_universe(universe):
     surfaces = {}
-    for c_id, cell in universe.cells.items():
+    for cell in universe.cells.values():
         surfaces.update(get_all_surfaces_in_a_cell(cell))
     return surfaces
 

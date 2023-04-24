@@ -105,10 +105,12 @@ class Surface():
         from Shynt.api_py.Geometry.regions import SurfaceSide
         return SurfaceSide(self, "+")
 
+
 class CompoundSurface(Surface, ABC):
 
     def __init__(self) -> None:
         super().__init__()
+
 
 class PlaneX(Surface):
     """
@@ -131,12 +133,19 @@ class PlaneX(Surface):
         self.__rotationRefPoint = None
         self.serpent_syntax = f"surf {self.id} px {format(x0, '.8f')}\n"
 
-    def useFunction(self, var_):
+
+    def useFunction(self, var_, given="x"):
         try:
-            assert(var_ is not None)
-            return self.__function(var_)
+            # assert(var_ is not None)
+            if given == "x":
+                return round(self.__function(var_),8)
+            elif given == "y":
+                m, b = self.__lineParameters["m"], self.__lineParameters["b"]
+                assert(m != "inf")
+                assert(b is not None)
+                return round((var_ - b) / m,8)
         except AssertionError:
-            print("Error in using lambda function of Surface PlaneX - value is None type")
+            print("Error in using lambda function of Surface PlaneY")
             raise SystemExit
 
     def rotate(self, angle, ref_point):
@@ -196,34 +205,40 @@ class PlaneX(Surface):
 
         self.__function = lambda x: x - self.__x0
 
-    def isPointNegativeSide(self, x=None, y=None):
-        # print(x, y)
-
+    def isPointNegativeSide(self, point):
+        x,y = point
         if self.__isRotated:
             y_in_line = self.useFunction(x)
             # print(y_in_line)
             try:
                 if self.__lineParameters["m"] < 0:
-                    assert(y <= y_in_line)
+                    assert(y < y_in_line)
                 else:
-                    assert(y >= y_in_line)
+                    assert(y > y_in_line)
                 return True
             except AssertionError:
+                if y == y_in_line:
+                    return None
+                
                 return False
         else:
             x_new = self.useFunction(x)
             try:
-                assert(x_new <= 0)
+                assert(x_new < 0)
                 return True
             except AssertionError:
-                return False
+                if x_new == 0:
+                    return None
+                else:
+                    return False
 
-    def isPointPositiveSide(self, x=None, y=None):
-        try:
-            assert(self.isPointNegativeSide(x=x, y=y))
+    def isPointPositiveSide(self, point):
+        eval_ = self.isPointNegativeSide(point)
+        if eval_ is None or eval_ is True:
             return False
-        except AssertionError:
+        elif eval_ is False:
             return True
+        
     
     def clone(self, new_center_x, new_center_y, clone_vector=None):
         new_x0 = self.__x0
@@ -282,12 +297,18 @@ class PlaneY(Surface):
         self.__rotationRefPoint = None
         
 
-    def useFunction(self, var_):
+    def useFunction(self, var_, given="x"):
         try:
             assert(var_ is not None)
-            return self.__function(var_)
+            if given == "x":
+                return round(self.__function(var_),8)
+            elif given == "y":
+                m, b = self.__lineParameters["m"], self.__lineParameters["b"]
+                assert(m != "inf")
+                assert(b is not None)
+                return round((var_ - b) / m,8)
         except AssertionError:
-            print("Error in using lambda function of Surface PlaneY - value is None type")
+            print("Error in using lambda function of Surface PlaneY")
             raise SystemExit
 
     def rotate(self, angle, ref_point):
@@ -332,8 +353,8 @@ class PlaneY(Surface):
 
         self.__function = lambda y: y - self.__y0
 
-    def isPointNegativeSide(self, x=None, y=None):
-        # print(x, y)
+    def isPointNegativeSide(self, point):
+        x,y = point
         if self.__isRotated:
             y_in_line = self.useFunction(x)
             # print(y_in_line)
@@ -345,16 +366,19 @@ class PlaneY(Surface):
         else:
             y_in_line = self.useFunction(y)
             try:
-                assert(y_in_line <= 0)
+                assert(y_in_line < 0)
                 return True
             except AssertionError:
-                return False
+                if y_in_line == 0:
+                    return None
+                else:
+                    return False
 
-    def isPointPositiveSide(self, x=None, y=None):
-        try:
-            assert(self.isPointNegativeSide(x=x, y=y))
+    def isPointPositiveSide(self, point):
+        eval_ = self.isPointNegativeSide(point)
+        if eval_ is None or eval_ is True:
             return False
-        except AssertionError:
+        elif eval_ is False:
             return True
 
     def eval_point(self, y=None, x=None):
@@ -438,248 +462,6 @@ class PlaneZ(Surface):
         return self.__z0
 
 
-class PlaneParametric(Surface):
-
-    def __init__(self, x0, y0, z0, x1, y1, z1, x2, y2, z2, type_surface="", name="", isClone=False):
-        super().__init__(type_surface, name, isClone)
-        self.__x0 = x0
-        self.__y0 = y0
-        self.__z0 = z0
-        self.__x1 = x1
-        self.__y1 = y1
-        self.__z1 = z1
-        self.__x2 = x2
-        self.__y2 = y2
-        self.__z2 = z2
-    
-    def clone(self, clone_vector=None):
-        # new_y0 = self.__y0
-        # if clone_vector:
-        #     new_y0 = self.__y0 + clone_vector[1]
-        surf_clone = PlaneParametric(
-            self.__x0, self.__y0, self.__z0, 
-            self.__x1, self.__y1, self.__z1, 
-            self.__x2, self.__y2, self.__z2, 
-            isClone=True
-        )
-        surf_clone.id = super().id
-        return surf_clone
-        
-    @property
-    def serpent_syntax_exact_position(self):
-        serpent_syntax = f"surf {self.id} plane "
-        serpent_syntax += f"{format(self.__x0, '.8f')} {format(self.__y0, '.8f')} {format(self.__z0, '.8f')} "
-        serpent_syntax += f"{format(self.__x1, '.8f')} {format(self.__y1, '.8f')} {format(self.__z1, '.8f')} "
-        serpent_syntax += f"{format(self.__x2, '.8f')} {format(self.__y2, '.8f')} {format(self.__z2, '.8f')}\n"
-        return serpent_syntax
-
-
-class InfiniteCylinderZ(Surface):
-
-    """
-    Class for an Infinite Cylinder parallel to Z-axis
-
-    Surface equation: S(x, y) =  (y - y0)**2 + (x - x0)**2 - r**2
-    """
-
-    def __init__(self, center_x, center_y, radius, name="", boundary=None, isClone=False):
-        super().__init__(type_surface="cylinder_z", name=name, isClone=isClone)
-        self.__center_x = center_x
-        self.__center_y = center_y
-        self.__radius = radius
-        self.__isClone = isClone
-        self.__function = lambda x, y: (x - self.__center_x)**2 + (y - self.__center_y)**2 - self.__radius**2
-        
-    
-    def translate_to(self, new_x, new_y):
-        trans_vector = (
-            new_x - self.__center_x,
-            new_y - self.__center_y
-        )
-        self.translate(trans_vector)
-    
-    def translate(self, trans_vector):
-        t_x, t_y = trans_vector
-        self.__center_x += t_x
-        self.__center_y += t_y
-
-    def scale(self, scale_f):
-        self.__radius *= scale_f
-
-    def clone(self, new_center_x, new_center_y, clone_vector=None):
-        surf_clone = InfiniteCylinderZ(new_center_x, new_center_y, self.__radius, isClone=True)
-        surf_clone.id = super().id
-        return surf_clone
-
-    def eval_point(self, x, y):
-        return self.__function(x, y)
-
-    def isPointNegativeSide(self, point):
-        x, y = point
-        try:
-            assert self.eval_point(x, y) < 0
-            return True
-        except AssertionError:
-            return False
-    
-    def isPointPositiveSide(self, point):
-        x, y = point
-        try:
-            assert(self.isPointNegativeSide((x,y)))
-            return False
-        except AssertionError:
-            return True
-
-    # def __str__(self):    
-    #     return """infinite cylinder:
-    #         - name: %s
-    #         - id: %s
-    #         - radius: %s
-    #     """%(self.name, self.id, self.__radius)
-    
-    def evaluate_enclosed_volume(self):
-        return np.pi * self.__radius * self.__radius
-    
-    def evaluate_surface_area(self):
-        return {
-            self.id: 2 * np.pi * self.__radius
-        }
-    
-    @property
-    def center_x(self):
-        return self.__center_x
-    
-    @property
-    def center_y(self):
-        return self.__center_y
-    
-
-    @property
-    def center(self):
-        return (self.__center_x, self.__center_y)
-    
-    @center.setter
-    def center(self, center):
-        self.__center_x = center[0]
-        self.__center_y = center[1]
-
-    @property
-    def radius(self):
-        return self.__radius
-    
-    @property
-    def serpent_syntax_exact_position(self):
-        serpent_syntax = f"surf {self.id} " 
-        serpent_syntax += f"cyl {format(self.__center_x, '.8f')} " 
-        serpent_syntax += f"{format(self.__center_y, '.8f')} "
-        serpent_syntax += f"{format(self.__radius, '.8f')}\n"
-        return serpent_syntax
-
-    @property
-    def serpent_syntax_standard_position(self):
-        serpent_syntax = f"surf {self.id} cyl 0.0000 0.0000 " 
-        serpent_syntax += f"{format(self.__radius, '.8f')}\n"
-        return serpent_syntax
-
-    @property
-    def vertex_points(self):
-        """
-            The vertex points for the circle are set to be
-            4, every 90 degrees on the surface line
-        """
-        points = [
-            (self.__center_x, self.__center_y + self.__radius),
-            (self.__center_x + self.__radius, self.__center_y),
-            (self.__center_x, self.__center_y - self.__radius),
-            (self.__center_x - self.__radius, self.__center_y),
-        ]
-
-        return points
-
-
-class InfiniteCylinderY(Surface):
-
-    """
-    Class for an Infinite Cylinder parallel to Y-axis
-
-    Surface equation: S(x, z) =  (x - x0)**2 + (z - z0)**2 - r**2
-    
-    """
-
-    def __init__(self, center_x, center_z, radius, name="", boundary=None):
-        super().__init__(type_surface="cylinder_y", name=name)
-        self.__center_x = center_x
-        self.__center_z = center_z
-        self.__radius = radius
-        self.__function = lambda x, z: (x - self.__center_x)**2 + (z - self.__center_z)**2 - self.__radius**2
-        
-    def eval_point(self, x, z):
-        return self.__function(x, z)
-
-    def is_point(self, x, z):
-        return self.eval_point(x, z) < 0
-
-    def __str__(self):    
-        return """infinite cylinder:
-            - name: %s
-            - id: %s
-            - radius: %s
-        """%(self.name, self.id, self.__radius)
-    
-    @property
-    def center_x(self):
-        return self.__center_x
-    
-    @property
-    def center_z(self):
-        return self.__center_z
-    
-    @property
-    def radius(self):
-        return self.__radius
-    
-
-class InfiniteCylinderX(Surface):
-
-    """
-    Class for an Infinite Cylinder parallel to Z-axis
-
-    Surface equation: S(y, z) =  (y - y0)**2 + (z - z0)**2 - r**2
-    """
-
-    def __init__(self, center_y, center_z, radius, name="", boundary=None):
-        super().__init__(type_surface="cylinder_x", name=name)
-        self.__center_y = center_y
-        self.__center_z = center_z
-        self.__radius = radius
-        self.__function = lambda z, y: (z - self.__center_z)**2 + (y - self.__center_y)**2 - self.__radius**2
-
-    def eval_point(self, z, y):
-        return self.__function(z, y)
-
-    def is_point(self, z, y):
-        return self.eval_point(z, y) < 0
-
-    def __str__(self):    
-        return """infinite cylinder:
-            - name: %s
-            - id: %s
-            - radius: %s
-        """%(self.name, self.id, self.__radius)
-    
-    @property
-    def center_z(self):
-        return self.__center_z
-    
-    @property
-    def center_y(self):
-        return self.__center_y
-    
-    @property
-    def radius(self):
-        return self.__radius
-       
-
 class InfiniteSquareCylinderZ(Surface):
 
     """
@@ -750,7 +532,6 @@ class InfiniteSquareCylinderZ(Surface):
         self.__surf_bottom.translate((0,-plane_move))
 
         self.__half_width = new_half_width
-
 
     def isPointNegativeSide(self, point):
         x, y = point
@@ -907,6 +688,490 @@ class InfiniteSquareCylinderZ(Surface):
         return points
 
 
+class InfiniteRectangleCylinderZ(Surface):
+
+    """
+    Class for an infinite Squere Cylinder parallel to z-axis
+
+    It is composed by 2 x-planes and 2 y-planes
+
+    surf_top    --> cell in - side
+    surf_right  --> cell in - side
+    surf_bottom --> cell in + side
+    surf_left   --> cell in + side
+
+    """
+    def __init__(self, x1, x2, y1, y2, name="", boundary=None, isClone=False):
+        super().__init__(type_surface="infinite rectangle", name=name, isClone=isClone)
+        self.__boundary = boundary
+        # try:
+        assert(x2>x1)
+        assert(y2>y1)
+        # except AssertionError:
+
+
+        self.__x1 = x1
+        self.__y1 = y1
+        self.__x2 = x2
+        self.__y2 = y2
+        self.__height = y2 - y1
+        self.__width = x2 - x1
+        self.__isClone = isClone
+        self.__surf_left, self.__surf_top, self.__surf_right, self.__surf_bottom = self.__generate_surfaces()
+    
+    def __generate_surfaces(self):
+        surfaces = [
+            PlaneX(
+                self.__x1, 
+                boundary=self.__boundary,
+                isClone=self.__isClone
+            ), # Left
+            PlaneY(
+                self.__y2, 
+                boundary=self.__boundary,
+                isClone=self.__isClone
+            ), # Top
+            PlaneX(
+                self.__x2, 
+                boundary=self.__boundary,
+                isClone=self.__isClone
+            ), # Right
+            PlaneY(
+                self.__y1, 
+                boundary=self.__boundary,
+                isClone=self.__isClone
+            ), # Bottom
+        ]
+        return surfaces
+
+    def translate(self, translation_vector):
+        x_tr, y_tr = translation_vector
+        
+        self.__center_x += x_tr
+        self.__center_y += y_tr
+
+        self.__surf_left.translate(translation_vector)
+        self.__surf_top.translate(translation_vector)
+        self.__surf_right.translate(translation_vector)
+        self.__surf_bottom.translate(translation_vector)
+        
+        return 1
+
+    def isPointNegativeSide(self, point):
+        x, y = point
+        try:
+            assert(x >= self.__surf_left.x0)
+            assert(x <= self.__surf_right.x0)
+            assert(y >= self.__surf_bottom.y0)
+            assert(y <= self.__surf_top.y0)
+            return True
+        except AssertionError:
+            return False
+    
+    def isPointPositiveSide(self, point):
+        x, y = point
+        try:
+            assert(self.isPointNegativeSide((x,y)))
+            return False
+        except AssertionError:
+            return True
+
+    def evaluate_enclosed_volume(self):
+        side1 = self.__x2 - self.__x1
+        side2 = self.__y2 - self.__y1
+        return side1*side2
+    
+    def evaluate_surface_area(self):
+        side1 = self.__x2 - self.__x1
+        side2 = self.__y2 - self.__y1
+        return {
+            self.__surf_left.id: side2,
+            self.__surf_top.id: side1,
+            self.__surf_right.id: side2,
+            self.__surf_bottom.id: side1
+        }
+
+    def get_surface_orientation(self):
+        return {
+            self.__surf_left.id : "left",
+            self.__surf_top.id : "top",
+            self.__surf_right.id : "right",
+            self.__surf_bottom.id : "bottom",
+        }
+
+    def get_surface_relation(self):
+        return {
+            self.__surf_left.id: self.__surf_left,
+            self.__surf_top.id: self.__surf_top,
+            self.__surf_right.id: self.__surf_right,
+            self.__surf_bottom.id:self.__surf_bottom
+        }
+    
+    def get_neutron_current_directions(self):
+        # surf T --> outward current = +1 --> inward current = -1
+        # surf R --> outward current = +1 --> inward current = -1
+        # surf B --> outward current = -1 --> inward current = +1
+        # surf L --> outward current = -1 --> inward current = +1
+        return {
+            self.__surf_left.id: {"inward": "1", "outward": "-1"},
+            self.__surf_top.id: {"inward": "-1", "outward": "1"},
+            self.__surf_right.id: {"inward": "-1", "outward": "1"},
+            self.__surf_bottom.id: {"inward": "1", "outward": "-1"},
+        }
+
+    def clone(self, center_x, center_y, clone_vector=None):
+        """
+            It clones the surface: same id, but in a new center
+        """
+        length_x = self.__x2 - self.__x1
+        length_y = self.__y2 - self.__y1
+        
+        new_x1 = center_x - length_x/2
+        new_x2 = center_x + length_x/2
+        new_y1 = center_y - length_y/2
+        new_y2 = center_y + length_y/2
+
+        clone_rectangle = InfiniteRectangleCylinderZ(new_x1, new_x2, new_y1, new_y2, isClone=True)
+        clone_rectangle.surf_left.id = self.__surf_left.id
+        clone_rectangle.surf_right.id = self.__surf_right.id
+        clone_rectangle.surf_top.id = self.__surf_top.id
+        clone_rectangle.surf_bottom.id = self.__surf_bottom.id
+        clone_rectangle.id = super().id
+
+        return clone_rectangle
+    
+    def get_surface_for_detectors_serpent_syntax(self):
+        serpent_syntax = f"surf {self.__surf_left.id} px 0.00000\n"
+        serpent_syntax += f"surf {self.__surf_top.id} py {self. __height}\n"
+        serpent_syntax += f"surf {self.__surf_right.id} px {self.__width}\n"
+        serpent_syntax += f"surf {self.__surf_bottom.id} py 0.00000\n"
+
+
+        return serpent_syntax
+    
+    @property
+    def serpent_syntax_exact_position(self):
+        serpent_syntax = f"surf {self.id} " 
+        serpent_syntax += f"rect {format(self.__x1, '.8f')} " 
+        serpent_syntax += f"{format(self.__x2, '.8f')} "
+        serpent_syntax += f"{format(self.__y1, '.8f')} "
+        serpent_syntax += f"{format(self.__y2, '.8f')}\n"
+
+        return serpent_syntax
+
+    @property
+    def serpent_syntax_standard_position(self):
+        serpent_syntax = f"surf {self.id} " 
+        serpent_syntax += f"rect {format(self.__x1, '.8f')} " 
+        serpent_syntax += f"{format(self.__x2, '.8f')} "
+        serpent_syntax += f"{format(self.__y1, '.8f')} "
+        serpent_syntax += f"{format(self.__y2, '.8f')}\n"
+        return serpent_syntax
+
+    @property
+    def x1(self):
+        return self.__x1
+
+    @property
+    def x2(self):
+        return self.__x2
+    
+    @property
+    def y1(self):
+        return self.__y1
+    
+    @property
+    def y2(self):
+        return self.__y2
+     
+    @property
+    def surf_left(self):
+        return self.__surf_left
+
+    @property
+    def surf_right(self):
+        return self.__surf_right
+
+    @property
+    def surf_top(self):
+        return self.__surf_top
+
+    @property
+    def surf_bottom(self):
+        return self.__surf_bottom
+
+    @property
+    def boundary(self):
+        return self.__boundary
+
+    @property
+    def vertex_points(self):
+        points = [
+            (self.__x1, self.__y1),
+            (self.__x1, self.__y2),
+            (self.__x2, self.__y1),
+            (self.__x2, self.__y2),
+        ]
+
+        return points
+
+    @property
+    def volume(self):
+        return self.evaluate_enclosed_volume()
+    
+    @property
+    def center(self):
+        xc = (self.__x2 - self.__x1) / 2
+        yc = (self.__y2 - self.__y1) / 2
+        return (xc,yc)
+    
+
+class PlaneParametric(Surface):
+
+    def __init__(self, x0, y0, z0, x1, y1, z1, x2, y2, z2, type_surface="", name="", isClone=False):
+        super().__init__(type_surface, name, isClone)
+        self.__x0 = x0
+        self.__y0 = y0
+        self.__z0 = z0
+        self.__x1 = x1
+        self.__y1 = y1
+        self.__z1 = z1
+        self.__x2 = x2
+        self.__y2 = y2
+        self.__z2 = z2
+    
+    def clone(self, clone_vector=None):
+        # new_y0 = self.__y0
+        # if clone_vector:
+        #     new_y0 = self.__y0 + clone_vector[1]
+        surf_clone = PlaneParametric(
+            self.__x0, self.__y0, self.__z0, 
+            self.__x1, self.__y1, self.__z1, 
+            self.__x2, self.__y2, self.__z2, 
+            isClone=True
+        )
+        surf_clone.id = super().id
+        return surf_clone
+        
+    @property
+    def serpent_syntax_exact_position(self):
+        serpent_syntax = f"surf {self.id} plane "
+        serpent_syntax += f"{format(self.__x0, '.8f')} {format(self.__y0, '.8f')} {format(self.__z0, '.8f')} "
+        serpent_syntax += f"{format(self.__x1, '.8f')} {format(self.__y1, '.8f')} {format(self.__z1, '.8f')} "
+        serpent_syntax += f"{format(self.__x2, '.8f')} {format(self.__y2, '.8f')} {format(self.__z2, '.8f')}\n"
+        return serpent_syntax
+
+
+class InfiniteCylinderZ(Surface):
+
+    """
+    Class for an Infinite Cylinder parallel to Z-axis
+
+    Surface equation: S(x, y) =  (y - y0)**2 + (x - x0)**2 - r**2
+    """
+
+    def __init__(self, center_x, center_y, radius, name="", boundary=None, isClone=False):
+        super().__init__(type_surface="cylinder_z", name=name, isClone=isClone)
+        self.__center_x = center_x
+        self.__center_y = center_y
+        self.__radius = radius
+        self.__isClone = isClone
+        self.__function = lambda x, y: (x - self.__center_x)**2 + (y - self.__center_y)**2 - self.__radius**2
+        
+    
+    def translate_to(self, new_x, new_y):
+        trans_vector = (
+            new_x - self.__center_x,
+            new_y - self.__center_y
+        )
+        self.translate(trans_vector)
+    
+    def translate(self, trans_vector):
+        t_x, t_y = trans_vector
+        self.__center_x += t_x
+        self.__center_y += t_y
+
+    def scale(self, scale_f):
+        self.__radius *= scale_f
+
+    def clone(self, new_center_x, new_center_y, clone_vector=None):
+        surf_clone = InfiniteCylinderZ(new_center_x, new_center_y, self.__radius, isClone=True)
+        surf_clone.id = super().id
+        return surf_clone
+
+    def eval_point(self, x, y):
+        return self.__function(x, y)
+
+    def isPointNegativeSide(self, point):
+        x, y = point
+        try:
+            assert self.eval_point(x, y) < 0
+            return True
+        except AssertionError:
+            return False
+    
+    def isPointPositiveSide(self, point):
+        x, y = point
+        try:
+            assert(self.isPointNegativeSide((x,y)))
+            return False
+        except AssertionError:
+            return True
+
+    # def __str__(self):    
+    #     return """infinite cylinder:
+    #         - name: %s
+    #         - id: %s
+    #         - radius: %s
+    #     """%(self.name, self.id, self.__radius)
+    
+    def evaluate_enclosed_volume(self):
+        return np.pi * self.__radius * self.__radius
+    
+    def evaluate_surface_area(self):
+        return {
+            self.id: 2 * np.pi * self.__radius
+        }
+    
+    @property
+    def center_x(self):
+        return self.__center_x
+    
+    @property
+    def center_y(self):
+        return self.__center_y
+    
+
+    @property
+    def center(self):
+        return (self.__center_x, self.__center_y)
+    
+    @property
+    def volume(self):
+        return self.evaluate_enclosed_volume()
+    
+    @center.setter
+    def center(self, center):
+        self.__center_x = center[0]
+        self.__center_y = center[1]
+
+    @property
+    def radius(self):
+        return self.__radius
+    
+    @property
+    def serpent_syntax_exact_position(self):
+        serpent_syntax = f"surf {self.id} " 
+        serpent_syntax += f"cyl {format(self.__center_x, '.8f')} " 
+        serpent_syntax += f"{format(self.__center_y, '.8f')} "
+        serpent_syntax += f"{format(self.__radius, '.8f')}\n"
+        return serpent_syntax
+
+    @property
+    def serpent_syntax_standard_position(self):
+        serpent_syntax = f"surf {self.id} cyl 0.0000 0.0000 " 
+        serpent_syntax += f"{format(self.__radius, '.8f')}\n"
+        return serpent_syntax
+
+    @property
+    def vertex_points(self):
+        """
+            The vertex points for the circle are set to be
+            4, every 90 degrees on the surface line
+        """
+        points = [
+            (self.__center_x, self.__center_y + self.__radius),
+            (self.__center_x + self.__radius, self.__center_y),
+            (self.__center_x, self.__center_y - self.__radius),
+            (self.__center_x - self.__radius, self.__center_y),
+        ]
+
+        return points
+
+
+class InfiniteCylinderY(Surface):
+
+    """
+    Class for an Infinite Cylinder parallel to Y-axis
+
+    Surface equation: S(x, z) =  (x - x0)**2 + (z - z0)**2 - r**2
+    
+    """
+
+    def __init__(self, center_x, center_z, radius, name="", boundary=None):
+        super().__init__(type_surface="cylinder_y", name=name)
+        self.__center_x = center_x
+        self.__center_z = center_z
+        self.__radius = radius
+        self.__function = lambda x, z: (x - self.__center_x)**2 + (z - self.__center_z)**2 - self.__radius**2
+        
+    def eval_point(self, x, z):
+        return self.__function(x, z)
+
+    def is_point(self, x, z):
+        return self.eval_point(x, z) < 0
+
+    def __str__(self):    
+        return """infinite cylinder:
+            - name: %s
+            - id: %s
+            - radius: %s
+        """%(self.name, self.id, self.__radius)
+    
+    @property
+    def center_x(self):
+        return self.__center_x
+    
+    @property
+    def center_z(self):
+        return self.__center_z
+    
+    @property
+    def radius(self):
+        return self.__radius
+    
+
+class InfiniteCylinderX(Surface):
+
+    """
+    Class for an Infinite Cylinder parallel to Z-axis
+
+    Surface equation: S(y, z) =  (y - y0)**2 + (z - z0)**2 - r**2
+    """
+
+    def __init__(self, center_y, center_z, radius, name="", boundary=None):
+        super().__init__(type_surface="cylinder_x", name=name)
+        self.__center_y = center_y
+        self.__center_z = center_z
+        self.__radius = radius
+        self.__function = lambda z, y: (z - self.__center_z)**2 + (y - self.__center_y)**2 - self.__radius**2
+
+    def eval_point(self, z, y):
+        return self.__function(z, y)
+
+    def is_point(self, z, y):
+        return self.eval_point(z, y) < 0
+
+    def __str__(self):    
+        return """infinite cylinder:
+            - name: %s
+            - id: %s
+            - radius: %s
+        """%(self.name, self.id, self.__radius)
+    
+    @property
+    def center_z(self):
+        return self.__center_z
+    
+    @property
+    def center_y(self):
+        return self.__center_y
+    
+    @property
+    def radius(self):
+        return self.__radius
+       
+
 class PieQuadrant(Surface):
     
     def __init__(self, circle, v_plane, h_plane, quadrant, boundary=None, name="", isClone=False):
@@ -1048,7 +1313,6 @@ class PieQuadrant(Surface):
         return self.__boundary
 
 
-
 class CylinderPad(Surface):
     
     def __init__(self, x0, y0, r1, r2, th1, th2, boundary=None, name="", isClone=False):
@@ -1062,6 +1326,17 @@ class CylinderPad(Surface):
 
         self.__boundary = boundary
         self.__isClone = isClone
+
+        self.volume = self.__calculateVolume()
+
+    def __calculateVolume(self):
+        vol_inner_circle = math.pi * self.__r1 * self.__r1
+        vol_outer_circle = math.pi * self.__r2 * self.__r2
+
+        angle_piece = self.__th2 - self.__th1
+        volume_factor = angle_piece / 360
+
+        return (vol_outer_circle - vol_inner_circle) * volume_factor
 
     def clone(self, center_x, center_y, clone_vector=None):
         """
@@ -1122,14 +1397,12 @@ class Hexagon(Surface):
 
 class InfiniteHexagonalCylinderXtype(Hexagon):
     """
-    
         surf_A   --> cell in - side
         surf_B   --> cell in - side
         surf_C   --> cell in + side
         surf_D   --> cell in + side
         surf_E   --> cell in + side
         surf_F   --> cell in - side
-
     """
 
     def __init__(self, center_x, center_y, half_width, name="", boundary=None, isClone=False):
@@ -1140,7 +1413,7 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
         self.__boundary = boundary
         self.__isClone = isClone
 
-        self.__radius = 2 * self.__half_width / math.sqrt(3)
+        self.__radius = round(2 * self.__half_width / math.sqrt(3),8)
         self.__side = self.__radius
         self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
 
@@ -1151,19 +1424,19 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
         
         """
         hw = self.__half_width
-        rot_ref_transformation_x = hw - (2*hw*hw/self.__radius - hw)
+        rot_ref_transformation_x = round(hw - (2*hw*hw/self.__radius - hw),8)
 
         rot_ref_A = (self.__center_x + rot_ref_transformation_x, self.__center_y + self.__radius)
         rot_ref_C = (self.__center_x + rot_ref_transformation_x, self.__center_y - self.__radius)
         rot_ref_D = (self.__center_x - rot_ref_transformation_x, self.__center_y - self.__radius)
         rot_ref_F = (self.__center_x - rot_ref_transformation_x, self.__center_y + self.__radius)
 
-        _A = PlaneY(self.__center_y + hw, boundary=self.__boundary, isClone=self.__isClone)
-        _B = PlaneX(self.__center_x + hw, boundary=self.__boundary, isClone=self.__isClone)
-        _C = PlaneY(self.__center_y - hw, boundary=self.__boundary, isClone=self.__isClone)
-        _D = PlaneY(self.__center_y - hw, boundary=self.__boundary, isClone=self.__isClone)
-        _E = PlaneX(self.__center_x - hw, boundary=self.__boundary, isClone=self.__isClone)
-        _F = PlaneY(self.__center_y + hw, boundary=self.__boundary, isClone=self.__isClone)
+        _A = PlaneY(round(self.__center_y + hw,8), boundary=self.__boundary, isClone=self.__isClone)
+        _B = PlaneX(round(self.__center_x + hw,8), boundary=self.__boundary, isClone=self.__isClone)
+        _C = PlaneY(round(self.__center_y - hw,8), boundary=self.__boundary, isClone=self.__isClone)
+        _D = PlaneY(round(self.__center_y - hw,8), boundary=self.__boundary, isClone=self.__isClone)
+        _E = PlaneX(round(self.__center_x - hw,8), boundary=self.__boundary, isClone=self.__isClone)
+        _F = PlaneY(round(self.__center_y + hw,8), boundary=self.__boundary, isClone=self.__isClone)
         _A.rotate(-30, rot_ref_A)
         _C.rotate(+30, rot_ref_C)
         _D.rotate(-30, rot_ref_D)
@@ -1221,12 +1494,12 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
     def isPointNegativeSide(self, point):
         x, y = point
         try:
-            assert self.__surf_A.isPointNegativeSide(x=x,y=y)
-            assert self.__surf_B.isPointNegativeSide(x=x,y=y)
-            assert self.__surf_C.isPointPositiveSide(x=x,y=y)
-            assert self.__surf_D.isPointPositiveSide(x=x,y=y)
-            assert self.__surf_E.isPointPositiveSide(x=x,y=y)
-            assert self.__surf_F.isPointNegativeSide(x=x,y=y)
+            assert self.__surf_A.isPointNegativeSide(point)
+            assert self.__surf_B.isPointNegativeSide(point)
+            assert self.__surf_C.isPointPositiveSide(point)
+            assert self.__surf_D.isPointPositiveSide(point)
+            assert self.__surf_E.isPointPositiveSide(point)
+            assert self.__surf_F.isPointNegativeSide(point)
             return True
         except AssertionError:
             return False
@@ -1300,14 +1573,14 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
         return points
 
     def get_side_middle_points(self):
-        sx = 0.5 * self.__half_width
-        sy = math.cos(math.radians(30)) * self.__half_width
+        sx = round(0.5 * self.__half_width,8)
+        sy = round(math.cos(math.radians(30)) * self.__half_width,8)
         points = [
             (self.__center_x + sx, self.__center_y + sy),   # A
-            (self.__surf_B.x0, self.__center_x),            # B
+            (self.__surf_B.x0, self.__center_y),            # B
             (self.__center_x + sx, self.__center_y - sy),   # C
             (self.__center_x - sx, self.__center_y - sy),   # D
-            (self.__surf_E.x0, self.__center_x),            # E
+            (self.__surf_E.x0, self.__center_y),            # E
             (self.__center_x - sx, self.__center_y + sy),   # F
         ]
 
@@ -1483,12 +1756,12 @@ class InfiniteHexagonalCylinderYtype(Hexagon):
     def isPointNegativeSide(self, point):
         x, y = point
         try:
-            assert self.__surf_A.isPointNegativeSide(x=x,y=y)
-            assert self.__surf_B.isPointNegativeSide(x=x,y=y)
-            assert self.__surf_C.isPointNegativeSide(x=x,y=y)
-            assert self.__surf_D.isPointPositiveSide(x=x,y=y)
-            assert self.__surf_E.isPointPositiveSide(x=x,y=y)
-            assert self.__surf_F.isPointPositiveSide(x=x,y=y)
+            assert self.__surf_A.isPointNegativeSide(point)
+            assert self.__surf_B.isPointNegativeSide(point)
+            assert self.__surf_C.isPointNegativeSide(point)
+            assert self.__surf_D.isPointPositiveSide(point)
+            assert self.__surf_E.isPointPositiveSide(point)
+            assert self.__surf_F.isPointPositiveSide(point)
             return True
         except AssertionError:
             return False
@@ -1562,8 +1835,8 @@ class InfiniteHexagonalCylinderYtype(Hexagon):
         return points
 
     def get_side_middle_points(self):
-        sx = math.cos(math.radians(30)) * self.__half_width
-        sy = 0.5 * self.__half_width
+        sx = round((math.cos(math.radians(30)) * self.__half_width),8)
+        sy = round(0.5 * self.__half_width,8)
         points = [
             (self.__center_x, self.__surf_A.y0),            # A
             (self.__center_x + sx, self.__center_y + sy),   # B
@@ -1573,6 +1846,24 @@ class InfiniteHexagonalCylinderYtype(Hexagon):
             (self.__center_x - sx, self.__center_y + sy),   # F
         ]
         return points
+
+    def get_x_coord_in_line_y(self, y0):
+        """
+            
+            Returns a the x-coordinates x1 & x2
+            of a y_line crossing the hexagon
+
+        """
+    
+        if y0 <= self.__center_y:
+            surf_f_point = round(self.__surf_F.useFunction(y0),8)
+            surf_b_point = round(self.__surf_B.useFunction(y0),8)
+            return surf_f_point, surf_b_point
+        elif y0 > self.__center_y:
+            surf_e_point = round(self.__surf_E.useFunction(y0),8)
+            surf_c_point = round(self.__surf_C.useFunction(y0),8)
+            return surf_e_point, surf_c_point
+        pass
 
     @property
     def serpent_syntax_exact_position(self):

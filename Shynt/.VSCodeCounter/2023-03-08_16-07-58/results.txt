@@ -1,0 +1,109 @@
+Date : 2023-03-08 16:07:58
+Directory : /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py
+Total : 70 files,  7714 codes, 1579 comments, 2242 blanks, all 11535 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Python   |         70 |      7,714 |      1,579 |      2,242 |     11,535 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++-------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                              | files      | code       | comment    | blank      | total      |
++-------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                                 |         70 |      7,714 |      1,579 |      2,242 |     11,535 |
+| . (Files)                                                                                                         |          5 |        249 |          6 |         74 |        329 |
+| CrossSections                                                                                                     |          3 |        129 |         10 |         22 |        161 |
+| Drawer                                                                                                            |          4 |        226 |         27 |         79 |        332 |
+| Geometry                                                                                                          |          9 |      2,253 |        646 |        571 |      3,470 |
+| Mesh                                                                                                              |          4 |        476 |        105 |        134 |        715 |
+| Postprocess                                                                                                       |          3 |        216 |         57 |         80 |        353 |
+| Preprocess                                                                                                        |          3 |        234 |         12 |         20 |        266 |
+| Probabilities                                                                                                     |          7 |      1,010 |        120 |        207 |      1,337 |
+| ResponseMatrix                                                                                                    |         12 |      1,205 |        299 |        440 |      1,944 |
+| Serpent                                                                                                           |          7 |        827 |        191 |        236 |      1,254 |
+| explicit_problem_pin                                                                                              |          1 |        152 |         22 |         84 |        258 |
+| main                                                                                                              |          1 |         44 |         13 |         23 |         80 |
+| tests                                                                                                             |         11 |        693 |         71 |        272 |      1,036 |
+| tests (Files)                                                                                                     |          9 |        366 |         56 |        160 |        582 |
+| tests/test_surfaces                                                                                               |          2 |        327 |         15 |        112 |        454 |
++-------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                                                                          | language | code       | comment    | blank      | total      |
++-------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/CrossSections/HY_xs_assembly.py            | Python   |         85 |          0 |          3 |         88 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/CrossSections/extractor_xs.py              | Python   |         28 |          8 |         11 |         47 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/CrossSections/get_xs_system.py             | Python   |         16 |          2 |          8 |         26 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Drawer/cell_drawing.py                     | Python   |        105 |         15 |         35 |        155 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Drawer/region_dr.py                        | Python   |         36 |          0 |         16 |         52 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Drawer/surface_drawing.py                  | Python   |         71 |         12 |         26 |        109 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Drawer/wewewe.py                           | Python   |         14 |          0 |          2 |         16 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Geometry/__init__.py                       | Python   |          4 |          0 |          2 |          6 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Geometry/cell_counter.py                   | Python   |          1 |          0 |          0 |          1 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Geometry/cells.py                          | Python   |        295 |         89 |         81 |        465 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Geometry/regions.py                        | Python   |        152 |        105 |         38 |        295 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Geometry/surf_counter.py                   | Python   |          1 |          0 |          0 |          1 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Geometry/surfaces.py                       | Python   |      1,149 |        200 |        298 |      1,647 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Geometry/tree.py                           | Python   |          6 |          0 |          4 |         10 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Geometry/universes.py                      | Python   |        540 |        207 |        121 |        868 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Geometry/utilities_geometry.py             | Python   |        105 |         45 |         27 |        177 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Mesh/mesh.py                               | Python   |        294 |         67 |         72 |        433 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Mesh/mesh_helpers.py                       | Python   |          8 |         17 |          6 |         31 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Mesh/mesh_info.py                          | Python   |         69 |         14 |         21 |        104 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Mesh/mesh_nodes.py                         | Python   |        105 |          7 |         35 |        147 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Postprocess/normalize.py                   | Python   |         71 |         20 |         35 |        126 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Postprocess/process_files.py               | Python   |         59 |         37 |         20 |        116 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Postprocess/write_output.py                | Python   |         86 |          0 |         25 |        111 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Preprocess/__init__.py                     | Python   |          0 |          0 |          1 |          1 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Preprocess/input_handler.py                | Python   |          3 |          0 |          3 |          6 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Preprocess/serpentData.py                  | Python   |        231 |         12 |         16 |        259 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Probabilities/HY_probabilities_assembly.py | Python   |        164 |          3 |         34 |        201 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Probabilities/compare.py                   | Python   |        131 |          8 |          8 |        147 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Probabilities/get_probabilities_system.py  | Python   |        153 |         22 |         38 |        213 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Probabilities/p_calc.py                    | Python   |        404 |         78 |         84 |        566 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Probabilities/probabilities_printer.py     | Python   |         21 |          2 |          5 |         28 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Probabilities/probability_writer.py        | Python   |         64 |          3 |         10 |         77 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Probabilities/propagation.py               | Python   |         73 |          4 |         28 |        105 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/ResponseMatrix/build_J_source.py           | Python   |         55 |         22 |         22 |         99 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/ResponseMatrix/build_Phi_Source.py         | Python   |         54 |         20 |         21 |         95 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/ResponseMatrix/build_matrix_M.py           | Python   |        116 |         34 |         28 |        178 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/ResponseMatrix/build_matrix_R.py           | Python   |         82 |         14 |         24 |        120 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/ResponseMatrix/build_matrix_S.py           | Python   |        129 |          4 |         36 |        169 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/ResponseMatrix/build_matrix_T.py           | Python   |        114 |          1 |         53 |        168 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/ResponseMatrix/build_matrix_U.py           | Python   |        121 |         20 |         39 |        180 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/ResponseMatrix/build_source_Q.py           | Python   |        105 |         44 |         37 |        186 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/ResponseMatrix/global_problem.py           | Python   |         14 |          0 |          5 |         19 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/ResponseMatrix/iterations.py               | Python   |        330 |        110 |        132 |        572 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/ResponseMatrix/local_problem.py            | Python   |         17 |         17 |         12 |         46 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/ResponseMatrix/matrix_utilities.py         | Python   |         68 |         13 |         31 |        112 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Serpent/detector_output.py                 | Python   |         61 |         27 |          7 |         95 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Serpent/detectors.py                       | Python   |         51 |         20 |         23 |         94 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Serpent/file_generator.py                  | Python   |         74 |         34 |         41 |        149 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Serpent/input_file.py                      | Python   |        559 |        104 |        138 |        801 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Serpent/run_serp_files_inDir.py            | Python   |         17 |          3 |          9 |         29 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Serpent/serpent_runners.py                 | Python   |         21 |          3 |          8 |         32 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/Serpent/syntax.py                          | Python   |         44 |          0 |         10 |         54 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/__init__.py                                | Python   |          1 |          0 |          1 |          2 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/energy.py                                  | Python   |         41 |          6 |         17 |         64 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/explicit_problem_pin/explicit.py           | Python   |        152 |         22 |         84 |        258 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/libraries.py                               | Python   |         10 |          0 |          8 |         18 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/main/run.py                                | Python   |         44 |         13 |         23 |         80 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/materials.py                               | Python   |        173 |          0 |         36 |        209 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/montecarlo.py                              | Python   |         24 |          0 |         12 |         36 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/tests/materials_testing.py                 | Python   |         68 |          0 |         10 |         78 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/tests/printing_statements.py               | Python   |         19 |          9 |         10 |         38 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/tests/rotate_points.py                     | Python   |         18 |         10 |          9 |         37 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/tests/test_cellVolume.py                   | Python   |         41 |          6 |         19 |         66 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/tests/test_cell_comparison.py              | Python   |         20 |         11 |         17 |         48 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/tests/test_cell_meshing.py                 | Python   |         26 |          0 |         13 |         39 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/tests/test_matrixes.py                     | Python   |         83 |          8 |         34 |        125 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/tests/test_serpent_syntax.py               | Python   |         42 |          9 |         29 |         80 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/tests/test_surfaces/test_surfaces.py       | Python   |         92 |          4 |         36 |        132 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/tests/test_surfaces/test_translation.py    | Python   |        235 |         11 |         76 |        322 |
+| /home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/api_py/tests/test_universes.py                    | Python   |         49 |          3 |         19 |         71 |
+| Total                                                                                                             |          |      7,714 |      1,579 |      2,242 |     11,535 |
++-------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+

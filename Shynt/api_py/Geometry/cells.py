@@ -6,7 +6,7 @@ from Shynt.api_py.materials import Material
 
 from Shynt.api_py.Geometry.regions import Region
 from Shynt.api_py.Geometry.regions import SurfaceSide
-from .surfaces import InfiniteSquareCylinderZ, Hexagon
+from .surfaces import InfiniteSquareCylinderZ, Hexagon, InfiniteRectangleCylinderZ
 from .cell_counter import cell_ids
 
 
@@ -124,13 +124,17 @@ class Cell:
 
     def check_fill(self, fill):
         from .universes import HexagonalLatticeTypeX, Pin, SquareLattice, Universe
+        from .universes import Root, Lattice
+
         """
             When a cell is filled with a universe check the coordinates 
-            of that universe. Translate all the content of the universe 
-            to the cell bounded by the surface
-            The middle of the universe will be used as a reference to fill 
-            the surface of the cell
-        
+            of that universe. 
+            
+            If it is the case of a lattice, translate all the content of the universe 
+            to the cell bounded by the surface. The middle of the universe will be used 
+            as a reference to fill the surface of the cell.
+            
+            If it is not a defined universe do not translate anything
         """
         
         if isinstance(fill, Universe):
@@ -152,13 +156,24 @@ class Cell:
                 yv = y1 - y0 # translation vector - y
                 fill.translate((xv,yv))
                 print("lattice translated")
-            # if isinstance(fill, HexagonalLatticeTypeY):
-            #     fill.calculate_enclosed_cells()
+            elif isinstance(fill, Lattice):
+                # Not supported
+                raise SystemError
+            elif isinstance(fill, Root):
+                # Not supported
+                raise SystemError
+            else:
+                # option developed to calculate the regions enclosed
+                # by a surface inside a bigger universe
+
+                pass
             return fill
         elif isinstance(fill, Material):
             # the cell is being filled by a material
             return fill
         elif fill == "outside":
+            return fill
+        elif fill == "void":
             return fill
         return None
     
@@ -179,7 +194,8 @@ class Cell:
         elif isinstance(self.__content, HexagonalLatticeTypeX):
             self.__content.expand(scale_f)
         
-           
+
+
 
     def has_global_mesh(self):
         return self.__global_mesh
@@ -315,6 +331,7 @@ class Cell:
         if isinstance(self.__content, Material):
             # The cell only contains a material, so only clone the surface with a new center
             material = self.__content
+            # print(self.__region)
             region_clone = self.__region.clone(new_center_x, new_center_y, clone_vector=clone_vector)
             
             clone_cell = Cell(self.__name, region=region_clone, fill=material, isClone=True)
@@ -330,6 +347,9 @@ class Cell:
             uni_cells = self.__content.cells
             uni_clone = Universe(name=self.__content.name)
             for c_id, cell in uni_cells.items():
+                # print(cell)
+                # print(cell.region)
+
                 cell_clone = cell.clone(new_center_x, new_center_y, clone_vector=clone_vector)
                 cell_clone.id = c_id
                 uni_clone.add_cell(cell_clone)
@@ -341,6 +361,10 @@ class Cell:
         else:
             raise SystemError
         return clone_cell
+
+    def isPointInside(self, point):
+        return self.region.isPointInsideRegion(point)
+        
 
     def __eq__(self, other) -> bool:
         """
@@ -448,6 +472,8 @@ class Cell:
         if isinstance(self.__region.surface, InfiniteSquareCylinderZ):
             return self.__region.surface.center
         elif isinstance(self.__region.surface, Hexagon):
+            return self.__region.surface.center
+        elif isinstance(self.__region.surface, InfiniteRectangleCylinderZ):
             return self.__region.surface.center
 
 

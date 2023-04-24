@@ -11,6 +11,8 @@ from .surfaces import *
 from Shynt.api_py.materials import Material
 
 from Shynt.api_py.Geometry import surfaces
+from Shynt.api_py.Geometry.regions import SurfaceSide
+
 
 
 
@@ -18,9 +20,10 @@ class Universe:
     """
         Universe class
     """
+
     def __init__(self, name="") :
         self.__name = name
-        self.__cells = {}        
+        self.__cells = {}
     
     def mark_cells(self):
         for id_, cell in self.__cells.items():
@@ -693,7 +696,7 @@ class HexagonalLatticeTypeX(Universe):
         pin_centers = [[0 for i in range(self.__nx)] for j in range(self.__ny)]
         
         half_width = self.__pitch / 2
-        radius = 2 * half_width / math.sqrt(3)
+        radius = round(2 * half_width / math.sqrt(3), 8)
 
         idx_center_row = self.__ny // 2
         idx_center_col = self.__nx // 2
@@ -706,15 +709,7 @@ class HexagonalLatticeTypeX(Universe):
         for r in range(self.__ny):
             for c in range(self.__nx):
                 x = start_x_row + c * self.__pitch
-                # create a pin with the same characteristics to move the cell
-                # pin_replacement = self.__array[r][c].replicate()
-                # if pin_replacement.pin_levels[0].radius is not None:
-                #     # moving the pin
-                #     trans_vector = (
-                #         x - pin_replacement.get_center()[0],
-                #         start_y_row - pin_replacement.get_center()[1]
-                #     )
-                #     pin_replacement.translate(trans_vector)
+                
 
                 # new_center
                 pin = self.__array[r][c]
@@ -725,7 +720,7 @@ class HexagonalLatticeTypeX(Universe):
                     mat = pin.cells[level.cell_id].content
                     materials.append(mat)
                     radius.append(level.radius)
-                new_center_x, new_center_y = x, start_y_row
+                new_center_x, new_center_y = round(x,8), round(start_y_row,8)
                 closing_surface = InfiniteHexagonalCylinderXtype(new_center_x, new_center_y, half_width)
                 pin_replacement = declare_pin_by_cells(
                     materials, radius, new_center_x, new_center_y, pin.name, closing_surface
@@ -787,8 +782,9 @@ class HexagonalLatticeTypeX(Universe):
         self.centers = new_centers
         for y in range(self.__ny):
             for x in range(self.__nx):
-                cell_id = self.__array[y][x]
-                if cell_id is not None:
+                
+                if self.__array[y][x] is not None:
+                    cell_id = self.__array[y][x][0]
                     pin_cell = lattice_cells[cell_id]
                     internal_cells = pin_cell.content.cells
                     for c_id, inter_cell in internal_cells.items():
@@ -799,30 +795,37 @@ class HexagonalLatticeTypeX(Universe):
                             inter_cell.region.child2.surface.center = new_centers[y][x]
 
     def calculate_enclosed_cells(self, region):
-        c = 1
+        
         for r in range(self.__ny):
             for c in range(self.__nx):
                 c_id = self.__array[r][c]
+                self.__array[r][c] = (c_id, "inside")
                 cell = super().cells[c_id]
                 #check cell center coordinates if they are inside the hexagon
-                cell_center = cell.region.surface.center
+                hexagon = cell.region.surface
                 try:
                     is_inside = False
                     if region.side == "-":
-                        is_inside = region.surface.isPointNegativeSide(cell_center)
+                        is_inside = region.surface.isPointNegativeSide(hexagon.center)
                     elif region.side == "+":
-                        is_inside = region.surface.isPointPositiveSide(cell_center)
+                        is_inside = region.surface.isPointPositiveSide(hexagon.center)
                     else:
                         # Check implementation for a union of regions, etc, 
                         # composed by different surfaces
                         raise SystemError
                     assert is_inside
                     self.__enclosed_cells.append(cell)
-                    c += 1
                 except AssertionError:
-                    # center of the cell is not inside the lattice
-                    #TODO probably check if the corners are inside to include the gaps of coolant
-                    self.__array[r][c] = None
+                    # center of the cell is hexagonice
+                    #TODO probably check if the chexagon.isPointNegativeSiderners are inside to include the gaps of coolant 
+                    vertexs = hexagon.get_vertex_points()
+                    side_points = hexagon.get_side_middle_points()
+                    points = vertexs + side_points
+                    some_inside = [region.surface.isPointNegativeSide(p) for p in points]
+                    if True in some_inside:    
+                        self.__array[r][c] = (c_id, "edge")
+                    else:
+                        self.__array[r][c] = None
                     continue
         a = 0
 
@@ -855,7 +858,7 @@ class HexagonalLatticeTypeX(Universe):
         return super().cells
     
     @property
-    def enclosed_cells():
+    def enclosed_cells(self):
         return self.__enclosed_cells
 
 

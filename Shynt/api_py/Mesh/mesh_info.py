@@ -1,4 +1,5 @@
 from Shynt.api_py.Geometry.utilities_geometry import get_equal_nodes, get_surface_equality
+from Shynt.api_py.materials import Material
 
 
 
@@ -28,7 +29,9 @@ class MeshInfo:
         self.__get_volume_and_areas()
         self.__get_coarse_to_fine_rel_info()
         self.__get_region_content_relation()
-        self.__get_equalities()
+        self.__equal_nodes()
+        self.__equal_regions()
+        self.__equal_surfaces()
         db = True
 
     def __get_volume_and_areas(self):
@@ -56,9 +59,10 @@ class MeshInfo:
     def __get_region_content_relation(self):
         """
             This method is to generate a relation of what regions 
-            have wht material and what is the region of the material
+            have what material and what is the region of the material
+
             This is used to know which regions correspond to each other
-            between two coase nodes that are of the same type
+            between two coarse nodes that are of the same type
             
         """
         for n_id, coarse_node in self.__coarse_nodes.items():
@@ -69,34 +73,61 @@ class MeshInfo:
             for r_id, fine_node  in self.__fine_nodes[n_id].items():
                 self.region_coarse_rel[r_id] = n_id
                 region_cell = fine_node.cell
-                material_name = region_cell.content.name + f"_{region_cell.id}"
-                self.region_type_rel[n_id][material_name] = r_id
-                self.region_type_rel_switched[n_id][r_id] = material_name
-                # if region_cell.content.isFuel:
-                #     self.region_type_rel[n_id]["fuel"].append(r_id)
-                #     self.region_type_rel_switched[n_id][r_id] = "fuel"
-                # else:
-                #     self.region_type_rel[n_id]["other"].append(r_id)
-                #     self.region_type_rel_switched[n_id][r_id] = "other"
+                material_name = region_cell.content.name
+                if material_name == "void": continue
+                self.region_type_rel[n_id][material_name + f"_{region_cell.id}"] = r_id
+                self.region_type_rel_switched[n_id][r_id] = material_name  + f"_{region_cell.id}"
+                
       
-    def __get_equalities(self):
+
+    def __equal_nodes(self):
+        """
+            Method to get all the nodes that are of the same type
+            and also the variable self.equal_nodes_rel
+
+            
+        """
         self.equal_nodes = get_equal_nodes(self.__coarse_nodes, self.__fine_nodes)
+        # print(self.equal_nodes)
+
+        # Turn equal_nodes into a list
+        self.equal_nodes = [bin_ for bin_ in self.equal_nodes.values()]
         for bin_ in self.equal_nodes:
             head = bin_[0]
             for node_id in bin_:
                 self.equal_nodes_rel[node_id] = head
-        
+    
+
+    def __equal_regions(self):
+        """
+            The criteria for which a region is equal to other
+            is based on  the order of the regions since the regions 
+            are declared in the same order
+
+
+        """
         for n_id, n_eq_id in self.equal_nodes_rel.items():
             type_regs = list(self.region_type_rel_switched[n_eq_id].keys())
             for r, reg_id in enumerate(self.coarse_region_rel[n_id]):
                 reg_eq = type_regs[r]
                 self.equivalence_region_rel[reg_id] = reg_eq
+        
 
+
+    def __equal_surfaces(self):
+        """
+            The criteria for which a surface is equal to other
+            is based on  the order of the surfaces since the surfaces 
+            are declared in the same order
+
+
+        """
         for n_id, n_eq_id in self.equal_nodes_rel.items():
             node_ = self.__coarse_nodes[n_id]
             node_eq = self.__coarse_nodes[n_eq_id]
             surface_rel = get_surface_equality(node_, node_eq)
             self.equivalence_surface_rel.update(surface_rel)
+        
 
 
 
