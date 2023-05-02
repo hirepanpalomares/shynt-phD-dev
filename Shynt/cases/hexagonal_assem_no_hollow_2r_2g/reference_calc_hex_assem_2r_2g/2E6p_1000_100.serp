@@ -15,7 +15,7 @@ set acelib "jeff311/sss_jeff311u.xsdata"
 %                                                                          %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-set pop  2000000 1000 100
+set pop  100000 3000 1000
 set ures 1 % Unresolved resonance probability table sampling True/False
 set bc 2   % 1: vacuum   2: reflective    3: periodic
 %set power 2.990e+09  % Watts, total fission power

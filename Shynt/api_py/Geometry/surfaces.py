@@ -1414,6 +1414,8 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
         self.__isClone = isClone
 
         self.__radius = round(2 * self.__half_width / math.sqrt(3),8)
+
+        self.volume = 3 * math.sqrt(3) * self.__radius * self.__radius / 2
         self.__side = self.__radius
         self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
 

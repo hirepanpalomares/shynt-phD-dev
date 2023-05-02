@@ -109,34 +109,36 @@ def get_surface_equality(node, node_base, symetry=None):
         # print(node_base.id)
         # print(node.geometry_info["symmetry"])
         symmetry = node.geometry_info["symmetry"][node_base.id]
+        boundary_guide_base = node_base.geometry_info["surfaces_for_detectors"]["boundary_guide"]
+        boundary_guide_other = node.geometry_info["surfaces_for_detectors"]["boundary_guide"]
         if "same" in symmetry:
             return {
-                cell_surface.surf_top.id: base_cell_surface.surf_top.id,
-                cell_surface.surf_right.id: base_cell_surface.surf_right.id,
-                cell_surface.surf_bottom.id: base_cell_surface.surf_bottom.id,
-                cell_surface.surf_left.id: base_cell_surface.surf_left.id,
+                boundary_guide_other["top"]: boundary_guide_base["top"],
+                boundary_guide_other["right"]: boundary_guide_base["right"],
+                boundary_guide_other["bottom"]: boundary_guide_base["bottom"],
+                boundary_guide_other["left"]: boundary_guide_base["left"],
             }
         elif "mirror" in symmetry:
             if symmetry["mirror"] == "right":
                 return {
-                    cell_surface.surf_top.id: base_cell_surface.surf_top.id,
-                    cell_surface.surf_right.id: base_cell_surface.surf_left.id,
-                    cell_surface.surf_bottom.id: base_cell_surface.surf_bottom.id,
-                    cell_surface.surf_left.id: base_cell_surface.surf_right.id,
+                    boundary_guide_other["top"]: boundary_guide_base["top"],
+                    boundary_guide_other["right"]: boundary_guide_base["left"],
+                    boundary_guide_other["bottom"]: boundary_guide_base["bottom"],
+                    boundary_guide_other["left"]: boundary_guide_base["right"],
                 }    
             elif symmetry["mirror"] == "right_down":
                 return {
-                    cell_surface.surf_top.id: base_cell_surface.surf_bottom.id,
-                    cell_surface.surf_right.id: base_cell_surface.surf_left.id,
-                    cell_surface.surf_bottom.id: base_cell_surface.surf_top.id,
-                    cell_surface.surf_left.id: base_cell_surface.surf_right.id,
+                    boundary_guide_other["top"]: boundary_guide_base["bottom"],
+                    boundary_guide_other["right"]: boundary_guide_base["left"],
+                    boundary_guide_other["bottom"]: boundary_guide_base["top"],
+                    boundary_guide_other["left"]: boundary_guide_base["right"],
                 }
             elif symmetry["mirror"] == "down":
                 return {
-                    cell_surface.surf_top.id: base_cell_surface.surf_bottom.id,
-                    cell_surface.surf_right.id: base_cell_surface.surf_right.id,
-                    cell_surface.surf_bottom.id: base_cell_surface.surf_top.id,
-                    cell_surface.surf_left.id: base_cell_surface.surf_left.id,
+                    boundary_guide_other["top"]: boundary_guide_base["bottom"],
+                    boundary_guide_other["right"]: boundary_guide_base["right"],
+                    boundary_guide_other["bottom"]: boundary_guide_base["top"],
+                    boundary_guide_other["left"]: boundary_guide_base["left"],
                 }
             else:
                 raise SystemError

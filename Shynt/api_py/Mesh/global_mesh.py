@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 from Shynt.api_py.Geometry.surfaces import CylinderPad, PlaneX, PlaneY, InfiniteCylinderZ
 from Shynt.api_py.Geometry.surfaces import InfiniteSquareCylinderZ
@@ -95,6 +96,7 @@ class SquareMesh(GlobalMesh):
     self.clean_mesh_map = []
     self.points_mesh = []
     self.coarse_nodes = {}
+    self.type_mesh = ""
     self.__create_nodes()
     
   def __create_nodes(self):
@@ -104,8 +106,10 @@ class SquareMesh(GlobalMesh):
     np.set_printoptions(linewidth=np.inf)
 
     if isinstance(universe, HexagonalLatticeTypeX):
+      self.type_mesh = "square_hex_assembly"
       # Getting node map -----------------------------------------------------------------
       map_pins = self.__get_node_map()
+      
       clean_map = self.__get_clean_map()
       # print_map_node = [print(row) for row in map_pins]
       print("-"*100)
@@ -120,15 +124,44 @@ class SquareMesh(GlobalMesh):
       
       outer_hex = super().cell.region.surface    
 
-      # x_div, y_div = self.__calculate_mesh_coord_normal_square(outer_hex, clean_map)
-      x_div, y_div = self.__calculate_mesh_coord_split_square(outer_hex, clean_map)
-      self.__points_mesh = self.__get_rectangles_from_split_div_cord(x_div, y_div, outer_hex, clean_map)
+      x_div, y_div = self.__calculate_square_mesh_coord_hex_assem(outer_hex, clean_map)
+      self.__points_mesh = self.__get_rectangles_from_mesh_cord(x_div, y_div, outer_hex, clean_map)
       self.coarse_nodes_map = self.__get_map_mesh(clean_map)
       print("-"*100)
       # print(self.coarse_nodes_map)
-      self.__symmetry = self.__get_symmetry()
-      self.coarse_nodes = self.__get_coarse_nodes(fuel_mat, coolant_mat, radius_fuel)
+      self.__symmetry = self.__get_symmetry_hex_assem()
+      self.coarse_nodes = self.__get_coarse_nodes_hex_assem(fuel_mat, coolant_mat, radius_fuel)
+    
+    elif isinstance(universe, Pin):
+      self.type_mesh = "square_hex_pin"
+      outer_hex = super().cell.region.surface
+      self.__hexagon_width = outer_hex.half_width
+      x_div, y_div = self.__calculate_square_mesh_coord_hex_pin(outer_hex)
+      self.__points_mesh = self.__get_rectangles_from_mesh_coord(x_div, y_div)
+      self.coarse_nodes_map = np.array([
+        [1,2],
+        [3,4]
+      ])
+
+      self.__symmetry = {
+        1: {
+          1: {"same": ""},
+          # 2: {"mirror":"right"},
+          # 3: {"mirror":"down"},
+          # 4: {"mirror":"right_down"},
+          2: {"same": ""},
+          3: {"same": ""},
+          4: {"same": ""},
+
+        }
+      }
+
+      fuel_mat = universe.cells[1].content
+      radius_fuel = universe.cells[1].region.surface.radius
+      cool_mat = universe.cells[2].content
+      self.coarse_nodes = self.__get_coarse_nodes_hex_pin(fuel_mat, cool_mat, radius_fuel, outer_hex)
       
+
   def __get_node_map(self):
     universe = super().cell.content
     node_counter = 1
@@ -163,7 +196,7 @@ class SquareMesh(GlobalMesh):
     ]
     return clean_map
 
-  def __get_symmetry(self):
+  def __get_symmetry_hex_assem(self):
     self.__clean_mesh_map = [
       [
         col for col in row if col != 0
@@ -179,9 +212,12 @@ class SquareMesh(GlobalMesh):
     symmetry = {
       type_1: {
         self.__clean_mesh_map[0][0]: {"same": ""},
-        self.__clean_mesh_map[0][-1]: {"mirror":"right"},
-        self.__clean_mesh_map[-1][0]: {"mirror":"down"},
-        self.__clean_mesh_map[-1][-1]: {"mirror":"right_down"},
+        # self.__clean_mesh_map[0][-1]: {"mirror":"right"},
+        # self.__clean_mesh_map[-1][0]: {"mirror":"down"},
+        # self.__clean_mesh_map[-1][-1]: {"mirror":"right_down"},
+        self.__clean_mesh_map[0][-1]: {"same": ""},
+        self.__clean_mesh_map[-1][0]: {"same": ""},
+        self.__clean_mesh_map[-1][-1]: {"same": ""},
       }, 
       type_2: {
         self.__clean_mesh_map[0][1]: {"same": ""},
@@ -198,20 +234,28 @@ class SquareMesh(GlobalMesh):
     for x in range(1, len(self.__clean_mesh_map[0])-1):
       if (x+1)%2 == 0:
         symmetry[type_2][self.__clean_mesh_map[0][x]] =  {"same":""}
-        symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"mirror":"down"}
+        # symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"mirror":"down"}
+        symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"same":""}
       else:
-        symmetry[type_2][self.__clean_mesh_map[0][x]] =  {"mirror":"right"}
-        symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"mirror":"right_down"}
+        # symmetry[type_2][self.__clean_mesh_map[0][x]] =  {"mirror":"right"}
+        # symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"mirror":"right_down"}
+        symmetry[type_2][self.__clean_mesh_map[0][x]] =  {"same":""}
+        symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"same":""}
     
-    symmetry[type_3][self.__clean_mesh_map[1][-1]] =  {"mirror":"right"}
+    # symmetry[type_3][self.__clean_mesh_map[1][-1]] =  {"mirror":"right"}
+    symmetry[type_3][self.__clean_mesh_map[1][-1]] =  {"same":""}
+
     for y in range(1, len(self.__clean_mesh_map)-1):
       if y > 1 and (y+1) <= middle_point:
         symmetry[type_3][self.__clean_mesh_map[y][0]] =  {"same":""}
-        symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"mirror":"right"}
-      elif (y+1) > middle_point:
-        symmetry[type_3][self.__clean_mesh_map[y][0]] =  {"mirror":"down"}
-        symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"mirror":"right_down"}
+        # symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"mirror":"right"}
+        symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"same":""}
 
+      elif (y+1) > middle_point:
+        # symmetry[type_3][self.__clean_mesh_map[y][0]] =  {"mirror":"down"}
+        # symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"mirror":"right_down"}
+        symmetry[type_3][self.__clean_mesh_map[y][0]] =  {"same":""}
+        symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"same":""}
       for x in range(1,len(self.__clean_mesh_map[y])-1):
         node_id = self.__clean_mesh_map[y][x]
         if node_id in symmetry:
@@ -220,60 +264,22 @@ class SquareMesh(GlobalMesh):
           if (x+1)%2 == 0:
             symmetry[type_4][self.__clean_mesh_map[y][x]] = {"same":""}
           else:
-            symmetry[type_4][self.__clean_mesh_map[y][x]] = {"mirror":"right"}
+            # symmetry[type_4][self.__clean_mesh_map[y][x]] = {"mirror":"right"}
+            symmetry[type_4][self.__clean_mesh_map[y][x]] = {"same":""}
         else:
           if (x+1)%2 == 0:
-            symmetry[type_4][self.__clean_mesh_map[y][x]] = {"mirror":"right"}
+            # symmetry[type_4][self.__clean_mesh_map[y][x]] = {"mirror":"right"}
+            symmetry[type_4][self.__clean_mesh_map[y][x]] = {"same":""}
           else:
             symmetry[type_4][self.__clean_mesh_map[y][x]] = {"same":""}
         
-    # for y, row in enumerate(self.__clean_mesh_map):
-    #   print(y+1, "--"*50)
-    #   for node_id in row:
-    #     if node_id in symmetry[type_1]:
-    #       print(type_1, node_id, symmetry[type_1][node_id])
-    #     if node_id in symmetry[type_2]:
-    #       print(type_2, node_id, symmetry[type_2][node_id])
-    #     if node_id in symmetry[type_3]:
-    #       print(type_3, node_id, symmetry[type_3][node_id])
-    #     if node_id in symmetry[type_4]:
-    #       print(type_4, node_id, symmetry[type_4][node_id])
 
     return symmetry
 
-  def __calculate_mesh_coord_normal_square(self, outer_hex, clean_map):
+  def __calculate_square_mesh_coord_hex_assem(self, outer_hex, clean_map):
     universe = super().cell.content
-    
-    y_div = [] 
-    x_div = []
-    for y, row in enumerate(clean_map[1:-1]):
-      y_div.append(universe.cells[row[0][0]].center[1])
-    
-    for x, pin in enumerate(clean_map[1][1:-2]):
-      pin_id, type_pin = pin
-      cell_center = universe.cells[pin_id].center
-      hw = universe.cells[pin_id].region.surface.half_width
-      x_div.append(cell_center[0])
-      x_div.append(cell_center[0] + hw)
-    last_pin = clean_map[1][-2][0]
-    x_div.append(universe.cells[last_pin].center[0])
-    for y_coord in y_div:
-      if y_coord >= outer_hex.center[1]: 
-        x_start = round(outer_hex.surf_F.useFunction(y_coord, given="y"),8)
-        x_end = round(outer_hex.surf_B.useFunction(y_coord, given="y"),8)
-        x_div = [x_start] + x_div
-        x_div.append(x_end)
-      else:
-        break
-    y_div = [outer_hex.surf_A.y0] + y_div
-    y_div.append(outer_hex.surf_D.y0)
-    
-    return x_div, y_div
-  
-  def __calculate_mesh_coord_split_square(self, outer_hex, clean_map):
-    universe = super().cell.content
-    y_div = [] 
-    x_div = []
+    y_coords = [] 
+    x_coords = []
     last_y_coord = None
     y_checked = []
     num_y = len(clean_map)
@@ -283,7 +289,7 @@ class SquareMesh(GlobalMesh):
       last_row = clean_map[y-1]
       last_y_coord = universe.cells[last_row[0][0]].center[1]
 
-      y_div.append(y_coord)
+      y_coords.append(y_coord)
       x_div_row = []
       if y_coord in y_checked: continue
       num_x = len(clean_map[y])
@@ -311,35 +317,45 @@ class SquareMesh(GlobalMesh):
       x_div_row.append(x_end)
 
       if y_coord == 0.0: 
-        x_div.append(x_div_row)
-        x_div.append(x_div_row)
+        x_coords.append(x_div_row)
+        x_coords.append(x_div_row)
         y_checked.append(y_coord)
         y_checked.append(universe.cells[clean_map[y+1][0][0]].center[1])
       else:        
-        x_div.append(x_div_row)
+        x_coords.append(x_div_row)
         y_checked.append(y_coord)
 
-    y_div = [outer_hex.surf_A.y0] + y_div
-    y_div.append(outer_hex.surf_D.y0)
-    x_div.append(x_div[0])
-    return x_div, y_div
+    y_coords = [outer_hex.surf_A.y0] + y_coords
+    y_coords.append(outer_hex.surf_D.y0)
+    x_coords.append(x_coords[0])
+    return x_coords, y_coords
   
-  def __get_rectangles_from_div_cord(self, x_div, y_div, outer_hex, clean_map):
+  def __calculate_square_mesh_coord_hex_pin(self, outer_hex):
+    """
+      Calculates the coordinates of the coarse mesh for a  square mesh
+      in a simple hexagonal pin (4 squares). Only using a Hexagon-x_Type:
+
+        - 3 values of x
+        - 3 values of y
+    """
+    center_x, center_y = outer_hex.center
+    left_x = center_x - outer_hex.half_width
+    right_x = center_x + outer_hex.half_width
+    bottom_y = center_y - outer_hex.radius
+    top_y = center_y + outer_hex.radius
     
-    mesh = {}
-    node_counter = 1
-    for y, y_coord in enumerate(y_div[1:-1]):
-      y_t = y_div[y-1]
-      y_b = y_coord
-      for x, x_coord in enumerate(x_div[1:-1]):
-        x_l = x_div[x-1]
-        x_r = x_coord
-        mesh[node_counter] = ((x_l,x_r),(y_b,y_t))
-        node_counter += 1
+    coord_x = [
+      [left_x, center_x, right_x],
+      [left_x, center_x, right_x],
+      [left_x, center_x, right_x],
+    ]
+    coord_y = [
+      top_y, center_y, bottom_y
+    ]
 
-    return mesh
+    return coord_x, coord_y
 
-  def __get_rectangles_from_split_div_cord(self, x_div, y_div, outer_hex, clean_map):
+  def __get_rectangles_from_mesh_coord(self, x_div, y_div):
     
     mesh = {}
     node_counter = 1
@@ -429,7 +445,38 @@ class SquareMesh(GlobalMesh):
 
       return cells_with_square
 
-  def __get_coarse_nodes(self, fuel_mat, coolant_mat, radius):
+  def __get_coarse_nodes_hex_pin(self, fuel_mat, coolant_mat, radius, outer_hex):
+    coarse_nodes = {}
+
+    for y, row in enumerate(self.coarse_nodes_map):
+      for x, node_id in enumerate(row):
+        rectangle = self.__points_mesh[node_id]
+        x1, x2 = rectangle[0]
+        y1, y2 = rectangle[1]
+
+        rectangle_cells, geometry_info = self.__get_rectangle_content_hex_pin(x1, x2, y1, y2, coolant_mat, fuel_mat, radius, outer_hex)
+        geometry_info["symmetry"] = {
+          1: self.__symmetry[1][node_id]
+        }
+
+        # Now with these cells create a universe ----
+        rectangle_universe = Universe(name=f"rectangle_coarse_node_cell_{node_id}")
+        rectangle_universe.cells = rectangle_cells
+        # Fill a rectangular cell with these universe ----
+        surf_rectangle = geometry_info["rectangle_surf"]
+        rectangle_cell = Cell(
+            fill=rectangle_universe, 
+            region=-surf_rectangle, 
+            name=f"coarse_node_cell_{node_id}"
+        )
+        coarse_node = HexAssemCoarseNode(rectangle_cell, geometry_info)
+        coarse_node.id = node_id
+        coarse_nodes[node_id] = coarse_node
+
+    return coarse_nodes
+    
+
+  def __get_coarse_nodes_hex_assem(self, fuel_mat, coolant_mat, radius):
     coarse_nodes = {}
     for y, row in enumerate(self.coarse_nodes_map):
       for x, node_id in enumerate(row):
@@ -722,4 +769,111 @@ class SquareMesh(GlobalMesh):
     } 
     return cells, geometry_info
 
+  def __get_rectangle_content_hex_pin(self, x1, x2, y1, y2, coolant_mat, fuel_mat, radius, outer_hex):
+    rectangle_surf = InfiniteRectangleCylinderZ(x1, x2, y1, y2)
+    rectangle_height = y2 - y1
+    rectangle_width = x2 - x1
+    circle_pad = CylinderPad(0,0,0,radius,90,180)
+    plane = PlaneY(y2)
+    plane.rotate(angle=30, ref_point=(x2, y2))
+    
+    plane_area = rectangle_height
 
+    volume_void = rectangle_surf.volume - outer_hex.volume / 4
+    volume_fuel = circle_pad.volume
+    volume_coolant = outer_hex.volume / 4 - volume_fuel
+
+    region_void = -rectangle_surf & +plane
+    region_coolant = -rectangle_surf & -plane & +circle_pad
+    region_fuel = -circle_pad
+
+    void_cell = Cell(
+      name="void_side_edge_type_hexagonal_square_mesh", 
+      fill=Material("void"),
+      volume=volume_void,
+      region=region_void
+    )
+    coolant_cell = Cell(
+      name="coolant_side_edge_type_hexagonal_square_mesh", 
+      fill=coolant_mat,
+      volume=volume_coolant,
+      region=region_coolant
+    )
+    fuel_cell = Cell(
+      name="fuel_side_edge_type_hexagonal_square_mesh", 
+      fill=fuel_mat,
+      volume=volume_fuel,
+      region=region_fuel
+    )
+
+    cells = {
+      # void_cell.id: void_cell,
+      coolant_cell.id: coolant_cell,
+      fuel_cell.id: fuel_cell
+    }
+
+    surfaces_for_detectors = {
+      "fuel": {
+        circle_pad.id: f"surf {circle_pad.id} pad 0.0 0.0 0.0 {radius} 180 270",
+      },
+      "boundary": {
+        rectangle_surf.surf_left.id: f"surf {rectangle_surf.surf_left.id} px {-rectangle_width}\n",
+        # rectangle_surf.surf_top.id: f"surf {rectangle_surf.surf_top.id} py {rectangle_height}\n",
+        rectangle_surf.surf_right.id: f"surf {rectangle_surf.surf_right.id} px 0.00000\n",
+        rectangle_surf.surf_bottom.id: f"surf {rectangle_surf.surf_bottom.id} py 0.00000\n",
+        plane.id: f"surf {plane.id} py {rectangle_width}\ntrans s {plane.id} 0.0 0.0 0.0 0.0 0.0 -30\n\n\n"
+      },
+      "boundary_guide": {
+        "top": plane.id,
+        "right": rectangle_surf.surf_right.id,
+        "bottom": rectangle_surf.surf_bottom.id,
+        "left": rectangle_surf.surf_left.id
+      },
+      "boundary_guide_inv": {
+        plane.id : "top",
+        rectangle_surf.surf_right.id : "right",
+        rectangle_surf.surf_bottom.id : "bottom",
+        rectangle_surf.surf_left.id : "left"
+      },
+      "boundary_surfaces": {
+        plane.id: plane,
+        rectangle_surf.surf_right.id: rectangle_surf.surf_right,
+        rectangle_surf.surf_bottom.id: rectangle_surf.surf_bottom,
+        rectangle_surf.surf_left.id: rectangle_surf.surf_left
+      },
+      "boundary_surfaces_areas": {
+        plane.id: plane_area,
+        rectangle_surf.surf_right.id: rectangle_height,
+        rectangle_surf.surf_bottom.id: rectangle_width,
+        rectangle_surf.surf_left.id: rectangle_height / 2
+      },
+      "current_directions": {
+        circle_pad.id: {"inward": "-1", "outward": "1"},
+        rectangle_surf.surf_left.id: {"inward": "1", "outward": "-1"},
+        rectangle_surf.surf_top.id: {"inward": "-1", "outward": "1"},
+        rectangle_surf.surf_right.id: {"inward": "-1", "outward": "1"},
+        rectangle_surf.surf_bottom.id: {"inward": "1", "outward": "-1"},
+        plane.id: {"inward": "-1", "outward": "1"}
+      }
+    }
+
+    geometry_info =  {
+      "rectangle_x1": x1,
+      "rectangle_x2": x2,
+      "rectangle_width": rectangle_width,
+      "rectangle_height": rectangle_height,
+      "radius": radius,
+      "rectangle_surf": rectangle_surf,
+      "fuel_relation": {
+        "fuel": fuel_cell.id,
+        "non_fuel": coolant_cell.id,
+        # "void": void_cell
+      },
+      "type": "corner_in_pin",
+      "plane_void_id": plane.id,
+      "cells": cells,
+      "surfaces_for_detectors": surfaces_for_detectors,
+      # "detectors": hexagonal_assembly.edge_with_void_detectors
+    } 
+
+    return cells, geometry_info

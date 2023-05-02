@@ -5,7 +5,7 @@ def getM_matrix(global_mesh, mesh_info):
   coarse_nodes = global_mesh.coarse_nodes
   all_surfaces = mesh_info.all_surfaces_order
   coarse_nodes_map = mesh_info.coarse_nodes_map
-  type_system = mesh_info.type_system
+  type_mesh = global_mesh.type_mesh
 
   numSurfaces = len(all_surfaces)
   surfaces_indexes = {all_surfaces[s]: s for s in range(numSurfaces)}
@@ -32,13 +32,14 @@ def getM_matrix(global_mesh, mesh_info):
             surface_checked[surf_id] = True
             twin_surf = None
             direction = surface_directions[surf_id]
-            if type_system == "square":
+            if type_mesh == "square_hex_pin":
               twin_surf = twin_surface_squared_lattice(
                 n_id, coarse_nodes_map, 
                 coarse_nodes, direction, 
                 x, y, numRows, numCols
               )
-            elif type_system == "hexagonal":
+              matrixM = write_one_perfect_square_mesh(surf_id, surfaces_indexes, matrixM, twin_surf)
+            elif type_mesh == "square_hex_assembly":
               twin_surfs, contiguous_nodes = twin_surface_hexagonal_lattice_x_SquareMesh(
                 n_id, coarse_nodes_map, 
                 coarse_nodes, direction, 
@@ -307,7 +308,7 @@ def write_one_hex_square_mesh(surf, n_id, twin_surfaces, surfaces_indexes, mM, c
   return mM
 
 
-def write_one(surf, n_id, surfaces_indexes, mM):
+def write_one_perfect_square_mesh(surf, surfaces_indexes, mM, tws):
   if tws:
     surf_index = surfaces_indexes[surf]
     twin_surf_index = surfaces_indexes[tws]

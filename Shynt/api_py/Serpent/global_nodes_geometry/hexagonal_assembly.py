@@ -103,6 +103,40 @@ def inside(geom_info):
   return serpent_syntax
 
 
+def corner_in_pin(geom_info):
+  rect_width = geom_info["rectangle_width"]
+  rect_height = geom_info["rectangle_height"]
+  height_to_width = rect_height / rect_width
+  radius = geom_info["radius"]
+  cells = geom_info["cells"]
+  fuel_cell_id = geom_info["fuel_relation"]["fuel"]
+  coolant_cell_id = geom_info["fuel_relation"]["non_fuel"]
+  # cell_void = cells["void"]
+  cell_fuel = cells[fuel_cell_id]
+  cell_coolant = cells[coolant_cell_id]
+
+  x2 = 0.0
+  x1 = -rect_width
+  y1 = 0.0
+  y2 = rect_height
+
+  serpent_syntax = f"\n\nsurf 1 rect {x1} {x2} {y1} {y2}\n"
+  serpent_syntax += f"surf 2 pad {x2} {y1} 0.0000 {radius} 180  270\n"
+  serpent_syntax += f"surf 3 py {rect_width}\n"
+  serpent_syntax += f"trans s 3 0.0 0.0 0.0 0.0 0.0 -30\n\n"
+  
+  
+  serpent_syntax += f"cell {100000} edge_hex void -1  3\n"
+  serpent_syntax += f"cell {cell_fuel.id} edge_hex {cell_fuel.content.name} -2\n"
+  serpent_syntax += f"cell {cell_coolant.id} edge_hex {cell_coolant.content.name} -1  2 -3\n"
+  serpent_syntax += "cell 999999  0  fill edge_hex  -1\n"
+  serpent_syntax += "cell 999998  0  outside  1\n\n\n"
+  serpent_syntax += f"plot 3 500 {int(500*height_to_width)}\n\n"
+  
+
+  return serpent_syntax
+
+
 
 def xs_generation_edge_with_void(geom_info):
   rect_width = geom_info["rectangle_width"]
@@ -136,6 +170,52 @@ def xs_generation_edge_with_void(geom_info):
 
   serpent_syntax += f"cell {cell_coolant.id}    u4gcu_3 {cell_coolant.content.name} -1  2  3\n"
   serpent_syntax += f"cell {cell_coolant.id+10} coarse_node fill u4gcu_3  -1  2   3\n"
+
+  serpent_syntax += "cell 999999  0  fill coarse_node  -1\n"
+  serpent_syntax += "cell 999998  0  outside  1\n\n\n"
+
+  serpent_syntax += "set gcu u4gcu_2 u4gcu_3 \n\n"
+  serpent_syntax += f"plot 3 500 {int(500*height_to_width)}\n\n"
+  
+
+
+  gcu_rel = {
+    cell_fuel.id: "u4gcu_2",
+    cell_coolant.id: "u4gcu_3",
+  }
+  return serpent_syntax, gcu_rel
+
+def xs_generation_corner_in_pin(geom_info):
+  rect_width = geom_info["rectangle_width"]
+  rect_height = geom_info["rectangle_height"]
+  height_to_width = rect_height / rect_width
+  circle_radius = geom_info["radius"]
+  cells = geom_info["cells"]
+  fuel_cell_id = geom_info["fuel_relation"]["fuel"]
+  coolant_cell_id = geom_info["fuel_relation"]["non_fuel"]
+  # cell_void = cells["void"]
+  cell_fuel = cells[fuel_cell_id]
+  cell_coolant = cells[coolant_cell_id]
+
+  x1 = -rect_width
+  x2 = 0.0
+  y1 = 0.0
+  y2 = rect_height
+
+  serpent_syntax = f"\n\nsurf 1 rect {x1} {x2} {y1} {y2}\n"
+  serpent_syntax += f"surf 2 pad  {x2} {y1} 0.0000 {circle_radius} 180 270\n"
+  serpent_syntax += f"surf 3 py {rect_width}\n"
+  serpent_syntax += f"trans s 3 0.0 0.0 0.0 0.0 0.0 -30\n\n"
+  
+  
+  serpent_syntax += f"cell {100000}    u4gcu_1 void -1  3\n"
+  serpent_syntax += f"cell {100001} coarse_node fill u4gcu_1 -1  3\n"
+
+  serpent_syntax += f"cell {cell_fuel.id}      u4gcu_2 {cell_fuel.content.name} -2\n"
+  serpent_syntax += f"cell {cell_fuel.id+10}   coarse_node fill u4gcu_2 -2\n"
+
+  serpent_syntax += f"cell {cell_coolant.id}    u4gcu_3 {cell_coolant.content.name} -1  2  -3\n"
+  serpent_syntax += f"cell {cell_coolant.id+10} coarse_node fill u4gcu_3  -1  2   -3\n"
 
   serpent_syntax += "cell 999999  0  fill coarse_node  -1\n"
   serpent_syntax += "cell 999998  0  outside  1\n\n\n"
@@ -207,8 +287,8 @@ def xs_generation_inside(geom_info):
   cell_coolant_1 = cells[coolant_cell_1_id]
   cell_coolant_2 = cells[coolant_cell_2_id]
 
-  x1 = 0.0
-  x2 = rect_width
+  x1 = -rect_width
+  x2 = 0.0
   y1 = 0.0
   y2 = rect_height
 

@@ -1,0 +1,44 @@
+set title ""
+
+mat inner_fuel sum tmp 453
+92235.03c 0.000101116
+92238.03c 0.019868
+94238.03c 1.78056e-05
+94239.03c 0.00245592
+94240.03c 0.000732245
+94241.03c 0.000196866
+94242.03c 6.83261e-05
+95241.03c 4.8183e-05
+8016.03c 0.046507
+
+mat na_coolant sum tmp 453
+Na-23.03c 0.0237718
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+
+
+set bc 2
+
+set pop 4000 500 250
+
+ene fast_ene_str 1
+1.00E-10 7.49E-04 1.50E-02 4.09E-02 1.11E-01 3.02E-01 8.21E-01 2.23E+00 2.00E+01 
+
+surf 2 hexxc 0.00000000  0.00000000 0.49129500
+surf 1 cyl 0.00000000 0.00000000 0.35700000
+
+cell 9 u4gcu_1 inner_fuel -1 
+cell 10 pin_inner fill u4gcu_1 -1 
+
+cell 11 u4gcu_2 na_coolant 1  -2 
+cell 12 pin_inner fill u4gcu_2 1  -2 
+
+cell 13 0 fill pin_inner  -2 
+cell 14 0 outside 2 
+
+
+
+det 1 dm inner_fuel  dc 9  de fast_ene_str  dv 0.400392842
+det 2 dm na_coolant  dc 11 de fast_ene_str  dv 0.4357400565
+

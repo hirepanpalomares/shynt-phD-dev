@@ -14,16 +14,21 @@ from Shynt.api_py.Serpent.global_nodes_geometry import hexagonal_assembly as coa
 
 class CoarseNode():
 
-  def __init__(self, cell) -> None:
+  def __init__(self, cell, geometry_info=False) -> None:
     super().__init__()
     self.__cell = cell
     self.__id = None
     
-    self.__surfaces = self.__getSurfaces()                      # Dictionary of surface classes {id: <Surface class>}
+    if geometry_info:
+      self.__surfaces = geometry_info["surfaces_for_detectors"]["boundary_surfaces"]
+      self.__surface_areas = geometry_info["surfaces_for_detectors"]["boundary_surfaces_areas"]
+      self.__surface_directions = geometry_info["surfaces_for_detectors"]["boundary_guide_inv"]
+    else:
+      self.__surfaces = self.__getSurfaces()                      # Dictionary of surface classes {id: <Surface class>}
+      self.__surface_areas = self.__getSurfaceAreas()             # Dictionary of surfaces areas {id: area}
+      self.__surface_directions = self.__getSurfaceDirections()   # Dictionary with the direction of the surfaces
     # self.fictional_surfaces = self.__getFictionalSurfaces()
     self.__surface_ids = list(self.__surfaces.keys())           # Array with surface ids
-    self.__surface_areas = self.__getSurfaceAreas()             # Dictionary of surfaces areas {id: area}
-    self.__surface_directions = self.__getSurfaceDirections()   # Dictionary with the direction of the surfaces
     self.__fine_nodes = {}                                      # Dictionary of cell classes {id: <FineNode class>}
     self.__fine_nodes_ids = []                                  # Array with fine nodes ids
     self.__fine_nodes_volume = {}                               # Dictionary of fine nodes volume {id: vol}
@@ -36,19 +41,6 @@ class CoarseNode():
           relation = region.surface.get_surface_relation()
       return relation
 
-  def __getFictionalSurfaces(self):
-      coarse_node_region = self.cell.region
-
-      # Doing that with the closing surfaces, 
-      # the surfaces inside the cell will be fictional surfaces
-      # of the FineNode
-      closing_surface = self.__cell.region.surface
-      if isinstance(closing_surface, InfiniteSquareCylinderZ):
-          return closing_surface.get_fictional_surfaces()
-      elif isinstance(closing_surface, InfiniteHexagonalCylinderXtype):
-          raise SystemError
-      elif isinstance(closing_surface, InfiniteHexagonalCylinderYtype):
-          raise SystemError
 
   def __getSurfaceAreas(self):
       areas = {}
@@ -65,7 +57,6 @@ class CoarseNode():
               areas[s_id] = a
       return areas
   
-
   def __getSurfaceDirections(self):
     directions = {}
 
@@ -137,7 +128,7 @@ class CoarseNode():
 class HexAssemCoarseNode(CoarseNode):
     
   def __init__(self, cell, g_info):
-    super().__init__(cell)
+    super().__init__(cell, geometry_info=g_info)
     self.geometry_info = g_info
 
   def serpent_geometry(self):
@@ -150,7 +141,11 @@ class HexAssemCoarseNode(CoarseNode):
     elif self.geometry_info["type"] == "inside":
       hexagon_radius = self.geometry_info["hexagon_radius"]
       return coarse_node_geometry.inside(self.geometry_info)
+    elif self.geometry_info["type"] == "corner_in_pin":
+      return coarse_node_geometry.corner_in_pin(self.geometry_info)
   
+
+
   def xs_generation_geometry(self):
     rect_width = self.geometry_info["rectangle_width"]
     rect_height = self.geometry_info["rectangle_height"]
@@ -166,6 +161,8 @@ class HexAssemCoarseNode(CoarseNode):
     elif self.geometry_info["type"] == "inside":
       hexagon_radius = self.geometry_info["hexagon_radius"]
       return coarse_node_geometry.xs_generation_inside(self.geometry_info)
+    elif self.geometry_info["type"] == "corner_in_pin":
+      return coarse_node_geometry.xs_generation_corner_in_pin(self.geometry_info)
     
 
   @property
@@ -173,3 +170,6 @@ class HexAssemCoarseNode(CoarseNode):
     x1 = self.geometry_info["rectangle_x1"]
     x2 = self.geometry_info["rectangle_x2"]
     return (x1, x2)
+
+
+

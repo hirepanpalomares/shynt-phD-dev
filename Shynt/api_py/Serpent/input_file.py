@@ -244,46 +244,47 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
                 else:
                     self.isFuel_relation[cell.id] = (cell.content.name, False)
 
-        return surfaces_to_write
-        # ! -----------------------------
+        # ! -----------------------------------------------------------------------------------------
         # ! This part might be deprecated in the future because 
         # ! I find an easier way to get this (see above)
     
-        surface_for_detectors_syntax = closing_surf.get_surface_for_detectors_serpent_syntax()
+        #! surface_for_detectors_syntax = closing_surf.get_surface_for_detectors_serpent_syntax()
 
-        # surfaces_in_closing = self.coarse_node.fictional_surfaces
-        surfaces_in_closing = closing_surf.get_surface_relation()
-        self.closing_surface_ids = list(surfaces_in_closing.keys())
+        #! # surfaces_in_closing = self.coarse_node.fictional_surfaces
+        #! surfaces_in_closing = closing_surf.get_surface_relation()
+        #! self.closing_surface_ids = list(surfaces_in_closing.keys())
 
-        self.surface_direction = closing_surf.get_neutron_current_directions()
+        #! self.surface_direction = closing_surf.get_neutron_current_directions()
 
 
-        # Adding surfaces used by detectors from inside the pin cell
-        self.material_cell_ids_relation = {}
-        universe_cells = self.cell.content.cells
-        for c_id, cell in universe_cells.items():
-            if isinstance(cell.content, Material):
-                if cell.content.isFuel:
-                    reg_surfaces = cell.region.surfaces_of_region()
-                    surfs = list(reg_surfaces.values())                    
-                    for surf in surfs:
-                        if isinstance(surf, PieQuadrant):
-                            pie_surfs = surf.get_surface_relation()
-                            pie_surfs_J_dir = surf.get_neutron_current_directions()
-                            for ps_id, ps in pie_surfs.items():
-                                if ps_id not in self.surfaces_ids:
-                                    pass
-                                    surface_for_detectors_syntax += ps.serpent_syntax_exact_position
-                                self.surface_direction[ps_id] = pie_surfs_J_dir[ps_id]
-                        else:
-                            if surf.id not in self.surfaces_ids:
-                                pass
-                                surface_for_detectors_syntax += surf.serpent_syntax_exact_position
-                            self.surface_direction[surf.id] = {"inward": "-1", "outward": "1"}
-                    self.isFuel_relation[cell.id] = (cell.content.name, True)
-                else:
-                    self.isFuel_relation[cell.id] = (cell.content.name, False)
-        return surface_for_detectors_syntax
+        #! # Adding surfaces used by detectors from inside the pin cell
+        #! self.material_cell_ids_relation = {}
+        #! universe_cells = self.cell.content.cells
+        #! for c_id, cell in universe_cells.items():
+        #!     if isinstance(cell.content, Material):
+        #!         if cell.content.isFuel:
+        #!             reg_surfaces = cell.region.surfaces_of_region()
+        #!             surfs = list(reg_surfaces.values())                    
+        #!             for surf in surfs:
+        #!                 if isinstance(surf, PieQuadrant):
+        #!                     pie_surfs = surf.get_surface_relation()
+        #!                     pie_surfs_J_dir = surf.get_neutron_current_directions()
+        #!                     for ps_id, ps in pie_surfs.items():
+        #!                         if ps_id not in self.surfaces_ids:
+        #!                             pass
+        #!                             surface_for_detectors_syntax += ps.serpent_syntax_exact_position
+        #!                         self.surface_direction[ps_id] = pie_surfs_J_dir[ps_id]
+        #!                 else:
+        #!                     if surf.id not in self.surfaces_ids:
+        #!                         pass
+        #!                         surface_for_detectors_syntax += surf.serpent_syntax_exact_position
+        #!                     self.surface_direction[surf.id] = {"inward": "-1", "outward": "1"}
+        #!             self.isFuel_relation[cell.id] = (cell.content.name, True)
+        #!         else:
+        #!             self.isFuel_relation[cell.id] = (cell.content.name, False)
+        #! return surface_for_detectors_syntax
+    
+        return surfaces_to_write
 
 
 
