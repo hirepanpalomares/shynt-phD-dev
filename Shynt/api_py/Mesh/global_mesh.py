@@ -125,7 +125,7 @@ class SquareMesh(GlobalMesh):
       outer_hex = super().cell.region.surface    
 
       x_div, y_div = self.__calculate_square_mesh_coord_hex_assem(outer_hex, clean_map)
-      self.__points_mesh = self.__get_rectangles_from_mesh_coord(x_div, y_div, outer_hex, clean_map)
+      self.__points_mesh = self.__get_rectangles_from_mesh_coord(x_div, y_div)#, outer_hex, clean_map)
       self.coarse_nodes_map = self.__get_map_mesh(clean_map)
       print("-"*100)
       # print(self.coarse_nodes_map)
@@ -475,7 +475,6 @@ class SquareMesh(GlobalMesh):
 
     return coarse_nodes
     
-
   def __get_coarse_nodes_hex_assem(self, fuel_mat, coolant_mat, radius):
     coarse_nodes = {}
     for y, row in enumerate(self.coarse_nodes_map):
@@ -575,6 +574,30 @@ class SquareMesh(GlobalMesh):
           rectangle_surf.surf_right.id: f"surf {rectangle_surf.surf_right.id} px {rectangle_width}\n",
           rectangle_surf.surf_bottom.id: f"surf {rectangle_surf.surf_bottom.id} py 0.00000\n"
         },
+        "boundary_guide": {
+        "top": rectangle_surf.surf_top.id,
+        "right": rectangle_surf.surf_right.id,
+        "bottom": rectangle_surf.surf_bottom.id,
+        "left": rectangle_surf.surf_left.id
+        },
+        "boundary_guide_inv": {
+          rectangle_surf.surf_top.id: "top",
+          rectangle_surf.surf_right.id : "right",
+          rectangle_surf.surf_bottom.id : "bottom",
+          rectangle_surf.surf_left.id : "left"
+        },
+        "boundary_surfaces": {
+          rectangle_surf.surf_top.id: rectangle_surf.surf_top,
+          rectangle_surf.surf_right.id: rectangle_surf.surf_right,
+          rectangle_surf.surf_bottom.id: rectangle_surf.surf_bottom,
+          rectangle_surf.surf_left.id: rectangle_surf.surf_left
+        },
+        "boundary_surfaces_areas": {
+          rectangle_surf.surf_top.id: rectangle_width,
+          rectangle_surf.surf_right.id: rectangle_height,
+          rectangle_surf.surf_bottom.id: rectangle_width,
+          rectangle_surf.surf_left.id: rectangle_height
+        },
         "current_directions": {
           circle_pad.id: {"inward": "-1", "outward": "1"},
           rectangle_surf.surf_top.id: {"inward": "-1", "outward": "1"},
@@ -597,7 +620,8 @@ class SquareMesh(GlobalMesh):
     plane.rotate(angle=-30, ref_point=(x1, y1))
     
     distance_to_plane = plane.useFunction(y2, given="y") - x1
-    volume_void = distance_to_plane * (y2-y1) / 2
+    plane_area = math.sqrt(distance_to_plane * distance_to_plane + rectangle_height * rectangle_height)
+    volume_void = distance_to_plane * rectangle_height / 2
     volume_fuel = circle_pad.volume
     volume_coolant = rectangle_surf.volume - volume_fuel - volume_void
 
@@ -645,7 +669,30 @@ class SquareMesh(GlobalMesh):
         "top": rectangle_surf.surf_top.id,
         "right": rectangle_surf.surf_right.id,
         "bottom": rectangle_surf.surf_bottom.id,
-        "left": plane.id
+        # "left": plane.id
+        "left": rectangle_surf.surf_left.id
+      },
+      "boundary_guide_inv": {
+        rectangle_surf.surf_top.id : "top",
+        rectangle_surf.surf_right.id : "right",
+        rectangle_surf.surf_bottom.id : "bottom",
+        # plane.id : "left",
+        rectangle_surf.surf_left.id: "left",
+      },
+      "boundary_surfaces": {
+        # plane.id: plane,
+        rectangle_surf.surf_left.id: rectangle_surf.surf_left,
+        rectangle_surf.surf_top.id: rectangle_surf.surf_top,
+        rectangle_surf.surf_right.id: rectangle_surf.surf_right,
+        rectangle_surf.surf_bottom.id: rectangle_surf.surf_bottom,
+      },
+      "boundary_surfaces_areas": {
+        # plane.id: plane_area,
+        rectangle_surf.surf_top.id: rectangle_width,
+        rectangle_surf.surf_right.id: rectangle_height,
+        rectangle_surf.surf_bottom.id: rectangle_width,
+        rectangle_surf.surf_left.id: rectangle_height,
+
       },
       "current_directions": {
         circle_pad.id: {"inward": "-1", "outward": "1"},
@@ -756,6 +803,30 @@ class SquareMesh(GlobalMesh):
           rectangle_surf.surf_top.id: f"surf {rectangle_surf.surf_top.id} py {rectangle_height}\n",
           rectangle_surf.surf_right.id: f"surf {rectangle_surf.surf_right.id} px {rectangle_width}\n",
           rectangle_surf.surf_bottom.id: f"surf {rectangle_surf.surf_bottom.id} py 0.00000\n"
+        },
+        "boundary_guide": {
+          "top": rectangle_surf.surf_top.id,
+          "right": rectangle_surf.surf_right.id,
+          "bottom": rectangle_surf.surf_bottom.id,
+          "left": rectangle_surf.surf_left.id
+        },
+        "boundary_guide_inv": {
+          rectangle_surf.surf_top.id : "top",
+          rectangle_surf.surf_right.id : "right",
+          rectangle_surf.surf_bottom.id : "bottom",
+          rectangle_surf.surf_left.id : "left"
+        },
+        "boundary_surfaces": {
+          rectangle_surf.surf_top.id: rectangle_surf.surf_top,
+          rectangle_surf.surf_right.id: rectangle_surf.surf_right,
+          rectangle_surf.surf_bottom.id: rectangle_surf.surf_bottom,
+          rectangle_surf.surf_left.id: rectangle_surf.surf_left
+        },
+        "boundary_surfaces_areas": {
+          rectangle_surf.surf_top.id: rectangle_width,
+          rectangle_surf.surf_right.id: rectangle_height,
+          rectangle_surf.surf_bottom.id: rectangle_width,
+          rectangle_surf.surf_left.id: rectangle_height
         },
         "current_directions": {
           circle_pad1.id: {"inward": "-1", "outward": "1"},

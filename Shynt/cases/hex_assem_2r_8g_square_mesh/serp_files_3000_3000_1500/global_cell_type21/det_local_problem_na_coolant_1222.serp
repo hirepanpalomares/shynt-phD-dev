@@ -1,4 +1,4 @@
-set title "global_cell_type21/det_local_problem_inner_fuel_1223.serp"
+set title "global_cell_type21/det_local_problem_na_coolant_1222.serp"
 
 mat na_coolant sum tmp 453
 Na-23.03c 0.0237718
@@ -26,8 +26,7 @@ ene fast_ene_str 1 1.00000000E-10 7.49000000E-04 1.50000000E-02 4.09000000E-02 1
 
 
 surf 1 rect 0.0 0.6502221399999994 0.0 0.8509479000000004
-%surf 2 pad  0.6502221399999994 0.0 0.0000 0.357 90  180
-surf 2 cyl  0.6502221399999994 0.0 0.357
+surf 2 pad 0.6502221399999994 0.0 0.0000 0.357 180  270
 surf 3 px 0.0
 trans s 3 0.0 0.0 0.0 0.0 0.0 30
 
@@ -38,22 +37,20 @@ cell 999999  0  fill edge_hex  -1
 cell 999998  0  outside  1
 
 
-plot 3 500 500
+plot 3 500 654
 
 % ----- Surface for detectors
 surf 3490 px 0.00000
 surf 3491 py 0.8509479000000004
 surf 3492 px 0.6502221399999994
 surf 3493 py 0.00000
-surf 3494 pad 0.6502221399999994 0.0 0.0 0.357 90 180
+surf 3494 pad 0.6502221399999994 0.0 0.0 0.357 180 270
 
 % ----- Detectors ------
-det total_rate_reg1223 de fast_ene_str dr -1 inner_fuel dc 1223 
-det j_in_reg1223 ds 3494 -1 de fast_ene_str dfl 1 1 
-det j_out_reg1223 ds 3494 1 de fast_ene_str dfl 1 3 dfl 2 1 
-det all_to_reg1223 de fast_ene_str dr -1 inner_fuel dc 1223 dfl 1 2 dfl 1 0 
-det reg1223_to_reg1222 de fast_ene_str dr -1 na_coolant dc 1222 dfl 2 2 dfl 2 0 
-det reg1223_to_surface3490 ds 3490 -1 de fast_ene_str dfl 2 2 dfl 2 0 
-det reg1223_to_surface3491 ds 3491 1 de fast_ene_str dfl 2 2 dfl 2 0 
-det reg1223_to_surface3492 ds 3492 1 de fast_ene_str dfl 2 2 dfl 2 0 
-det reg1223_to_surface3493 ds 3493 -1 de fast_ene_str dfl 2 2 dfl 2 0 
+det reg1222_reg1222 de fast_ene_str dr -1 na_coolant dc 1222 dfl 1 2 dfl 1 0 dfl 1 1 
+det total_rate_reg1222 de fast_ene_str dr -1 na_coolant dc 1222 dfl 1 1 
+det reg1222_reg1223 de fast_ene_str dr -1 inner_fuel dc 1223 dfl 1 2 dfl 1 0 
+det reg1222_surface3490 ds 3490 -1 de fast_ene_str dfl 1 2 dfl 1 0 
+det reg1222_surface3491 ds 3491 1 de fast_ene_str dfl 1 2 dfl 1 0 
+det reg1222_surface3492 ds 3492 1 de fast_ene_str dfl 1 2 dfl 1 0 
+det reg1222_surface3493 ds 3493 -1 de fast_ene_str dfl 1 2 dfl 1 0 
