@@ -125,7 +125,7 @@ class SquareMesh(GlobalMesh):
       outer_hex = super().cell.region.surface    
 
       x_div, y_div = self.__calculate_square_mesh_coord_hex_assem(outer_hex, clean_map)
-      self.__points_mesh = self.__get_rectangles_from_mesh_cord(x_div, y_div, outer_hex, clean_map)
+      self.__points_mesh = self.__get_rectangles_from_mesh_coord(x_div, y_div, outer_hex, clean_map)
       self.coarse_nodes_map = self.__get_map_mesh(clean_map)
       print("-"*100)
       # print(self.coarse_nodes_map)
