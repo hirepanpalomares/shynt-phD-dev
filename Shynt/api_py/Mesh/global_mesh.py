@@ -659,11 +659,11 @@ class SquareMesh(GlobalMesh):
         circle_pad.id: f"surf {circle_pad.id} pad {rectangle_width} 0.0 0.0 {radius} 180 270",
       },
       "boundary": {
-        rectangle_surf.surf_left.id: f"surf {rectangle_surf.surf_left.id} px 0.00000\n",
+        # rectangle_surf.surf_left.id: f"surf {rectangle_surf.surf_left.id} px 0.00000\n",
         rectangle_surf.surf_top.id: f"surf {rectangle_surf.surf_top.id} py {rectangle_height}\n",
         rectangle_surf.surf_right.id: f"surf {rectangle_surf.surf_right.id} px {rectangle_width}\n",
         rectangle_surf.surf_bottom.id: f"surf {rectangle_surf.surf_bottom.id} py 0.00000\n",
-        # plane.id: f"surf {plane.id} 0.00\ntrans s {plane.id} 0.0 0.0 0.0 0.0 0.0 30\n\n\n"
+        plane.id: f"surf {plane.id} px 0.00\ntrans s {plane.id} 0.0 0.0 0.0 0.0 0.0 30\n\n\n"
       },
       "boundary_guide": {
         "top": rectangle_surf.surf_top.id,
@@ -676,18 +676,18 @@ class SquareMesh(GlobalMesh):
         rectangle_surf.surf_top.id : "top",
         rectangle_surf.surf_right.id : "right",
         rectangle_surf.surf_bottom.id : "bottom",
-        # plane.id : "left",
-        rectangle_surf.surf_left.id: "left",
+        plane.id : "left",
+        # rectangle_surf.surf_left.id: "left",
       },
       "boundary_surfaces": {
-        # plane.id: plane,
-        rectangle_surf.surf_left.id: rectangle_surf.surf_left,
+        plane.id: plane,
+        # rectangle_surf.surf_left.id: rectangle_surf.surf_left,
         rectangle_surf.surf_top.id: rectangle_surf.surf_top,
         rectangle_surf.surf_right.id: rectangle_surf.surf_right,
         rectangle_surf.surf_bottom.id: rectangle_surf.surf_bottom,
       },
       "boundary_surfaces_areas": {
-        # plane.id: plane_area,
+        plane.id: plane_area,
         rectangle_surf.surf_top.id: rectangle_width,
         rectangle_surf.surf_right.id: rectangle_height,
         rectangle_surf.surf_bottom.id: rectangle_width,

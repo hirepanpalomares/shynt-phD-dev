@@ -5,15 +5,15 @@ from Shynt.api_py.Postprocess import process_files as postprocess
 
 np.set_printoptions(linewidth=np.inf)
 
-base_dir = '/home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/cases/hex_assem_2r_8g_with_edges/'
+base_dir = '/home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/cases/hex_assem_2r_8g_square_mesh/'
 
 def shynt_flux():
 	nodes_to_plot = [1,23,47,73,101,131,163,197,233,271,310,348,384,418,450,480,508,534,558,580]
 	regs_to_plot = [
 		1160,1161,1233,1232,1230,1231,1351,1350,1348,1349,
 	]
-	base_dir = '/home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/cases/hex_assem_2r_8g_with_edges/'
-	flux_df = pd.read_csv(base_dir + 'output_RMM_1500_1000_500_first_try/1500_1000_500_rmm_flux.csv')
+	base_dir = '/home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/cases/hex_assem_2r_8g_square_mesh/'
+	flux_df = pd.read_csv(base_dir + 'output_RMM_1500_1000_500/1500_1000_500_rmm_flux.csv')
 	# flx = np.array([arr for arr in flux_df.to_numpy() if arr[1] in nodes_to_plot])
 	norm_factor = flux_df.to_numpy()[:,4].max()
 
@@ -116,11 +116,13 @@ serp_flx = serpent_flux()
 
 for g in range(1,9):
 	plt.figure()
-	# plt.plot(hyb_flx[g], '--o', label="hybrid")
-	plt.plot(serp_flx[g], '--o', label="serpent")
+	plt.plot(hyb_flx[g], '--o', label="hybrid")
+	# plt.plot(serp_flx[g], '--o', label="serpent")
 	
 	plt.legend()
-	plt.savefig(f'serpent_flux_g{g}.png')
+	# plt.savefig(f'serpent_flux_g{g}.png')
+	plt.savefig(f'hybrid_flux_g{g}.png')
+
 	
 	# break
 # print(serp_flx)

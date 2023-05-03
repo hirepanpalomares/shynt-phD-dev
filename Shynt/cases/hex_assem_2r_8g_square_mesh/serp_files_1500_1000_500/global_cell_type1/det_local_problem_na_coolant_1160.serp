@@ -40,17 +40,20 @@ cell 999998  0  outside  1
 plot 3 500 433
 
 % ----- Surface for detectors
-surf 3368 px 0.00000
 surf 3369 py 0.5631089000000005
 surf 3370 px 0.6502221399999994
 surf 3371 py 0.00000
+surf 3373 px 0.00
+trans s 3373 0.0 0.0 0.0 0.0 0.0 30
+
+
 surf 3372 pad 0.6502221399999994 0.0 0.0 0.357 180 270
 
 % ----- Detectors ------
 det reg1160_reg1160 de fast_ene_str dr -1 na_coolant dc 1160 dfl 1 2 dfl 1 0 dfl 1 1 
 det total_rate_reg1160 de fast_ene_str dr -1 na_coolant dc 1160 dfl 1 1 
 det reg1160_reg1161 de fast_ene_str dr -1 inner_fuel dc 1161 dfl 1 2 dfl 1 0 
-det reg1160_surface3368 ds 3368 -1 de fast_ene_str dfl 1 2 dfl 1 0 
 det reg1160_surface3369 ds 3369 1 de fast_ene_str dfl 1 2 dfl 1 0 
 det reg1160_surface3370 ds 3370 1 de fast_ene_str dfl 1 2 dfl 1 0 
 det reg1160_surface3371 ds 3371 -1 de fast_ene_str dfl 1 2 dfl 1 0 
+det reg1160_surface3373 ds 3373 -1 de fast_ene_str dfl 1 2 dfl 1 0 

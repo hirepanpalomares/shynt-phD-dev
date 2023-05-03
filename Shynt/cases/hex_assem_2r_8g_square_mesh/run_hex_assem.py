@@ -5,8 +5,8 @@ import Shynt
 
 np.set_printoptions(linewidth=np.inf)
 
-# mc_params = Shynt.montecarlo.MontecarloParams(1500, 1000, 500) 
-mc_params = Shynt.montecarlo.MontecarloParams(3_000, 3_000, 1_500) 
+mc_params = Shynt.montecarlo.MontecarloParams(1500, 1000, 500) 
+# mc_params = Shynt.montecarlo.MontecarloParams(3_000, 3_000, 1_500) 
 
 hex_assem.root_universe.mcparams = mc_params
 Shynt.run(
