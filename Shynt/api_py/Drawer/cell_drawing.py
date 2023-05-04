@@ -101,69 +101,66 @@ def calculate_dxdy(cell, fig_size):
 
 
 def plot_cell(cell, dimensions=(500, 500), name="", cell_colors=None, rectangles=[]):
-    x_max, y_max = dimensions
+  x_max, y_max = dimensions
 
-    # Transform lattice to plot
-    scale_f = calculate_scaling_factor(cell, dimensions)
-    print(f"scaling factor: {scale_f}")
+  # Transform lattice to plot
+  scale_f = calculate_scaling_factor(cell, dimensions)
+  print(f"scaling factor: {scale_f}")
 
-    cell.scale(scale_f)
-    dx, dy = calculate_dxdy(cell, dimensions)
+  cell.scale(scale_f)
+  dx, dy = calculate_dxdy(cell, dimensions)
 
-    cell.translate((dx,dy))
+  cell.translate((dx,dy))
 
-    print(f"translation vector: {dx}, {dy}")
+  print(f"translation vector: {dx}, {dy}")
 
-    # # Find cells in cell in case of the content is a universe -----
-    cells_to_plot, \
-    materials, \
-    surfaces_to_plot = find_cells_and_materials(cell)
-    surfaces_to_plot = list(surfaces_to_plot.values())
+  # # Find cells in cell in case of the content is a universe -----
+  cells_to_plot, \
+  materials, \
+  surfaces_to_plot = find_cells_and_materials(cell)
+  surfaces_to_plot = list(surfaces_to_plot.values())
 
-    # # Assign a color to each cell -----------------------------
-    if cell_colors is None:
-        cell_colors = {}
-        for c in cells_to_plot:
-            cell_colors[c.id] = c.content.color
-    
-    img = Image.new('RGB', dimensions, color=(254,254,254))
-    # Draw surface enclosing the cell -----------------------------
-    enclosing_surf = cell.region.surface
-    # enclosing_surf.translate((dx,dy))
-    img = draw_surface(enclosing_surf, img, y_max)
+  # # Assign a color to each cell -----------------------------
+  if cell_colors is None:
+    cell_colors = {}
+    for c in cells_to_plot:
+      cell_colors[c.id] = c.content.color
+  
+  img = Image.new('RGB', dimensions, color=(254,254,254))
+  # Draw surface enclosing the cell -----------------------------
+  enclosing_surf = cell.region.surface
+  # enclosing_surf.translate((dx,dy))
+  img = draw_surface(enclosing_surf, img, y_max)
 
-    num_surfaces_to_plot = len(surfaces_to_plot)
-    # plot surfaces ---------------------------------------------
-    for s in range(num_surfaces_to_plot):
-        # print(f"plotting surface  {s+1}/{num_surfaces_to_plot} ")
-        img = draw_surface(surfaces_to_plot[s],img,y_max)
-        progress = s/num_surfaces_to_plot 
+  num_surfaces_to_plot = len(surfaces_to_plot)
+  # plot surfaces ---------------------------------------------
+  for s in range(num_surfaces_to_plot):
+    # print(f"plotting surface  {s+1}/{num_surfaces_to_plot} ")
+    img = draw_surface(surfaces_to_plot[s],img,y_max)
+    progress = s/num_surfaces_to_plot 
 
 
-    # color the cells -------------------------------------------
+  # color the cells -------------------------------------------
+      
+  if len(rectangles) == 0:
     number_cells_to_plot = len(cells_to_plot)
     for c in range(number_cells_to_plot):
-        cell = cells_to_plot[c]
-        region = cell.region
-        # print(f"Color in cell {c+1}/{number_cells_to_plot} RGB {cell_colors[cell.id]}")
-        point_in_region = cell.region.get_point_in_region()
-        
-       
-        color_point = (point_in_region[0], y_max-point_in_region[1])
-        # ImageDraw.floodfill(img, color_point, value=cell_colors[cell.id])
+      cell = cells_to_plot[c]
+      region = cell.region
+      print(f"Color in cell {c+1}/{number_cells_to_plot} RGB {cell_colors[cell.id]}")
+      point_in_region = cell.region.get_point_in_region()
+      color_point = (point_in_region[0], y_max-point_in_region[1])
+      ImageDraw.floodfill(img, color_point, value=cell_colors[cell.id])
+  else:
+    for id_, mesh in rectangles.items():
+      x1,x2 = mesh[0]
+      y1,y2 = mesh[1]
+      img = draw_square_from_points(
+        x1*scale_f+dx, 
+        x2*scale_f+dx, 
+        y1*scale_f+dy, 
+        y2*scale_f+dy, 
+        img
+      )
 
-    if len(rectangles) > 0:
-        # print(rectangles)
-        for id_, mesh in rectangles.items():
-            x1,x2 = mesh[0]
-            y1,y2 = mesh[1]
-            img = draw_square_from_points(
-                x1*scale_f+dx, 
-                x2*scale_f+dx, 
-                y1*scale_f+dy, 
-                y2*scale_f+dy, 
-                img
-            )
-
-        
-        img.save(f"{name}.png")
+  img.save(f"{name}.png")

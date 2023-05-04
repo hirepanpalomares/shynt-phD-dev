@@ -118,14 +118,16 @@ class SquareMesh(GlobalMesh):
       first_pin = universe.cells[first_pin_id]
       self.__hexagon_width = first_pin.region.surface.half_width
 
-      fuel_mat = first_pin.content.cells[66].content
-      radius_fuel = first_pin.content.cells[66].region.surface.radius
-      coolant_mat = first_pin.content.cells[67].content
+      fuel, no_fuel = first_pin.content.find_fuel_cells()
+
+      fuel_mat = fuel[0].content
+      radius_fuel = fuel[0].region.surface.radius
+      coolant_mat = no_fuel[0].content
       
       outer_hex = super().cell.region.surface    
 
       x_div, y_div = self.__calculate_square_mesh_coord_hex_assem(outer_hex, clean_map)
-      self.__points_mesh = self.__get_rectangles_from_mesh_coord(x_div, y_div)#, outer_hex, clean_map)
+      self.points_mesh = self.__get_rectangles_from_mesh_coord(x_div, y_div)#, outer_hex, clean_map)
       self.coarse_nodes_map = self.__get_map_mesh(clean_map)
       print("-"*100)
       # print(self.coarse_nodes_map)
@@ -137,7 +139,7 @@ class SquareMesh(GlobalMesh):
       outer_hex = super().cell.region.surface
       self.__hexagon_width = outer_hex.half_width
       x_div, y_div = self.__calculate_square_mesh_coord_hex_pin(outer_hex)
-      self.__points_mesh = self.__get_rectangles_from_mesh_coord(x_div, y_div)
+      self.points_mesh = self.__get_rectangles_from_mesh_coord(x_div, y_div)
       self.coarse_nodes_map = np.array([
         [1,2],
         [3,4]
@@ -212,12 +214,12 @@ class SquareMesh(GlobalMesh):
     symmetry = {
       type_1: {
         self.__clean_mesh_map[0][0]: {"same": ""},
-        # self.__clean_mesh_map[0][-1]: {"mirror":"right"},
-        # self.__clean_mesh_map[-1][0]: {"mirror":"down"},
-        # self.__clean_mesh_map[-1][-1]: {"mirror":"right_down"},
-        self.__clean_mesh_map[0][-1]: {"same": ""},
-        self.__clean_mesh_map[-1][0]: {"same": ""},
-        self.__clean_mesh_map[-1][-1]: {"same": ""},
+        self.__clean_mesh_map[0][-1]: {"mirror":"right"},
+        self.__clean_mesh_map[-1][0]: {"mirror":"down"},
+        self.__clean_mesh_map[-1][-1]: {"mirror":"right_down"},
+        # self.__clean_mesh_map[0][-1]: {"same": ""},
+        # self.__clean_mesh_map[-1][0]: {"same": ""},
+        # self.__clean_mesh_map[-1][-1]: {"same": ""},
       }, 
       type_2: {
         self.__clean_mesh_map[0][1]: {"same": ""},
@@ -234,28 +236,28 @@ class SquareMesh(GlobalMesh):
     for x in range(1, len(self.__clean_mesh_map[0])-1):
       if (x+1)%2 == 0:
         symmetry[type_2][self.__clean_mesh_map[0][x]] =  {"same":""}
-        # symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"mirror":"down"}
-        symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"same":""}
+        symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"mirror":"down"}
+        # symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"same":""}
       else:
-        # symmetry[type_2][self.__clean_mesh_map[0][x]] =  {"mirror":"right"}
-        # symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"mirror":"right_down"}
-        symmetry[type_2][self.__clean_mesh_map[0][x]] =  {"same":""}
-        symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"same":""}
+        symmetry[type_2][self.__clean_mesh_map[0][x]] =  {"mirror":"right"}
+        symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"mirror":"right_down"}
+        # symmetry[type_2][self.__clean_mesh_map[0][x]] =  {"same":""}
+        # symmetry[type_2][self.__clean_mesh_map[-1][x]] =  {"same":""}
     
-    # symmetry[type_3][self.__clean_mesh_map[1][-1]] =  {"mirror":"right"}
-    symmetry[type_3][self.__clean_mesh_map[1][-1]] =  {"same":""}
+    symmetry[type_3][self.__clean_mesh_map[1][-1]] =  {"mirror":"right"}
+    # symmetry[type_3][self.__clean_mesh_map[1][-1]] =  {"same":""}
 
     for y in range(1, len(self.__clean_mesh_map)-1):
       if y > 1 and (y+1) <= middle_point:
         symmetry[type_3][self.__clean_mesh_map[y][0]] =  {"same":""}
-        # symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"mirror":"right"}
-        symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"same":""}
+        symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"mirror":"right"}
+        # symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"same":""}
 
       elif (y+1) > middle_point:
-        # symmetry[type_3][self.__clean_mesh_map[y][0]] =  {"mirror":"down"}
-        # symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"mirror":"right_down"}
-        symmetry[type_3][self.__clean_mesh_map[y][0]] =  {"same":""}
-        symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"same":""}
+        symmetry[type_3][self.__clean_mesh_map[y][0]] =  {"mirror":"down"}
+        symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"mirror":"right_down"}
+        # symmetry[type_3][self.__clean_mesh_map[y][0]] =  {"same":""}
+        # symmetry[type_3][self.__clean_mesh_map[y][-1]] =  {"same":""}
       for x in range(1,len(self.__clean_mesh_map[y])-1):
         node_id = self.__clean_mesh_map[y][x]
         if node_id in symmetry:
@@ -264,12 +266,12 @@ class SquareMesh(GlobalMesh):
           if (x+1)%2 == 0:
             symmetry[type_4][self.__clean_mesh_map[y][x]] = {"same":""}
           else:
-            # symmetry[type_4][self.__clean_mesh_map[y][x]] = {"mirror":"right"}
-            symmetry[type_4][self.__clean_mesh_map[y][x]] = {"same":""}
+            symmetry[type_4][self.__clean_mesh_map[y][x]] = {"mirror":"right"}
+            # symmetry[type_4][self.__clean_mesh_map[y][x]] = {"same":""}
         else:
           if (x+1)%2 == 0:
-            # symmetry[type_4][self.__clean_mesh_map[y][x]] = {"mirror":"right"}
-            symmetry[type_4][self.__clean_mesh_map[y][x]] = {"same":""}
+            symmetry[type_4][self.__clean_mesh_map[y][x]] = {"mirror":"right"}
+            # symmetry[type_4][self.__clean_mesh_map[y][x]] = {"same":""}
           else:
             symmetry[type_4][self.__clean_mesh_map[y][x]] = {"same":""}
         
@@ -481,7 +483,7 @@ class SquareMesh(GlobalMesh):
       for x, node_id in enumerate(row):
         if node_id != 0:
           # each rectangle corresponds to a cell
-          rectangle = self.__points_mesh[node_id]
+          rectangle = self.points_mesh[node_id]
           x1, x2 = rectangle[0]
           y1, y2 = rectangle[1]
 
@@ -575,28 +577,28 @@ class SquareMesh(GlobalMesh):
           rectangle_surf.surf_bottom.id: f"surf {rectangle_surf.surf_bottom.id} py 0.00000\n"
         },
         "boundary_guide": {
+        "left": rectangle_surf.surf_left.id,
         "top": rectangle_surf.surf_top.id,
         "right": rectangle_surf.surf_right.id,
         "bottom": rectangle_surf.surf_bottom.id,
-        "left": rectangle_surf.surf_left.id
         },
         "boundary_guide_inv": {
+          rectangle_surf.surf_left.id : "left",
           rectangle_surf.surf_top.id: "top",
           rectangle_surf.surf_right.id : "right",
           rectangle_surf.surf_bottom.id : "bottom",
-          rectangle_surf.surf_left.id : "left"
         },
         "boundary_surfaces": {
+          rectangle_surf.surf_left.id: rectangle_surf.surf_left,
           rectangle_surf.surf_top.id: rectangle_surf.surf_top,
           rectangle_surf.surf_right.id: rectangle_surf.surf_right,
           rectangle_surf.surf_bottom.id: rectangle_surf.surf_bottom,
-          rectangle_surf.surf_left.id: rectangle_surf.surf_left
         },
         "boundary_surfaces_areas": {
+          rectangle_surf.surf_left.id: rectangle_height,
           rectangle_surf.surf_top.id: rectangle_width,
           rectangle_surf.surf_right.id: rectangle_height,
           rectangle_surf.surf_bottom.id: rectangle_width,
-          rectangle_surf.surf_left.id: rectangle_height
         },
         "current_directions": {
           circle_pad.id: {"inward": "-1", "outward": "1"},
@@ -666,17 +668,17 @@ class SquareMesh(GlobalMesh):
         plane.id: f"surf {plane.id} px 0.00\ntrans s {plane.id} 0.0 0.0 0.0 0.0 0.0 30\n\n\n"
       },
       "boundary_guide": {
+        "left": plane.id,
         "top": rectangle_surf.surf_top.id,
         "right": rectangle_surf.surf_right.id,
         "bottom": rectangle_surf.surf_bottom.id,
-        # "left": plane.id
-        "left": rectangle_surf.surf_left.id
+        # "left": rectangle_surf.surf_left.id
       },
       "boundary_guide_inv": {
+        plane.id : "left",
         rectangle_surf.surf_top.id : "top",
         rectangle_surf.surf_right.id : "right",
         rectangle_surf.surf_bottom.id : "bottom",
-        plane.id : "left",
         # rectangle_surf.surf_left.id: "left",
       },
       "boundary_surfaces": {
@@ -691,7 +693,7 @@ class SquareMesh(GlobalMesh):
         rectangle_surf.surf_top.id: rectangle_width,
         rectangle_surf.surf_right.id: rectangle_height,
         rectangle_surf.surf_bottom.id: rectangle_width,
-        rectangle_surf.surf_left.id: rectangle_height,
+        # rectangle_surf.surf_left.id: rectangle_height,
 
       },
       "current_directions": {
@@ -805,28 +807,28 @@ class SquareMesh(GlobalMesh):
           rectangle_surf.surf_bottom.id: f"surf {rectangle_surf.surf_bottom.id} py 0.00000\n"
         },
         "boundary_guide": {
+          "left": rectangle_surf.surf_left.id,
           "top": rectangle_surf.surf_top.id,
           "right": rectangle_surf.surf_right.id,
           "bottom": rectangle_surf.surf_bottom.id,
-          "left": rectangle_surf.surf_left.id
         },
         "boundary_guide_inv": {
+          rectangle_surf.surf_left.id : "left",
           rectangle_surf.surf_top.id : "top",
           rectangle_surf.surf_right.id : "right",
           rectangle_surf.surf_bottom.id : "bottom",
-          rectangle_surf.surf_left.id : "left"
         },
         "boundary_surfaces": {
+          rectangle_surf.surf_left.id: rectangle_surf.surf_left,
           rectangle_surf.surf_top.id: rectangle_surf.surf_top,
           rectangle_surf.surf_right.id: rectangle_surf.surf_right,
           rectangle_surf.surf_bottom.id: rectangle_surf.surf_bottom,
-          rectangle_surf.surf_left.id: rectangle_surf.surf_left
         },
         "boundary_surfaces_areas": {
+          rectangle_surf.surf_left.id: rectangle_height,
           rectangle_surf.surf_top.id: rectangle_width,
           rectangle_surf.surf_right.id: rectangle_height,
           rectangle_surf.surf_bottom.id: rectangle_width,
-          rectangle_surf.surf_left.id: rectangle_height
         },
         "current_directions": {
           circle_pad1.id: {"inward": "-1", "outward": "1"},
@@ -889,34 +891,34 @@ class SquareMesh(GlobalMesh):
       },
       "boundary": {
         rectangle_surf.surf_left.id: f"surf {rectangle_surf.surf_left.id} px {-rectangle_width}\n",
+        plane.id: f"surf {plane.id} py {rectangle_width}\ntrans s {plane.id} 0.0 0.0 0.0 0.0 0.0 -30\n\n\n",
         # rectangle_surf.surf_top.id: f"surf {rectangle_surf.surf_top.id} py {rectangle_height}\n",
         rectangle_surf.surf_right.id: f"surf {rectangle_surf.surf_right.id} px 0.00000\n",
         rectangle_surf.surf_bottom.id: f"surf {rectangle_surf.surf_bottom.id} py 0.00000\n",
-        plane.id: f"surf {plane.id} py {rectangle_width}\ntrans s {plane.id} 0.0 0.0 0.0 0.0 0.0 -30\n\n\n"
       },
       "boundary_guide": {
+        "left": rectangle_surf.surf_left.id,
         "top": plane.id,
         "right": rectangle_surf.surf_right.id,
         "bottom": rectangle_surf.surf_bottom.id,
-        "left": rectangle_surf.surf_left.id
       },
       "boundary_guide_inv": {
+        rectangle_surf.surf_left.id : "left",
         plane.id : "top",
         rectangle_surf.surf_right.id : "right",
         rectangle_surf.surf_bottom.id : "bottom",
-        rectangle_surf.surf_left.id : "left"
       },
       "boundary_surfaces": {
+        rectangle_surf.surf_left.id: rectangle_surf.surf_left,
         plane.id: plane,
         rectangle_surf.surf_right.id: rectangle_surf.surf_right,
         rectangle_surf.surf_bottom.id: rectangle_surf.surf_bottom,
-        rectangle_surf.surf_left.id: rectangle_surf.surf_left
       },
       "boundary_surfaces_areas": {
+        rectangle_surf.surf_left.id: rectangle_height / 2,
         plane.id: plane_area,
         rectangle_surf.surf_right.id: rectangle_height,
         rectangle_surf.surf_bottom.id: rectangle_width,
-        rectangle_surf.surf_left.id: rectangle_height / 2
       },
       "current_directions": {
         circle_pad.id: {"inward": "-1", "outward": "1"},

@@ -295,8 +295,8 @@ def write_one_hex_square_mesh(surf, n_id, twin_surfaces, surfaces_indexes, mM, c
         s_to_stw, stw_to_s = calculate_surf_to_surf_tw_proportion(x1_n, x2_n, x1_tw_n, x2_tw_n)
         surf_index = surfaces_indexes[surf]
         twin_surf_index = surfaces_indexes[tws]
-        mM[surf_index][twin_surf_index] = s_to_stw
-        mM[twin_surf_index][surf_index] = stw_to_s
+        mM[surf_index][twin_surf_index] = stw_to_s
+        mM[twin_surf_index][surf_index] = s_to_stw
       else:
         surf_index = surfaces_indexes[surf]
         twin_surf_index = surfaces_indexes[tws]

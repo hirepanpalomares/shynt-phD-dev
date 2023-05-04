@@ -36,7 +36,30 @@ class Universe:
         surfaces_universe = get_all_surfaces_in_a_universe(self)
         for id_, surf in surfaces_universe.items():
             surf.translate(trans_vector)
-            
+    
+    def find_fuel_cells(self):
+        fuel = []
+        no_fuel = []
+        for c_id, cell in self.__cells.items():
+            try:
+                assert isinstance(cell.content, Material)
+                if cell.content.isFuel:
+                    fuel.append(cell)
+                else:
+                    no_fuel.append(cell)
+            except AssertionError:
+                print("***"*50)
+                print("***"*50)
+                print("***"*50)
+                print()
+                print ("Error trying to find material in cell, cell content is not Material instance")
+                print()
+                print("***"*50)
+                print("***"*50)
+                print("***"*50)
+                raise SystemError
+        return fuel, no_fuel
+
     def __eq__(self, __o: object) -> bool:
         """
             Comparaison of a universe:
