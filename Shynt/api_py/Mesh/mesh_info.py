@@ -1,4 +1,4 @@
-from Shynt.api_py.Geometry.utilities_geometry import get_equal_nodes, get_surface_equality
+from Shynt.api_py.Geometry.utilities_geometry import get_equal_nodes, get_surface_equivalence
 from Shynt.api_py.materials import Material
 
 
@@ -39,8 +39,10 @@ class MeshInfo:
             
             regions = self.__coarse_nodes[n_id].fine_nodes_ids
             surfaces = self.__coarse_nodes[n_id].surface_ids
+            # print(surfaces)
             vols = self.__coarse_nodes[n_id].fine_nodes_volume
             areas = self.__coarse_nodes[n_id].surface_areas
+            # print_ = [print(key, value) for key,value in self.__coarse_nodes[n_id].geometry_info["surfaces_for_detectors"]["boundary_guide"].items()]
 
             self.all_regions_vol.update(vols)
             self.all_surfaces_area.update(areas)
@@ -125,7 +127,17 @@ class MeshInfo:
         for n_id, n_eq_id in self.equal_nodes_rel.items():
             node_ = self.__coarse_nodes[n_id]
             node_eq = self.__coarse_nodes[n_eq_id]
-            surface_rel = get_surface_equality(node_, node_eq)
+            surface_rel = get_surface_equivalence(node_, node_eq)
+            # print(":"*75)
+            # print(f"node = {n_id}\t node_equal = {n_eq_id}")
+            # print("surface relation: ")
+            # print(surface_rel)
+            # print_surf_rel = [print(key,value)  for key,value in surface_rel.items()]
+            # print("surface guide:")
+            # print_guide = [print(key,value) for key,value in node_.geometry_info["surfaces_for_detectors"]["boundary_guide"].items()]
+            # print("surface areas:")
+            # print_areas = [print(key,value) for key,value in node_.geometry_info["surfaces_for_detectors"]["boundary_surfaces_areas"].items()]
+
             self.equivalence_surface_rel.update(surface_rel)
         
 

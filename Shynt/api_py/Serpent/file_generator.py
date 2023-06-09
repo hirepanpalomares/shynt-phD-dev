@@ -25,12 +25,12 @@ def generate_serpent_files(root, different_node_bins, serp_dir="serpent_files"):
     local_cells = root.model_cell.local_mesh.fine_nodes
 
     map_mesh = root.model_cell.global_mesh.coarse_nodes_map
-    print(map_mesh)
+    # print(map_mesh)
 
-    print_different_node_bins = [print(bb) for bb in different_node_bins]
+    # print_different_node_bins = [print(bb) for bb in different_node_bins]
     coarse_nodes_to_files = [global_cells[bin_[0]] for bin_ in different_node_bins]
     
-    print_coarse_nodes_to_files = [print(i) for i in coarse_nodes_to_files  ]
+    # print_coarse_nodes_to_files = [print(i) for i in coarse_nodes_to_files  ]
 
     
     """
@@ -110,8 +110,8 @@ def input_generator(coarse_nodes, fine_nodes, root, serp_dir="serpent_files"):
             cell = reg.cell
             material = cell.content.name
             if material == "void": continue
-            print("file")
-            print(material)
+            # print("file")
+            # print(material)
             name_file = f"{global_cell_dir}/det_local_problem_{material}_{reg_id}.serp"
             
             serpent_input = SerpentInputFileDetectorsRegion(
@@ -120,7 +120,7 @@ def input_generator(coarse_nodes, fine_nodes, root, serp_dir="serpent_files"):
             
             det_files[coarse_n.id].append(serpent_input)
 
-        print("-----"*50)
+        # print("-----"*50)
         # Additional file for the surfaces
         name_surfaces_file = f"{global_cell_dir}/det_local_problem_surfaces.serp"
         surf_serpent_input = SerpentInputFileDetectorsSurface(coarse_n, fine_nodes[coarse_n.id], name_surfaces_file, root)

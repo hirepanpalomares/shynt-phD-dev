@@ -77,73 +77,118 @@ def get_equal_nodes(global_nodes, local_nodes):
     return bins
 
 
-def get_surface_equality(node, node_base, symetry=None):
-    """
-        returns the relation of which surfaces correspond to one
-        equal node
-    """
-    node_cell = node.cell
-    base_node_cell = node_base.cell
+def get_surface_equivalence(node, node_base):
+  """
+    returns the relation of which surfaces correspond to one
+    equal node
+  """
+  node_cell = node.cell
+  base_node_cell = node_base.cell
 
-    cell_surface = node_cell.region.surface
-    base_cell_surface = base_node_cell.region.surface
-
-    if isinstance(cell_surface, InfiniteSquareCylinderZ) and isinstance(base_cell_surface, InfiniteSquareCylinderZ):
-        return {
-            cell_surface.surf_top.id: base_cell_surface.surf_top.id,
-            cell_surface.surf_right.id: base_cell_surface.surf_right.id,
-            cell_surface.surf_bottom.id: base_cell_surface.surf_bottom.id,
-            cell_surface.surf_left.id: base_cell_surface.surf_left.id,
+  cell_surface = node_cell.region.surface
+  base_cell_surface = base_node_cell.region.surface
+  # print(cell_surface)
+  # print(base_cell_surface)
+  if isinstance(cell_surface, InfiniteSquareCylinderZ) and isinstance(base_cell_surface, InfiniteSquareCylinderZ):
+    return {
+      cell_surface.surf_top.id: base_cell_surface.surf_top.id,
+      cell_surface.surf_right.id: base_cell_surface.surf_right.id,
+      cell_surface.surf_bottom.id: base_cell_surface.surf_bottom.id,
+      cell_surface.surf_left.id: base_cell_surface.surf_left.id,
     }
-    if isinstance(cell_surface, Hexagon) and isinstance(base_cell_surface, Hexagon):
-        return {
-            cell_surface.surf_A.id: base_cell_surface.surf_A.id,
-            cell_surface.surf_B.id: base_cell_surface.surf_B.id,
-            cell_surface.surf_C.id: base_cell_surface.surf_C.id,
-            cell_surface.surf_D.id: base_cell_surface.surf_D.id,
-            cell_surface.surf_E.id: base_cell_surface.surf_E.id,
-            cell_surface.surf_F.id: base_cell_surface.surf_F.id,
+  if isinstance(cell_surface, Hexagon) and isinstance(base_cell_surface, Hexagon):
+    return {
+      cell_surface.surf_A.id: base_cell_surface.surf_A.id,
+      cell_surface.surf_B.id: base_cell_surface.surf_B.id,
+      cell_surface.surf_C.id: base_cell_surface.surf_C.id,
+      cell_surface.surf_D.id: base_cell_surface.surf_D.id,
+      cell_surface.surf_E.id: base_cell_surface.surf_E.id,
+      cell_surface.surf_F.id: base_cell_surface.surf_F.id,
+    }
+  if isinstance(cell_surface, InfiniteRectangleCylinderZ) and isinstance(base_cell_surface, InfiniteRectangleCylinderZ):
+    
+    symmetry = node.geometry_info["symmetry"][node_base.id]
+    boundary_guide_base = node_base.geometry_info["surfaces_for_detectors"]["boundary_guide"]
+    boundary_guide_other = node.geometry_info["surfaces_for_detectors"]["boundary_guide"]
+    # print(symmetry)
+    if "same" in symmetry:
+      boundary_symmetry = {
+        boundary_guide_other["right"]: boundary_guide_base["right"],
+        boundary_guide_other["bottom"]: boundary_guide_base["bottom"],
+        boundary_guide_other["left"]: boundary_guide_base["left"],
+        boundary_guide_other["top"]: boundary_guide_base["top"],
+
+      }
+      # if node.geometry_info["type"] != "offset_side_edge":
+      #   boundary_symmetry[boundary_guide_other["top"]] =  boundary_guide_base["top"]
+      return boundary_symmetry
+      
+    elif "mirror" in symmetry:
+      if symmetry["mirror"] == "right":
+        boundary_symmetry = {
+          boundary_guide_other["right"]: boundary_guide_base["left"],
+          boundary_guide_other["bottom"]: boundary_guide_base["bottom"],
+          boundary_guide_other["left"]: boundary_guide_base["right"],
+          boundary_guide_other["top"]: boundary_guide_base["top"],
         }
-    if isinstance(cell_surface, InfiniteRectangleCylinderZ) and isinstance(base_cell_surface, InfiniteRectangleCylinderZ):
-        # print("sdadasd")  
-        # print(node_base.id)
-        # print(node.geometry_info["symmetry"])
-        symmetry = node.geometry_info["symmetry"][node_base.id]
-        boundary_guide_base = node_base.geometry_info["surfaces_for_detectors"]["boundary_guide"]
-        boundary_guide_other = node.geometry_info["surfaces_for_detectors"]["boundary_guide"]
-        if "same" in symmetry:
-            return {
-                boundary_guide_other["top"]: boundary_guide_base["top"],
-                boundary_guide_other["right"]: boundary_guide_base["right"],
-                boundary_guide_other["bottom"]: boundary_guide_base["bottom"],
-                boundary_guide_other["left"]: boundary_guide_base["left"],
-            }
-        elif "mirror" in symmetry:
-            if symmetry["mirror"] == "right":
-                return {
-                    boundary_guide_other["top"]: boundary_guide_base["top"],
-                    boundary_guide_other["right"]: boundary_guide_base["left"],
-                    boundary_guide_other["bottom"]: boundary_guide_base["bottom"],
-                    boundary_guide_other["left"]: boundary_guide_base["right"],
-                }    
-            elif symmetry["mirror"] == "right_down":
-                return {
-                    boundary_guide_other["top"]: boundary_guide_base["bottom"],
-                    boundary_guide_other["right"]: boundary_guide_base["left"],
-                    boundary_guide_other["bottom"]: boundary_guide_base["top"],
-                    boundary_guide_other["left"]: boundary_guide_base["right"],
-                }
-            elif symmetry["mirror"] == "down":
-                return {
-                    boundary_guide_other["top"]: boundary_guide_base["bottom"],
-                    boundary_guide_other["right"]: boundary_guide_base["right"],
-                    boundary_guide_other["bottom"]: boundary_guide_base["top"],
-                    boundary_guide_other["left"]: boundary_guide_base["left"],
-                }
-            else:
-                raise SystemError
+        
+        return boundary_symmetry
+      
+      elif symmetry["mirror"] == "right_down":
+        boundary_symmetry = {
+          boundary_guide_other["right"]: boundary_guide_base["left"],
+          boundary_guide_other["left"]: boundary_guide_base["right"],
+        }
+        if node.geometry_info["type"] != "offset_side_edge":
+          boundary_symmetry[boundary_guide_other["top"]] = boundary_guide_base["bottom"]
+          boundary_symmetry[boundary_guide_other["bottom"]] = boundary_guide_base["top"]
+        else:
+          boundary_symmetry[boundary_guide_other["top"]] = boundary_guide_base["bottom"]
+        return boundary_symmetry
+      
+      elif symmetry["mirror"] == "down":
+        boundary_symmetry = {
+          boundary_guide_other["right"]: boundary_guide_base["right"],
+          boundary_guide_other["left"]: boundary_guide_base["left"],
+        }
+        if node.geometry_info["type"] != "offset_side_edge":
+          boundary_symmetry[boundary_guide_other["bottom"]] = boundary_guide_base["top"]
+          boundary_symmetry[boundary_guide_other["top"]] = boundary_guide_base["bottom"]
+        else:
+          boundary_symmetry[boundary_guide_other["top"]] = boundary_guide_base["bottom"]
+          
+        return boundary_symmetry
+      else:
+          raise SystemError
     
     
+def change_boundary_guide(b_guide, symmetry):
+  new_b_guide = {}
+  if "same" in symmetry:
+    return b_guide
+  elif "mirror" in symmetry:
+    if symmetry["mirror"] == "right":
+      new_b_guide["top"] = b_guide["top"]
+      new_b_guide["bottom"] = b_guide["bottom"]
+      new_b_guide["right"] = b_guide["left"]
+      new_b_guide["left"] = b_guide["right"]
+      return new_b_guide
+    elif symmetry["mirror"] == "right_down":
+      new_b_guide["top"] = b_guide["bottom"]
+      new_b_guide["bottom"] = b_guide["top"]
+      new_b_guide["right"] = b_guide["left"]
+      new_b_guide["left"] = b_guide["right"]
+      return new_b_guide
+    elif symmetry["mirror"] == "down":
+      new_b_guide["top"] = b_guide["bottom"]
+      new_b_guide["bottom"] = b_guide["top"]
+      new_b_guide["left"] = b_guide["left"]
+      new_b_guide["right"] = b_guide["right"]
+         
+      return new_b_guide
+  else:
+    raise SystemExit
+
 
 
 def get_all_surfaces_in_a_cell(cell, surfaces=None):

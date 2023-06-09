@@ -132,7 +132,7 @@ def twin_surface_hexagonal_lattice_x_SquareMesh(n_id, coarse_node_map, coarse_no
     # ? Check y
     new_pos = ()
     if y < numRows / 2:
-      # ? ---------------------------------
+      # ? --------------------------------- above and middle-top
       if type_node == "corner":
         if x < numCols/2: new_position_transformations["bottom"].append((y+1,x-1))
         else: new_position_transformations["bottom"].append((y+1,x+1))
@@ -142,39 +142,44 @@ def twin_surface_hexagonal_lattice_x_SquareMesh(n_id, coarse_node_map, coarse_no
       elif type_node == "side_edge":
         if x < numCols/2: 
           new_position_transformations["top"] = [(y-1,x+1)]
-          new_position_transformations["bottom"].append((y+1,x-1))
+          if y != numRows/2-1:
+            # other than exact middle
+            new_position_transformations["bottom"].append((y+1,x-1))          
         else: 
           new_position_transformations["top"] = [(y-1,x-1)]
-          new_position_transformations["bottom"].append((y+1,x+1))
+          if y != numRows/2-1:
+            # other than exact middle
+            new_position_transformations["bottom"].append((y+1,x+1))
       elif type_node == "inside":
         # stays the same
         pass
-    elif y == numRows / 2 and type_node == "side_edge":
-      # ? ---------------------------------
-      if x < numCols/2: new_position_transformations["top"] = [(y-1,x+1)]
-      else: new_position_transformations["top"] = [(y-1,x-1)]
-    elif y == numRows/2+1 and type_node == "side_edge":
-      # ? ---------------------------------
-      if x < numCols/2: new_position_transformations["bottom"] = [(y+1,x+1)]
-      else: new_position_transformations["bottom"] = [(y+1,x-1)]
     else:
+      # elif y == numRows / 2 and type_node == "side_edge":
+      #   # ? --------------------------------- middle-bottom
+      #   if x < numCols/2: new_position_transformations["bottom"] = []
+      #   else: new_position_transformations["bottom"] = []
+      # elif y == numRows/2+1 and type_node == "side_edge":
+      #   # ? ---------------------------------
+      #   if x < numCols/2: new_position_transformations["bottom"] = [(y+1,x+1)]
+      #   else: new_position_transformations["bottom"] = [(y+1,x-1)]
       # ? ---------------------------------
       if type_node == "corner":
         if x < numCols/2: new_position_transformations["top"].append((y-1,x-1))
         else: new_position_transformations["top"].append((y-1,x+1))
       elif type_node == "top_edge":
-        #! stays the same
         pass
+        #! stays the same
       elif type_node == "side_edge":
+        new_position_transformations["bottom"] = []
         if x < numCols/2: 
           new_position_transformations["top"].append((y-1,x-1))
-          new_position_transformations["bottom"] = [(y+1,x+1)]
+          # new_position_transformations["bottom"] = [(y+1,x+1)]
         else: 
           new_position_transformations["top"].append((y-1,x+1))
-          new_position_transformations["bottom"] = [(y+1,x-1)]
+          # new_position_transformations["bottom"] = [(y+1,x-1)]
       elif type_node == "inside":
-        #! stays the same
-        pass
+        new_position_transformations["bottom"] = []
+        
       
 
     new_positions = new_position_transformations[direction] # position format (row, col)
@@ -183,15 +188,15 @@ def twin_surface_hexagonal_lattice_x_SquareMesh(n_id, coarse_node_map, coarse_no
     for new_pos in new_positions:
       new_y, new_x = new_pos
       if position_valid_hex_lattice_square_mesh(new_pos, numRows, numCols, coarse_node_map):
-          # find twin in node towards that direction
-          contiguous_node_id = coarse_node_map[new_y][new_x]
-          contiguous_node = coarse_nodes[contiguous_node_id]
-          contiguous_node_surf_dir = contiguous_node.surface_directions
-          twin = [s for s, dir_ in contiguous_node_surf_dir.items() if dir_ == direction_mirror[direction]]
-          twins += twin
-          contiguous_nodes += [contiguous_node_id]
+        # find twin in node towards that direction
+        contiguous_node_id = coarse_node_map[new_y][new_x]
+        contiguous_node = coarse_nodes[contiguous_node_id]
+        contiguous_node_surf_dir = contiguous_node.surface_directions
+        twin = [s for s, dir_ in contiguous_node_surf_dir.items() if dir_ == direction_mirror[direction]]
+        twins += twin
+        contiguous_nodes += [contiguous_node_id]
       else:
-          return [None], [] # is boundary
+        return [None], [] # is boundary
     return twins, contiguous_nodes
     
   
@@ -286,15 +291,21 @@ def position_valid(pos, numRows, numCols, coarse_node_map):
 
 def write_one_hex_square_mesh(surf, n_id, twin_surfaces, surfaces_indexes, mM, contiguous_nodes, coarse_nodes, direction):
   coarse_node = coarse_nodes[n_id]
+  def x1x2_tw_dir(dir_):
+    if dir_ == "top":
+      return "bottom"
+    elif dir_ == "bottom":
+      return "top"
   for s, tws in enumerate(twin_surfaces):
     if tws:
       if direction == "top" or direction == "bottom":
         coarse_node_twin = coarse_nodes[contiguous_nodes[s]]
-        x1_tw_n, x2_tw_n = coarse_node_twin.x1_x2
-        x1_n, x2_n = coarse_node.x1_x2
+        x1_tw_n, x2_tw_n = coarse_node_twin.x1_x2(face=x1x2_tw_dir(direction))
+        x1_n, x2_n = coarse_node.x1_x2(face=direction)
         s_to_stw, stw_to_s = calculate_surf_to_surf_tw_proportion(x1_n, x2_n, x1_tw_n, x2_tw_n)
         surf_index = surfaces_indexes[surf]
         twin_surf_index = surfaces_indexes[tws]
+
         mM[surf_index][twin_surf_index] = stw_to_s
         mM[twin_surf_index][surf_index] = s_to_stw
       else:
@@ -339,6 +350,11 @@ def calculate_surf_to_surf_tw_proportion(x1_n, x2_n, x1_tw_n, x2_tw_n):
   s_to_stw = matching_segment / s_length
   stw_to_s = matching_segment / stw_length
 
+  # if stw_to_s == 1:
+  #   s_to_stw = 1
+  # if s_to_stw < 0.5:
+  #   s_to_stw = 0
+  #   stw_to_s = 0 
   return (s_to_stw, stw_to_s)
 
 

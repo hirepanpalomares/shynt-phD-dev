@@ -15,7 +15,6 @@ from Shynt.api_py.Serpent.global_nodes_geometry import hexagonal_assembly as coa
 class CoarseNode():
 
   def __init__(self, cell, geometry_info=False) -> None:
-    super().__init__()
     self.__cell = cell
     self.__id = None
     
@@ -35,36 +34,36 @@ class CoarseNode():
     self.differentiator = ""
 
   def __getSurfaces(self):
-      region = self.cell.region
-      relation = {}
-      if isinstance(region, SurfaceSide):
-          relation = region.surface.get_surface_relation()
-      return relation
+    region = self.cell.region
+    relation = {}
+    if isinstance(region, SurfaceSide):
+      relation = region.surface.get_surface_relation()
+    return relation
 
 
   def __getSurfaceAreas(self):
-      areas = {}
-      
-      region = self.cell.region
+    areas = {}
+    
+    region = self.cell.region
 
-      if isinstance(region, SurfaceSide):
-          surface = self.cell.region.surface
-          # if isinstance(surface, InfiniteSquareCylinderZ):
-          areas = surface.evaluate_surface_area() 
-      else: 
-          for s_id in self.surface_ids:
-              a = self.surfaces[s_id].evaluate_surface_area()
-              areas[s_id] = a
-      return areas
+    if isinstance(region, SurfaceSide):
+      surface = self.cell.region.surface
+      # if isinstance(surface, InfiniteSquareCylinderZ):
+      areas = surface.evaluate_surface_area() 
+    else: 
+      for s_id in self.surface_ids:
+        a = self.surfaces[s_id].evaluate_surface_area()
+        areas[s_id] = a
+    return areas
   
   def __getSurfaceDirections(self):
     directions = {}
 
     region = self.cell.region
     if isinstance(region, SurfaceSide):
-        surface = self.cell.region.surface
-        # if isinstance(surface, InfiniteSquareCylinderZ):
-        directions = surface.get_surface_orientation()
+      surface = self.cell.region.surface
+      # if isinstance(surface, InfiniteSquareCylinderZ):
+      directions = surface.get_surface_orientation()
     return directions
 
   def setFineNodes(self, fine_nodes):
@@ -143,9 +142,13 @@ class HexAssemCoarseNode(CoarseNode):
       return coarse_node_geometry.inside(self.geometry_info)
     elif self.geometry_info["type"] == "corner_in_pin":
       return coarse_node_geometry.corner_in_pin(self.geometry_info)
+    elif self.geometry_info["type"] == "offset_inside":
+      return coarse_node_geometry.inside_offset(self.geometry_info)
+    elif self.geometry_info["type"] == "offset_side_edge":
+      return coarse_node_geometry.edge_with_void_no_offset(self.geometry_info)
+    
+
   
-
-
   def xs_generation_geometry(self):
     rect_width = self.geometry_info["rectangle_width"]
     rect_height = self.geometry_info["rectangle_height"]
@@ -163,13 +166,22 @@ class HexAssemCoarseNode(CoarseNode):
       return coarse_node_geometry.xs_generation_inside(self.geometry_info)
     elif self.geometry_info["type"] == "corner_in_pin":
       return coarse_node_geometry.xs_generation_corner_in_pin(self.geometry_info)
+    elif self.geometry_info["type"] == "offset_inside":
+      return coarse_node_geometry.xs_generation_inside_offset(self.geometry_info)
+    elif self.geometry_info["type"] == "offset_side_edge":
+      return coarse_node_geometry.xs_generation_edge_with_void_no_offset(self.geometry_info)
     
 
+  def x1_x2(self, face="top"):
+    return self.geometry_info[f"x1_x2_{face}"]
+
+
   @property
-  def x1_x2(self):
-    x1 = self.geometry_info["rectangle_x1"]
-    x2 = self.geometry_info["rectangle_x2"]
-    return (x1, x2)
+  def surface_ids(self):
+    return list(self.geometry_info["surfaces_for_detectors"]["boundary_surfaces"].keys())
 
-
+  @property
+  def surface_areas(self):
+    return self.geometry_info["surfaces_for_detectors"]["boundary_surfaces_areas"]
+    
 

@@ -1,4 +1,4 @@
-from Shynt.api_py.Mesh.global_mesh import PinCellMesh, SquareMesh
+from Shynt.api_py.Mesh.global_mesh import PinCellMesh, SquareMesh, SquareMesh_3x3_Assem_no_J_share
 from Shynt.api_py.Mesh.local_mesh import MaterialMesh, CellMesh, PieMesh
 
 from Shynt.api_py.Geometry.cells import Cell
@@ -25,6 +25,9 @@ def make_mesh(cell, global_mesh_type="", local_mesh_type="") -> Cell:
     global_mesh = PinCellMesh(cell)
   elif global_mesh_type == "square_mesh_pin":
     global_mesh = SquareMesh(cell)
+  elif global_mesh_type == "square_mesh_pin_no_J_share":
+    global_mesh = SquareMesh_3x3_Assem_no_J_share(cell)
+
 
   if local_mesh_type == "material":
     local_mesh = MaterialMesh(global_mesh.coarse_nodes, local_mesh_type)

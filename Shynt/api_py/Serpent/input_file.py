@@ -48,7 +48,7 @@ class SerpentInputFile():
             self.__write_energy_grid()
             if self.xs_generation:
                 cell_syntax, gcu_rel = self.coarse_node.xs_generation_geometry()
-                print(gcu_rel)
+                # print(gcu_rel)
                 self.xs_gcu = gcu_rel
                 self.__file.write(cell_syntax)
             else:

@@ -80,7 +80,7 @@ def read_detectors_data(det_inputs):
                 det_file_name = file_.name + "_det0.m"
             else:
                 det_file_name = file_ + "_det0.m"
-            print(det_file_name)
+            # print(det_file_name)
             data_detector_serp_tools = serpentTools.read(det_file_name)
             detectors_data = data_detector_serp_tools.detectors
             
