@@ -49,6 +49,13 @@ def getM_matrix(global_mesh, mesh_info):
               for tws in twin_surfs:
                 if tws:
                   surface_checked[tws] = True
+            if type_mesh == "square_pin_mesh":
+              twin_surf = twin_surface_squared_lattice(
+                n_id, coarse_nodes_map, 
+                coarse_nodes, direction, 
+                x, y, numRows, numCols
+              )
+              matrixM = write_one_perfect_square_mesh(surf_id, surfaces_indexes, matrixM, twin_surf)
         else:
           continue
   

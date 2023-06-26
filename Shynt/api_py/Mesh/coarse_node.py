@@ -9,7 +9,9 @@ from Shynt.api_py.Geometry.regions import SurfaceSide
 
 from Shynt.api_py.Geometry.universes import Pin
 
+from Shynt.api_py.Serpent.global_nodes_geometry import square_pin_cell as square_coarse_node_geometry
 from Shynt.api_py.Serpent.global_nodes_geometry import hexagonal_assembly as coarse_node_geometry
+
 
 
 class CoarseNode():
@@ -122,7 +124,38 @@ class CoarseNode():
   @property
   def fine_nodes_volume(self):
     return self.__fine_nodes_volume
+
+class SquarePinCoarseNode(CoarseNode):
     
+  def __init__(self, cell, g_info):
+    super().__init__(cell, geometry_info=g_info)
+    self.geometry_info = g_info
+
+  def serpent_geometry(self):
+    return square_coarse_node_geometry.square_pin_cell(self.geometry_info)
+  
+    
+  def xs_generation_geometry(self):
+    return square_coarse_node_geometry.xs_generation_square_pin_cell(self.geometry_info)
+
+
+    
+
+  def x1_x2(self, face="top"):
+    return self.geometry_info[f"x1_x2_{face}"]
+
+
+  @property
+  def surface_ids(self):
+    return list(self.geometry_info["surfaces_for_detectors"]["boundary_surfaces"].keys())
+
+  @property
+  def surface_areas(self):
+    return self.geometry_info["surfaces_for_detectors"]["boundary_surfaces_areas"]
+    
+
+
+
 
 class HexAssemCoarseNode(CoarseNode):
     
@@ -147,8 +180,6 @@ class HexAssemCoarseNode(CoarseNode):
     elif self.geometry_info["type"] == "offset_side_edge":
       return coarse_node_geometry.edge_with_void_no_offset(self.geometry_info)
     
-
-  
   def xs_generation_geometry(self):
     rect_width = self.geometry_info["rectangle_width"]
     rect_height = self.geometry_info["rectangle_height"]

@@ -11,3 +11,4 @@ PyYAML==6.0
 scipy==1.5.4
 serpentTools==0.9.4
 six==1.16.0
+XlsxWriter==3.0.8

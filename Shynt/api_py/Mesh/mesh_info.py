@@ -12,8 +12,8 @@ class MeshInfo:
 
   def __init__(self, model_cell):
     self.__coarse_nodes = model_cell.global_mesh.coarse_nodes
-    self.__fine_nodes = model_cell.global_mesh.fine_nodes
-    self.coarse_nodes_map = model_cell.local_mesh.coarse_nodes_map
+    self.__fine_nodes = model_cell.local_mesh.fine_nodes
+    self.coarse_nodes_map = model_cell.global_mesh.coarse_nodes_map
     # ------------------------------------------------------------
     self.coarse_order = list(self.__coarse_nodes.keys())
     self.all_regions_order = []
@@ -77,10 +77,8 @@ class MeshInfo:
         
     """
     for n_id, coarse_node in self.__coarse_nodes.items():
-      self.region_type_rel[n_id] = {
-          
-      }
-      self.region_type_rel_switched[n_id] = {}
+      self.region_type_rel[n_id] = { }
+      self.region_type_rel_switched[n_id] = { }
       for r_id, fine_node  in self.__fine_nodes[n_id].items():
         self.region_coarse_rel[r_id] = n_id
         region_cell = fine_node.cell
@@ -92,21 +90,19 @@ class MeshInfo:
     
 
   def __equal_nodes(self):
-      """
-          Method to get all the nodes that are of the same type
-          and also the variable self.equal_nodes_rel
+    """
+      Method to get all the nodes that are of the same type
+      and also the variable self.equal_nodes_rel
+    """
+    self.equal_nodes = get_equal_nodes(self.__coarse_nodes, self.__fine_nodes)
+    # print(self.equal_nodes)
 
-          
-      """
-      self.equal_nodes = get_equal_nodes(self.__coarse_nodes, self.__fine_nodes)
-      # print(self.equal_nodes)
-
-      # Turn equal_nodes into a list
-      self.equal_nodes = [bin_ for bin_ in self.equal_nodes.values()]
-      for bin_ in self.equal_nodes:
-          head = bin_[0]
-          for node_id in bin_:
-              self.equal_nodes_rel[node_id] = head
+    # Turn equal_nodes into a list
+    self.equal_nodes = [bin_ for bin_ in self.equal_nodes.values()]
+    for bin_ in self.equal_nodes:
+      head = bin_[0]
+      for node_id in bin_:
+        self.equal_nodes_rel[node_id] = head
   
 
   def __equal_regions(self):

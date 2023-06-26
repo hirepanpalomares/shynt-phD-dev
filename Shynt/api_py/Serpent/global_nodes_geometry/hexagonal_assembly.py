@@ -206,7 +206,6 @@ def corner_in_pin(geom_info):
   return serpent_syntax
 
 
-
 def xs_generation_edge_with_void(geom_info):
   rect_width = geom_info["rectangle_width"]
   rect_height = geom_info["rectangle_height"]

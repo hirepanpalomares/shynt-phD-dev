@@ -26,55 +26,26 @@ def is_pin_in_bin(pin, arr, global_nodes, local_nodes):
         if num_local_other == num_local_pin:
             # check that the pin is the same
             
-            # pin_array = global_nodes[other].cell.content
-            # pin_compare = global_nodes[pin].cell.content
-            # if pin_array == pin_compare:
-            #     return True
-            return True
+            pin_array = global_nodes[other].cell.content
+            pin_compare = global_nodes[pin].cell.content
+            if pin_array == pin_compare:
+              return True
+            # return True
     return False
 
 
 def get_equal_nodes(global_nodes, local_nodes):
-    """
-    
-        Ways that could be used to check if are different:
-            
-            - Amount of local problems
-            - Material of local problems 
-            - Shape of local problems (surface)
-            - Size of the local problems
+  """
 
-        ****************************************************************
+  """
 
-            
-        
-        ****************************************************************
-    """
-
-    # bins = []
-    bins = {}
-    for id_, coarse_node in global_nodes.items(): # sweep cells
-        #! This part is only here to help me with the hexagon ---------------------------------
-        if coarse_node.geometry_info["type"] not in bins:
-            bins[coarse_node.geometry_info["type"]] = [id_]
-        else:
-            bins[coarse_node.geometry_info["type"]].append(id_)
-        #!----------------------------------------------------------------------------------------
-        continue
-        #? This part is when it works with only global nodes in form of pins ----------------------
-        found = False
-        print(len(local_nodes[id_]))
-        for b in range(len(bins)): # sweep bins
-            found =  is_pin_in_bin(id_, bins[b], global_nodes, local_nodes)
-            bins[b].append(id_)
-            break
-        if not found:
-            # add new bin
-            bins.append([id_])
-        #? ----------------------------------------------------------------------------------------
-    
-    
-    return bins
+  bins = {}
+  for id_, coarse_node in global_nodes.items(): # sweep cells
+    if coarse_node.geometry_info["type"] not in bins:
+      bins[coarse_node.geometry_info["type"]] = [id_]
+    else:
+      bins[coarse_node.geometry_info["type"]].append(id_)
+  return bins
 
 
 def get_surface_equivalence(node, node_base):
@@ -160,8 +131,7 @@ def get_surface_equivalence(node, node_base):
         return boundary_symmetry
       else:
           raise SystemError
-    
-    
+      
 def change_boundary_guide(b_guide, symmetry):
   new_b_guide = {}
   if "same" in symmetry:
@@ -189,8 +159,6 @@ def change_boundary_guide(b_guide, symmetry):
   else:
     raise SystemExit
 
-
-
 def get_all_surfaces_in_a_cell(cell, surfaces=None):
     from Shynt.api_py.Geometry.universes import Universe
     if surfaces is None:
@@ -213,28 +181,25 @@ def get_all_surfaces_in_a_cell(cell, surfaces=None):
         surfaces.update(new_surfaces)
         return surfaces
 
-
 def get_all_surfaces_in_a_universe(universe):
     surfaces = {}
     for cell in universe.cells.values():
         surfaces.update(get_all_surfaces_in_a_cell(cell))
     return surfaces
 
-
 def get_materials_in_cell(cell, materials=None):
-    from Shynt.api_py.Geometry.universes import Universe
-    if materials is None:
-        materials = {}
-    if isinstance(cell.content, Material):
-        mat_name = cell.content.name
-        materials[mat_name] = cell.content
-        return materials
-    elif isinstance(cell.content, Universe):
-        universe_cells = cell.content.cells
-        for c_id, cell in universe_cells.items():
-            materials = get_materials_in_cell(cell, materials=materials)
-        return materials
-
+  from Shynt.api_py.Geometry.universes import Universe
+  if materials is None:
+    materials = {}
+  if isinstance(cell.content, Material):
+    mat_name = cell.content.name
+    materials[mat_name] = cell.content
+    return materials
+  elif isinstance(cell.content, Universe):
+    universe_cells = cell.content.cells
+    for c_id, cell in universe_cells.items():
+        materials = get_materials_in_cell(cell, materials=materials)
+    return materials
 
 def declare_pin_by_cells(materials, radius, center_x, center_y, name_pin_universe, closing_surf):
     from .cells import Cell
@@ -266,3 +231,5 @@ def declare_pin_by_cells(materials, radius, center_x, center_y, name_pin_univers
     pin.cells = cells
     
     return pin
+
+

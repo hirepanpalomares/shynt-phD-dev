@@ -196,6 +196,8 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
                 self.__generate_fuel_detectors_cross_mesh(regions_dict)
             elif self.root.model_cell.local_mesh.type == "cell":
                 self.__generate_fuel_detectors_mat_mesh(regions_dict)
+            elif self.root.model_cell.local_mesh.type == "material":
+                self.__generate_fuel_detectors_mat_mesh(regions_dict)
         else: # Is not Fuel
             # Non-fuel detectors ----------------------------------------------------
             self.specific = "region_nonFuel"

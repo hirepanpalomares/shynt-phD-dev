@@ -40,7 +40,7 @@ class MaterialMesh(FineMesh):
       nodes = self.get_material_nodes(coarse_node)
       fine_nodes[n_id] = nodes
       coarse_node.setFineNodes(nodes)
-      return fine_nodes
+    return fine_nodes
   
   def get_material_nodes(self, coarse_node):
     """
