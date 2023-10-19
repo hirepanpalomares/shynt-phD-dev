@@ -1,6 +1,9 @@
 
 
-from Shynt.api_py.Geometry.regions import SurfaceSide
+from Shynt.api_py.Geometry.regions import (
+  SurfaceSide,
+  Region
+)
 from Shynt.api_py.materials import Material
 from Shynt.api_py.Geometry.surfaces import Hexagon, InfiniteCylinderZ, InfiniteSquareCylinderZ, InfiniteRectangleCylinderZ
 
@@ -160,7 +163,10 @@ def change_boundary_guide(b_guide, symmetry):
     raise SystemExit
 
 def get_all_surfaces_in_a_cell(cell, surfaces=None):
+    
+    # input()
     from Shynt.api_py.Geometry.universes import Universe
+    
     if surfaces is None:
         surfaces = {}
     if isinstance(cell.content, Material):
@@ -174,12 +180,10 @@ def get_all_surfaces_in_a_cell(cell, surfaces=None):
 
         # surfaces in the cells of the universe
         universe = cell.content
-        # for c_id, cell in universe.cells.items():
-        #     new_surfs = get_all_surfaces_in_a_cell(cell, surfaces=surfaces)
-        #     surfaces.update(new_surfs)
         new_surfaces = get_all_surfaces_in_a_universe(universe)
         surfaces.update(new_surfaces)
         return surfaces
+
 
 def get_all_surfaces_in_a_universe(universe):
     surfaces = {}
@@ -203,7 +207,7 @@ def get_materials_in_cell(cell, materials=None):
 
 def declare_pin_by_cells(materials, radius, center_x, center_y, name_pin_universe, closing_surf):
     from .cells import Cell
-    from Shynt.api_py.Geometry.universes import Universe
+    from Shynt.api_py.Geometry.universes import Universe, Pin
 
     cells = {}
     last_surf = None
@@ -227,9 +231,60 @@ def declare_pin_by_cells(materials, radius, center_x, center_y, name_pin_univers
         name_for_cell = f"{name_pin_universe}_cell_c"
         c = Cell(name=name_for_cell, fill=mat, region=reg, universe=name_pin_universe)
         cells[c.id] = c
-    pin = Universe(name_pin_universe)
-    pin.cells = cells
+    pin = Universe(name_pin_universe, cells)
     
     return pin
 
+
+def find_cylinder_cells_in_universe(universe):
+ 
+ 
+  uni_cells = universe.cells
+  cyl_cells = []
+  for c_id, cell in uni_cells.items():
+    if isinstance(cell.region, SurfaceSide):
+      cell_surf = cell.region.surface
+      if isinstance(cell_surf, InfiniteCylinderZ):
+        cyl_cells = order_cylinders_grater_to_lower(cyl_cells, cell)
+    elif isinstance(cell.region, Region):
+      child1_surf = cell.region.child1.surface
+      child2_surf = cell.region.child2.surface
+      if isinstance(child1_surf, InfiniteCylinderZ):
+        if isinstance(child2_surf, InfiniteCylinderZ):
+          cyl_cells = order_cylinders_grater_to_lower(cyl_cells, cell)
+
+
+  return cyl_cells
+
+
+def order_cylinders_grater_to_lower(cylinders, cell):
+  def find_greatest_radius(cylindrical_region):
+    if isinstance(cylindrical_region, SurfaceSide):
+      return cylindrical_region.surface.radius
+    elif isinstance(cylindrical_region, Region):
+      surf_1 = cylindrical_region.child1.surface
+      surf_2 = cylindrical_region.child2.surface
+      if surf_1.radius > surf_2.radius:
+        return surf_1.radius
+      else:
+        return surf_2.radius
+        
+  
+  cylinders_arr = cylinders.copy()
+  num_cyls = len(cylinders_arr)
+  if len(cylinders_arr) == 0:
+    return [cell]
+  
+  radius_cell = find_greatest_radius(cell.region)
+  # print(cell.region, radius_cell)
+  for idx, cell_sweep in enumerate(cylinders_arr):
+    # -----------------
+    radius_sweep = find_greatest_radius(cell_sweep.region)
+    if radius_cell > radius_sweep:
+      cylinders_arr = cylinders_arr[:idx] + [cell] + cylinders_arr[idx:]
+      return cylinders_arr
+  cylinders_arr.append(cell)
+
+
+  return cylinders_arr
 

@@ -108,10 +108,10 @@ outside_cell = Shynt.cells.Cell("outside_world", fill="outside", region=+outer_b
 
 # Total Universe (root)
 model_universe = Shynt.universes.Root(
-    model_cell_meshed, outside_cell,
-    energy_grid=energy_grid, 
-    mcparams=mc_params, 
-    libraries=libraries
+  model_cell_meshed, outside_cell,
+  energy_grid=energy_grid, 
+  mcparams=mc_params, 
+  libraries=libraries
 )
 
 

@@ -1,29 +1,6 @@
 import numpy as np
 
 
-def getInitializedPhi_system(numTotalRegions, energy_g):
-    """
-       
-    """
-
-    return np.ones(numTotalRegions*energy_g)
-
-
-def getInitializedPhi_system_byGroup(numTotalRegions, energy_g):
-    """
-        Returns a dictionary of Energygroups length with vectors as values
-        and integers as keys. Each vector has a length equal to the number
-        of regions in the system. The key corresponds to the energy group.
-    """
-    phi_vectors = {}
-
-    for g in range(energy_g):
-        phi_vectors[g] = np.ones(numTotalRegions)
-
-    return phi_vectors
-
-
-
 def getRegRegProbabilityMatrix_system(probabilities, coarse_nodes, energyG, regions_vol):
     
     probabilityM_byGroup = []
@@ -55,6 +32,7 @@ def getRegRegProbabilityMatrix_system(probabilities, coarse_nodes, energyG, regi
 
     return probM_system
 
+
 def getRegRegProbabilityMatrix_byCoarse_byGroup(probabilities, coarse_nodes, energyG, regions_vol):
     
     probabilityM_byCoarse_byGroup = {}
@@ -79,34 +57,40 @@ def getRegRegProbabilityMatrix_byCoarse_byGroup(probabilities, coarse_nodes, ene
     return probabilityM_byCoarse_byGroup
 
 
-
-
-
-
-
-
 def getBlockMatrix(matrixes):
-    """
-        Convert a tuple of matrixes into a one big block matrix
-    """
-    numMatrixes = len(matrixes)
+  """
+  Convert a list of matrixes into a one big block matrix
 
-    corner = (0,0)
-    matrix_corners = []
-    for matrix in matrixes:
-        matrix_corners.append(corner)
-        m_shape = matrix.shape
-        corner = (
-            corner[0] + m_shape[0], 
-            corner[1] + m_shape[1]
-        ) # The final value of the corner gives the Big matrix shape
 
-    bigM = np.zeros(corner)
-    for m in range(numMatrixes):
-        matrix = matrixes[m]
-        corner = matrix_corners[m]
-        for r in range(len(matrix)):
-            row = matrix[r]
-            for c in range(len(row)):
-                bigM[corner[0] + r][corner[1] + c] = matrix[r][c]
-    return bigM
+  Parameters
+  ----------
+  matrixes : list
+    List of matrixes to build the block matrix
+
+  Returns
+  -------
+  bigM : np.array()
+    Block matrix built with the provided matrixes
+
+  """
+  numMatrixes = len(matrixes)
+
+  corner = (0,0)
+  matrix_corners = []
+  for matrix in matrixes:
+    matrix_corners.append(corner)
+    m_shape = matrix.shape
+    corner = (
+      corner[0] + m_shape[0], 
+      corner[1] + m_shape[1]
+    ) # The final value of the corner gives the Big matrix shape
+
+  bigM = np.zeros(corner)
+  for m in range(numMatrixes):
+    matrix = matrixes[m]
+    corner = matrix_corners[m]
+    for r in range(len(matrix)):
+      row = matrix[r]
+      for c in range(len(row)):
+        bigM[corner[0] + r][corner[1] + c] = matrix[r][c]
+  return bigM

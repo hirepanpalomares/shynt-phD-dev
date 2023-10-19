@@ -19,7 +19,6 @@ def generate_serpent_files(root, different_node_bins, serp_dir="serpent_files"):
                     <class Universe>.global_mesh and <class Universe>.local_mesh already 
                     defined
     """
-    print("generate_serpent_files_function")
 
     global_cells = root.model_cell.global_mesh.coarse_nodes
     local_cells = root.model_cell.local_mesh.fine_nodes

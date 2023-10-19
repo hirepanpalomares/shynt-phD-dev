@@ -7,109 +7,85 @@ from .surf_counter import surf_ids
 
 class Surface():
 
-    def __init__(self, type_surface="",  name="", isClone=False):
-        """
-            Init method of the class
+  def __init__(self, type_surface="",  name="", isClone=False):
+    """
+      Init method of the class
 
-            Parameters
-            ----------------------------------------------------------------
-            name        :       String to name the surface
-            id          :       Integer numering the surface
-            isClone     :       Parameter that is used when writing the surfaces
-                                for a detector if it is the case to avoid messing
-                                up with the geometry and ids of the original 
-                                surfaces.
-            ----------------------------------------------------------------
-        """
+      Parameters
+      ----------------------------------------------------------------
+      name        :       String to name the surface
+      id          :       Integer numering the surface
+      isClone     :       Parameter that is used when writing the surfaces
+                          for a detector if it is the case to avoid messing
+                          up with the geometry and ids of the original 
+                          surfaces.
+      ----------------------------------------------------------------
+    """
+    
+    self.__name = name
+    self.__type = type_surface
+    self.__isClone = isClone
+    if self.__isClone:
+      self.__id = None
+    else:
+      self.__id = self.calculateId()
+  
+  def calculateId(self):
+    """
+      Class method to calculate the consecutive id of the surface
+
+      It generates a file with a single line where the number
+      of created surfaces is updated every time the user calls
+      this class or the child classes of Surfaces
+
+      Parameters
+      ----------------------------------------------------------------
+      No parameters
+      ----------------------------------------------------------------
+    """
+    if len(surf_ids) == 0:
+      id_ = 1
+      surf_ids.append(id_)
+      return id_
+    else:
+      id_ = surf_ids[-1] + 1
+      surf_ids.append(id_)
+      return id_
+
+  @property
+  def name(self):
+    return self.__name
+  
+  @property
+  def id(self):
+    return self.__id
+  
+  @property
+  def surface_type(self):
+    return self.__type
+
+  @id.setter
+  def id(self, id):
+    try:
+      assert(self.__isClone)
+      self.__id = id
+    except AssertionError:
+      print("Id of non clone surface can not be asigned")
+      raise SystemExit
         
-        self.__name = name
-        self.__type = type_surface
-        self.__isClone = isClone
-        if self.__isClone:
-            self.__id = None
-        else:
-            self.__id = self.calculateId()
-    
-    def calculateId(self):
-        """
-            Class method to calculate the consecutive id of the surface
+  def __neg__(self):
+    from Shynt.api_py.Geometry.regions import SurfaceSide
+    return SurfaceSide(self, "-")
 
-            It generates a file with a single line where the number
-            of created surfaces is updated every time the user calls
-            this class or the child classes of Surfaces
-
-            Parameters
-            ----------------------------------------------------------------
-            No parameters
-            ----------------------------------------------------------------
-        """
-        if len(surf_ids) == 0:
-            id_ = 1
-            surf_ids.append(id_)
-            return id_
-        else:
-            id_ = surf_ids[-1] + 1
-            surf_ids.append(id_)
-            return id_
-    
-    # @abstractmethod
-    # def useFunction(self):
-    #     pass
-
-    # @abstractmethod
-    # def rotate(self):
-    #     pass
-
-    # @abstractmethod
-    # def translate(self):
-    #     pass
-
-    # @abstractmethod
-    # def reset_rotation(self):
-    #     pass
-
-    # @abstractmethod
-    # def isPointNegativeSide(self):
-    #     pass
-
-    # @abstractmethod
-    # def isPointPositiveSide(self):
-    #     pass
-
-    @property
-    def name(self):
-        return self.__name
-    
-    @property
-    def id(self):
-        return self.__id
-    
-    @property
-    def surface_type(self):
-        return self.__type
-
-    @id.setter
-    def id(self, id):
-        try:
-            assert(self.__isClone)
-            self.__id = id
-        except AssertionError:
-            print("Id of non clone surface can not be asigned")
-            raise SystemExit
-         
-    def __neg__(self):
-        from Shynt.api_py.Geometry.regions import SurfaceSide
-        return SurfaceSide(self, "-")
-
-    def __pos__(self):
-        from Shynt.api_py.Geometry.regions import SurfaceSide
-        return SurfaceSide(self, "+")
+  def __pos__(self):
+    from Shynt.api_py.Geometry.regions import SurfaceSide
+    return SurfaceSide(self, "+")
 
 
 class CompoundSurface(Surface, ABC):
 
-    def __init__(self) -> None:
-        super().__init__()
+  def __init__(self) -> None:
+    super().__init__()
 
 
 class PlaneX(Surface):
@@ -978,7 +954,6 @@ class InfiniteCylinderZ(Surface):
         self.__isClone = isClone
         self.__function = lambda x, y: (x - self.__center_x)**2 + (y - self.__center_y)**2 - self.__radius**2
         
-    
     def translate_to(self, new_x, new_y):
         trans_vector = (
             new_x - self.__center_x,
@@ -1396,545 +1371,543 @@ class Hexagon(Surface):
 
 
 class InfiniteHexagonalCylinderXtype(Hexagon):
+  """
+    surf_A   --> cell in - side
+    surf_B   --> cell in - side
+    surf_C   --> cell in + side
+    surf_D   --> cell in + side
+    surf_E   --> cell in + side
+    surf_F   --> cell in - side
+  """
+
+  def __init__(self, center_x, center_y, half_width, name="", boundary=None, isClone=False):
+    super().__init__(name=name, type_surface="inf hex_x", isClone=isClone)
+    self.__center_x = center_x
+    self.__center_y = center_y
+    self.__half_width = half_width
+    self.__boundary = boundary
+    self.__isClone = isClone
+
+    self.__radius = round(2 * self.__half_width / math.sqrt(3),8)
+
+    self.volume = 3 * math.sqrt(3) * self.__radius * self.__radius / 2
+    self.__side = self.__radius
+    self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
+
+  def __generate_surfaces(self):
     """
-        surf_A   --> cell in - side
-        surf_B   --> cell in - side
-        surf_C   --> cell in + side
-        surf_D   --> cell in + side
-        surf_E   --> cell in + side
-        surf_F   --> cell in - side
+    To rotate the plane-Y we consider the rotation of a vector with unitary length
+    pointing in the positive x-direction
+    
     """
+    hw = self.__half_width
+    rot_ref_transformation_x = round(hw - (2*hw*hw/self.__radius - hw),8)
 
-    def __init__(self, center_x, center_y, half_width, name="", boundary=None, isClone=False):
-        super().__init__(name=name, type_surface="inf hex_x", isClone=isClone)
-        self.__center_x = center_x
-        self.__center_y = center_y
-        self.__half_width = half_width
-        self.__boundary = boundary
-        self.__isClone = isClone
+    rot_ref_A = (self.__center_x + rot_ref_transformation_x, self.__center_y + self.__radius)
+    rot_ref_C = (self.__center_x + rot_ref_transformation_x, self.__center_y - self.__radius)
+    rot_ref_D = (self.__center_x - rot_ref_transformation_x, self.__center_y - self.__radius)
+    rot_ref_F = (self.__center_x - rot_ref_transformation_x, self.__center_y + self.__radius)
 
-        self.__radius = round(2 * self.__half_width / math.sqrt(3),8)
-
-        self.volume = 3 * math.sqrt(3) * self.__radius * self.__radius / 2
-        self.__side = self.__radius
-        self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
-
-    def __generate_surfaces(self):
-        """
-            To rotate the plane-Y we consider the rotation of a vector with unitary length
-            pointing in the positive x-direction
-        
-        """
-        hw = self.__half_width
-        rot_ref_transformation_x = round(hw - (2*hw*hw/self.__radius - hw),8)
-
-        rot_ref_A = (self.__center_x + rot_ref_transformation_x, self.__center_y + self.__radius)
-        rot_ref_C = (self.__center_x + rot_ref_transformation_x, self.__center_y - self.__radius)
-        rot_ref_D = (self.__center_x - rot_ref_transformation_x, self.__center_y - self.__radius)
-        rot_ref_F = (self.__center_x - rot_ref_transformation_x, self.__center_y + self.__radius)
-
-        _A = PlaneY(round(self.__center_y + hw,8), boundary=self.__boundary, isClone=self.__isClone)
-        _B = PlaneX(round(self.__center_x + hw,8), boundary=self.__boundary, isClone=self.__isClone)
-        _C = PlaneY(round(self.__center_y - hw,8), boundary=self.__boundary, isClone=self.__isClone)
-        _D = PlaneY(round(self.__center_y - hw,8), boundary=self.__boundary, isClone=self.__isClone)
-        _E = PlaneX(round(self.__center_x - hw,8), boundary=self.__boundary, isClone=self.__isClone)
-        _F = PlaneY(round(self.__center_y + hw,8), boundary=self.__boundary, isClone=self.__isClone)
-        _A.rotate(-30, rot_ref_A)
-        _C.rotate(+30, rot_ref_C)
-        _D.rotate(-30, rot_ref_D)
-        _F.rotate(+30, rot_ref_F)
-        
-        surfaces = [_A, _B, _C, _D, _E, _F ]
-
-        return surfaces
+    _A = PlaneY(round(self.__center_y + hw,8), boundary=self.__boundary, isClone=self.__isClone)
+    _B = PlaneX(round(self.__center_x + hw,8), boundary=self.__boundary, isClone=self.__isClone)
+    _C = PlaneY(round(self.__center_y - hw,8), boundary=self.__boundary, isClone=self.__isClone)
+    _D = PlaneY(round(self.__center_y - hw,8), boundary=self.__boundary, isClone=self.__isClone)
+    _E = PlaneX(round(self.__center_x - hw,8), boundary=self.__boundary, isClone=self.__isClone)
+    _F = PlaneY(round(self.__center_y + hw,8), boundary=self.__boundary, isClone=self.__isClone)
+    _A.rotate(-30, rot_ref_A)
+    _C.rotate(+30, rot_ref_C)
+    _D.rotate(-30, rot_ref_D)
+    _F.rotate(+30, rot_ref_F)
     
-    def clone(self, center_x, center_y, clone_vector=None):
-        """
-            It clones the surface: same id, but in a new center
-        """
-        clone_hexagon = InfiniteHexagonalCylinderXtype(center_x, center_y, self.__half_width, boundary=self.__boundary, isClone=True)
-        clone_hexagon.surf_A.id = self.__surf_A.id
-        clone_hexagon.surf_B.id = self.__surf_B.id
-        clone_hexagon.surf_C.id = self.__surf_C.id
-        clone_hexagon.surf_D.id = self.__surf_D.id
-        clone_hexagon.surf_E.id = self.__surf_E.id
-        clone_hexagon.surf_F.id = self.__surf_F.id
-        clone_hexagon.id = super().id
+    surfaces = [_A, _B, _C, _D, _E, _F ]
 
-        return clone_hexagon
+    return surfaces
+  
+  def clone(self, center_x, center_y, clone_vector=None):
+    """
+      It clones the surface: same id, but in a new center
+    """
+    clone_hexagon = InfiniteHexagonalCylinderXtype(center_x, center_y, self.__half_width, boundary=self.__boundary, isClone=True)
+    clone_hexagon.surf_A.id = self.__surf_A.id
+    clone_hexagon.surf_B.id = self.__surf_B.id
+    clone_hexagon.surf_C.id = self.__surf_C.id
+    clone_hexagon.surf_D.id = self.__surf_D.id
+    clone_hexagon.surf_E.id = self.__surf_E.id
+    clone_hexagon.surf_F.id = self.__surf_F.id
+    clone_hexagon.id = super().id
 
-    def translate(self, translation_vector):
-        x_tr, y_tr = translation_vector
-        
-        self.__center_x += x_tr
-        self.__center_y += y_tr
+    return clone_hexagon
 
-        self.surf_A.translate(translation_vector)
-        self.surf_B.translate(translation_vector)
-        self.surf_C.translate(translation_vector)
-        self.surf_D.translate(translation_vector)
-        self.surf_E.translate(translation_vector)
-        self.surf_F.translate(translation_vector)
+  def translate(self, translation_vector):
+      x_tr, y_tr = translation_vector
+      
+      self.__center_x += x_tr
+      self.__center_y += y_tr
 
-        return 1
-    
-    def scale(self, scale_f):
-        new_half_width = self.__half_width * scale_f
-        plane_move = new_half_width - self.__half_width
+      self.surf_A.translate(translation_vector)
+      self.surf_B.translate(translation_vector)
+      self.surf_C.translate(translation_vector)
+      self.surf_D.translate(translation_vector)
+      self.surf_E.translate(translation_vector)
+      self.surf_F.translate(translation_vector)
 
-        self.__surf_A.translate((plane_move,plane_move))
-        self.__surf_B.translate((plane_move,0))
-        self.__surf_C.translate((plane_move,-plane_move))
-        self.__surf_D.translate((-plane_move,-plane_move))
-        self.__surf_E.translate((-plane_move,0))
-        self.__surf_F.translate((-plane_move,plane_move))
+      return 1
+  
+  def scale(self, scale_f):
+    new_half_width = self.__half_width * scale_f
+    plane_move = new_half_width - self.__half_width
 
-        self.__half_width = new_half_width
-        self.__radius *= scale_f
+    self.__surf_A.translate((plane_move,plane_move))
+    self.__surf_B.translate((plane_move,0))
+    self.__surf_C.translate((plane_move,-plane_move))
+    self.__surf_D.translate((-plane_move,-plane_move))
+    self.__surf_E.translate((-plane_move,0))
+    self.__surf_F.translate((-plane_move,plane_move))
 
+    self.__half_width = new_half_width
+    self.__radius *= scale_f
 
-    def isPointNegativeSide(self, point):
-        x, y = point
-        try:
-            assert self.__surf_A.isPointNegativeSide(point)
-            assert self.__surf_B.isPointNegativeSide(point)
-            assert self.__surf_C.isPointPositiveSide(point)
-            assert self.__surf_D.isPointPositiveSide(point)
-            assert self.__surf_E.isPointPositiveSide(point)
-            assert self.__surf_F.isPointNegativeSide(point)
-            return True
-        except AssertionError:
-            return False
-    
-    def isPointPositiveSide(self, point):
-        x, y = point
-        try:
-            assert(self.isPointNegativeSide((x,y)))
-            return False
-        except AssertionError:
-            return True
-    
-    def evaluate_enclosed_volume(self):
-        return self.__half_width * self.__radius * 3
-    
-    def evaluate_surface_area(self):
-        return {
-            self.__surf_A.id: self.__radius,
-            self.__surf_B.id: self.__radius,
-            self.__surf_C.id: self.__radius,
-            self.__surf_D.id: self.__radius,
-            self.__surf_E.id: self.__radius,
-            self.__surf_F.id: self.__radius,
-        }
+  def isPointNegativeSide(self, point):
+    x, y = point
+    try:
+      assert self.__surf_A.isPointNegativeSide(point)
+      assert self.__surf_B.isPointNegativeSide(point)
+      assert self.__surf_C.isPointPositiveSide(point)
+      assert self.__surf_D.isPointPositiveSide(point)
+      assert self.__surf_E.isPointPositiveSide(point)
+      assert self.__surf_F.isPointNegativeSide(point)
+      return True
+    except AssertionError:
+      return False
+  
+  def isPointPositiveSide(self, point):
+    x, y = point
+    try:
+      assert(self.isPointNegativeSide((x,y)))
+      return False
+    except AssertionError:
+        return True
+  
+  def evaluate_enclosed_volume(self):
+    return self.__half_width * self.__radius * 3
+  
+  def evaluate_surface_area(self):
+    return {
+      self.__surf_A.id: self.__radius,
+      self.__surf_B.id: self.__radius,
+      self.__surf_C.id: self.__radius,
+      self.__surf_D.id: self.__radius,
+      self.__surf_E.id: self.__radius,
+      self.__surf_F.id: self.__radius,
+    }
 
-    def get_surface_orientation(self):
-        return {
-            self.__surf_A.id: "A",
-            self.__surf_B.id: "B",
-            self.__surf_C.id: "C",
-            self.__surf_D.id: "D",
-            self.__surf_E.id: "E",
-            self.__surf_F.id: "F",
-        }
+  def get_surface_orientation(self):
+    return {
+      self.__surf_A.id: "A",
+      self.__surf_B.id: "B",
+      self.__surf_C.id: "C",
+      self.__surf_D.id: "D",
+      self.__surf_E.id: "E",
+      self.__surf_F.id: "F",
+    }
 
-    def get_surface_relation(self):
-        return {
-            self.__surf_A.id: self.__surf_A,
-            self.__surf_B.id: self.__surf_B,
-            self.__surf_C.id: self.__surf_C,
-            self.__surf_D.id: self.__surf_D,
-            self.__surf_E.id: self.__surf_E,
-            self.__surf_F.id: self.__surf_F,
-        }
-    
-    def get_neutron_current_directions(self):
-        # surf A --> outward current = +1 --> inward current = -1
-        # surf B --> outward current = +1 --> inward current = -1
-        # surf C --> outward current = -1 --> inward current = +1
-        # surf D --> outward current = -1 --> inward current = +1
-        # surf E --> outward current = -1 --> inward current = +1
-        # surf F --> outward current = +1 --> inward current = -1
-        return {
-            self.__surf_A.id: {"inward": "-1", "outward": "1"},
-            self.__surf_B.id: {"inward": "-1", "outward": "1"},
-            self.__surf_C.id: {"inward": "1", "outward": "-1"},
-            self.__surf_D.id: {"inward": "1", "outward": "-1"},
-            self.__surf_E.id: {"inward": "1", "outward": "-1"},
-            self.__surf_F.id: {"inward": "-1", "outward": "1"}
-        }
+  def get_surface_relation(self):
+    return {
+      self.__surf_A.id: self.__surf_A,
+      self.__surf_B.id: self.__surf_B,
+      self.__surf_C.id: self.__surf_C,
+      self.__surf_D.id: self.__surf_D,
+      self.__surf_E.id: self.__surf_E,
+      self.__surf_F.id: self.__surf_F,
+    }
+  
+  def get_neutron_current_directions(self):
+    # surf A --> outward current = +1 --> inward current = -1
+    # surf B --> outward current = +1 --> inward current = -1
+    # surf C --> outward current = -1 --> inward current = +1
+    # surf D --> outward current = -1 --> inward current = +1
+    # surf E --> outward current = -1 --> inward current = +1
+    # surf F --> outward current = +1 --> inward current = -1
+    return {
+      self.__surf_A.id: {"inward": "-1", "outward": "1"},
+      self.__surf_B.id: {"inward": "-1", "outward": "1"},
+      self.__surf_C.id: {"inward": "1", "outward": "-1"},
+      self.__surf_D.id: {"inward": "1", "outward": "-1"},
+      self.__surf_E.id: {"inward": "1", "outward": "-1"},
+      self.__surf_F.id: {"inward": "-1", "outward": "1"}
+    }
 
-    def get_vertex_points(self):
-        points = [
-            (self.__center_x, self.__center_y + self.__radius),         # vertex F - A
-            (self.__center_x+self.__half_width, self.__center_y + 0.5*self.__radius),    # vertex A - B
-            (self.__center_x+self.__half_width, self.__center_y - 0.5*self.__radius),    # vertex B - C
-            (self.__center_x, self.__center_y - self.__radius),         # vertex C - D
-            (self.__center_x-self.__half_width, self.__center_y - 0.5*self.__radius),    # vertex D - E
-            (self.__center_x-self.__half_width, self.__center_y + 0.5*self.__radius),    # vertex E - F    
-        ]        
-        return points
+  def get_vertex_points(self):
+    points = [
+      (self.__center_x, self.__center_y + self.__radius),         # vertex F - A
+      (self.__center_x+self.__half_width, self.__center_y + 0.5*self.__radius),    # vertex A - B
+      (self.__center_x+self.__half_width, self.__center_y - 0.5*self.__radius),    # vertex B - C
+      (self.__center_x, self.__center_y - self.__radius),         # vertex C - D
+      (self.__center_x-self.__half_width, self.__center_y - 0.5*self.__radius),    # vertex D - E
+      (self.__center_x-self.__half_width, self.__center_y + 0.5*self.__radius),    # vertex E - F    
+    ]        
+    return points
 
-    def get_side_middle_points(self):
-        sx = round(0.5 * self.__half_width,8)
-        sy = round(math.cos(math.radians(30)) * self.__half_width,8)
-        points = [
-            (self.__center_x + sx, self.__center_y + sy),   # A
-            (self.__surf_B.x0, self.__center_y),            # B
-            (self.__center_x + sx, self.__center_y - sy),   # C
-            (self.__center_x - sx, self.__center_y - sy),   # D
-            (self.__surf_E.x0, self.__center_y),            # E
-            (self.__center_x - sx, self.__center_y + sy),   # F
-        ]
+  def get_side_middle_points(self):
+    sx = round(0.5 * self.__half_width,8)
+    sy = round(math.cos(math.radians(30)) * self.__half_width,8)
+    points = [
+      (self.__center_x + sx, self.__center_y + sy),   # A
+      (self.__surf_B.x0, self.__center_y),            # B
+      (self.__center_x + sx, self.__center_y - sy),   # C
+      (self.__center_x - sx, self.__center_y - sy),   # D
+      (self.__surf_E.x0, self.__center_y),            # E
+      (self.__center_x - sx, self.__center_y + sy),   # F
+    ]
 
-        return points
+    return points
 
-    @property
-    def serpent_syntax_exact_position(self):
-        serp_syn = f"surf {self.id} hexxc {format(self.__center_x, '.8f')} "
-        serp_syn += f" {format(self.__center_y, '.8f')} {format(self.__half_width, '.8f')}\n"
-        return serp_syn
-    
+  @property
+  def serpent_syntax_exact_position(self):
+    serp_syn = f"surf {self.id} hexxc {format(self.__center_x, '.8f')} "
+    serp_syn += f" {format(self.__center_y, '.8f')} {format(self.__half_width, '.8f')}\n"
+    return serp_syn
+  
 
-    @property
-    def serpent_syntax_standard_position(self):
-        return f"surf {self.id} hexxc {0.0000} {0.0000} {format(self.__half_width, '.8f')}\n"
+  @property
+  def serpent_syntax_standard_position(self):
+    return f"surf {self.id} hexxc {0.0000} {0.0000} {format(self.__half_width, '.8f')}\n"
 
-    @property
-    def radius(self):
-        return self.__radius
+  @property
+  def radius(self):
+    return self.__radius
 
-    @property
-    def boundary(self):
-        return self.__boundary
-    
-    @property
-    def surf_A(self):
-        return self.__surf_A
-    
-    @property
-    def surf_B(self):
-        return self.__surf_B
-    
-    @property
-    def surf_C(self):
-        return self.__surf_C
-    
-    @property
-    def surf_D(self):
-        return self.__surf_D
+  @property
+  def boundary(self):
+    return self.__boundary
+  
+  @property
+  def surf_A(self):
+    return self.__surf_A
+  
+  @property
+  def surf_B(self):
+    return self.__surf_B
+  
+  @property
+  def surf_C(self):
+    return self.__surf_C
+  
+  @property
+  def surf_D(self):
+    return self.__surf_D
 
-    @property
-    def surf_E(self):
-        return self.__surf_E
+  @property
+  def surf_E(self):
+    return self.__surf_E
 
-    @property
-    def surf_F(self):
-        return self.__surf_F
-    
-    @property
-    def half_width(self):
-        return self.__half_width
+  @property
+  def surf_F(self):
+    return self.__surf_F
+  
+  @property
+  def half_width(self):
+    return self.__half_width
 
-    @property
-    def center_x(self):
-        return self.__center_x
-    
-    @property
-    def center_y(self):
-        return self.__center_y
-    
+  @property
+  def center_x(self):
+    return self.__center_x
+  
+  @property
+  def center_y(self):
+    return self.__center_y
+  
 
-    @property
-    def center(self):
-        return (self.__center_x, self.__center_y)
-    
-    @center.setter
-    def center(self, point):
-        self.__center_x = point[0]
-        self.__center_y = point[1]
-    
-    @property
-    def vertex_points(self):
-        return self.get_vertex_points()
+  @property
+  def center(self):
+    return (self.__center_x, self.__center_y)
+  
+  @center.setter
+  def center(self, point):
+    self.__center_x = point[0]
+    self.__center_y = point[1]
+  
+  @property
+  def vertex_points(self):
+    return self.get_vertex_points()
 
 
 class InfiniteHexagonalCylinderYtype(Hexagon):
+  """
+  
+      surf_A   --> cell in - side
+      surf_B   --> cell in - side
+      surf_C   --> cell in - side
+      surf_D   --> cell in + side
+      surf_E   --> cell in + side
+      surf_F   --> cell in + side
+
+  """
+
+  def __init__(self, center_x, center_y, half_width, name="", boundary=None, isClone=False):
+      super().__init__(name=name, type_surface="inf hex_x", isClone=isClone)
+      self.__center_x = center_x
+      self.__center_y = center_y
+      self.__half_width = half_width
+      self.__boundary = boundary
+      self.__isClone = isClone
+
+      # self.__side = 2 * self.__half_width * math.tan(math.radians(30))
+      self.__radius = 2 * self.__half_width / math.sqrt(3)
+      self.__side = self.__radius
+      # self.__radius = self.__half_width * math.sqrt(5) / 2
+      self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
+
+  def __generate_surfaces(self):
+      """
+          To rotate the plane-Y we consider the rotation of a vector with unitary length
+          pointing in the positive x-direction
+      
+      """
+      rot_ref_B = (self.__center_x + self.__radius, self.__center_y)
+      rot_ref_C = (self.__center_x + self.__radius, self.__center_y)
+      rot_ref_E = (self.__center_x - self.__radius, self.__center_y)
+      rot_ref_F = (self.__center_x - self.__radius, self.__center_y)
+
+      _A = PlaneY(self.__center_y + self.__half_width, boundary=self.__boundary, isClone=self.__isClone)
+      _B = PlaneX(self.__center_x + self.__radius, boundary=self.__boundary, isClone=self.__isClone)
+      _C = PlaneX(self.__center_x + self.__radius, boundary=self.__boundary, isClone=self.__isClone)
+      _D = PlaneY(self.__center_y - self.__half_width, boundary=self.__boundary, isClone=self.__isClone)
+      _E = PlaneX(self.__center_x - self.__radius, boundary=self.__boundary, isClone=self.__isClone)
+      _F = PlaneX(self.__center_x - self.__radius, boundary=self.__boundary, isClone=self.__isClone)
+
+      _B.rotate(+30, rot_ref_B)
+      _C.rotate(-30, rot_ref_C)
+      _E.rotate(+30, rot_ref_E)
+      _F.rotate(-30, rot_ref_F)
+      
+      surfaces = [_A, _B, _C, _D, _E, _F ]
+
+      return surfaces
+  
+  def clone(self, center_x, center_y, clone_vector=None):
+      """
+          It clones the surface: same id, but in a new center
+      """
+      clone_hexagon = InfiniteHexagonalCylinderYtype(center_x, center_y, self.__half_width, boundary=self.__boundary, isClone=True)
+      clone_hexagon.surf_A.id = self.__surf_A.id
+      clone_hexagon.surf_B.id = self.__surf_B.id
+      clone_hexagon.surf_C.id = self.__surf_C.id
+      clone_hexagon.surf_D.id = self.__surf_D.id
+      clone_hexagon.surf_E.id = self.__surf_E.id
+      clone_hexagon.surf_F.id = self.__surf_F.id
+      clone_hexagon.id = super().id
+
+      return clone_hexagon
+
+  def translate(self, translation_vector):
+      x_tr, y_tr = translation_vector
+      
+      self.__center_x += x_tr
+      self.__center_y += y_tr
+
+      self.surf_A.translate(translation_vector)
+      self.surf_B.translate(translation_vector)
+      self.surf_C.translate(translation_vector)
+      self.surf_D.translate(translation_vector)
+      self.surf_E.translate(translation_vector)
+      self.surf_F.translate(translation_vector)
+
+      return 1
+  
+  def scale(self, scale_f):
+      new_half_width = self.__half_width * scale_f
+      plane_move = new_half_width - self.__half_width
+
+      self.__surf_A.translate((0,plane_move))
+      self.__surf_B.translate((plane_move,plane_move))
+      self.__surf_C.translate((plane_move,-plane_move))
+      self.__surf_D.translate((0,-plane_move))
+      self.__surf_E.translate((-plane_move,-plane_move))
+      self.__surf_F.translate((-plane_move,plane_move))
+
+      self.__half_width = new_half_width
+      self.__radius *= scale_f
+
+  def isPointNegativeSide(self, point):
+      x, y = point
+      try:
+          assert self.__surf_A.isPointNegativeSide(point)
+          assert self.__surf_B.isPointNegativeSide(point)
+          assert self.__surf_C.isPointNegativeSide(point)
+          assert self.__surf_D.isPointPositiveSide(point)
+          assert self.__surf_E.isPointPositiveSide(point)
+          assert self.__surf_F.isPointPositiveSide(point)
+          return True
+      except AssertionError:
+          return False
+  
+  def isPointPositiveSide(self, point):
+      x, y = point
+      try:
+          assert(self.isPointNegativeSide((x,y)))
+          return False
+      except AssertionError:
+          return True
+  
+  def evaluate_enclosed_volume(self):
+      return self.__half_width * self.__radius * 3
+  
+  def evaluate_surface_area(self):
+    return {
+      self.__surf_A.id: self.__radius,
+      self.__surf_B.id: self.__radius,
+      self.__surf_C.id: self.__radius,
+      self.__surf_D.id: self.__radius,
+      self.__surf_E.id: self.__radius,
+      self.__surf_F.id: self.__radius,
+    }
+
+  def get_surface_orientation(self):
+    return {
+      self.__surf_A.id: "A",
+      self.__surf_B.id: "B",
+      self.__surf_C.id: "C",
+      self.__surf_D.id: "D",
+      self.__surf_E.id: "E",
+      self.__surf_F.id: "F",
+    }
+
+  def get_surface_relation(self):
+    return {
+      self.__surf_A.id: self.__surf_A,
+      self.__surf_B.id: self.__surf_B,
+      self.__surf_C.id: self.__surf_C,
+      self.__surf_D.id: self.__surf_D,
+      self.__surf_E.id: self.__surf_E,
+      self.__surf_F.id: self.__surf_F,
+    }
+
+  def get_neutron_current_directions(self):
+    # surf A --> outward current = +1 --> inward current = -1
+    # surf B --> outward current = +1 --> inward current = -1
+    # surf C --> outward current = +1 --> inward current = -1
+    # surf D --> outward current = -1 --> inward current = +1
+    # surf E --> outward current = -1 --> inward current = +1
+    # surf F --> outward current = -1 --> inward current = +1
+    return {
+      self.__surf_A.id: {"inward": "-1", "outward": "1"},
+      self.__surf_B.id: {"inward": "-1", "outward": "1"},
+      self.__surf_C.id: {"inward": "-1", "outward": "1"},
+      self.__surf_D.id: {"inward": "1", "outward": "-1"},
+      self.__surf_E.id: {"inward": "1", "outward": "-1"},
+      self.__surf_F.id: {"inward": "1", "outward": "-1"}
+    }
+
+  def get_vertex_points(self):
+    points = [
+      (self.__center_x - 0.5*self.__radius, self.__surf_A.y0),    # vertex F - A    
+      (self.__center_x + 0.5*self.__radius, self.__surf_A.y0),    # vertex A - B
+      (self.__center_x + self.__radius, self.__center_y),         # vertex B - C
+      (self.__center_x + 0.5*self.__radius, self.__surf_D.y0),    # vertex C - D
+      (self.__center_x - 0.5*self.__radius, self.__surf_D.y0),    # vertex D - E
+      (self.__center_x - self.__radius, self.__center_y),         # vertex E - F
+    ]        
+    return points
+
+  def get_side_middle_points(self):
+    sx = round((math.cos(math.radians(30)) * self.__half_width),8)
+    sy = round(0.5 * self.__half_width,8)
+    points = [
+      (self.__center_x, self.__surf_A.y0),            # A
+      (self.__center_x + sx, self.__center_y + sy),   # B
+      (self.__center_x + sx, self.__center_y - sy),   # C
+      (self.__center_x, self.__surf_D.y0),            # D
+      (self.__center_x - sx, self.__center_y - sy),   # E
+      (self.__center_x - sx, self.__center_y + sy),   # F
+    ]
+    return points
+
+  def get_x_coord_in_line_y(self, y0):
     """
-    
-        surf_A   --> cell in - side
-        surf_B   --> cell in - side
-        surf_C   --> cell in - side
-        surf_D   --> cell in + side
-        surf_E   --> cell in + side
-        surf_F   --> cell in + side
+        
+    Returns a the x-coordinates x1 & x2
+    of a y_line crossing the hexagon
 
     """
 
-    def __init__(self, center_x, center_y, half_width, name="", boundary=None, isClone=False):
-        super().__init__(name=name, type_surface="inf hex_x", isClone=isClone)
-        self.__center_x = center_x
-        self.__center_y = center_y
-        self.__half_width = half_width
-        self.__boundary = boundary
-        self.__isClone = isClone
+    if y0 <= self.__center_y:
+      surf_f_point = round(self.__surf_F.useFunction(y0),8)
+      surf_b_point = round(self.__surf_B.useFunction(y0),8)
+      return surf_f_point, surf_b_point
+    elif y0 > self.__center_y:
+      surf_e_point = round(self.__surf_E.useFunction(y0),8)
+      surf_c_point = round(self.__surf_C.useFunction(y0),8)
+      return surf_e_point, surf_c_point
 
-        # self.__side = 2 * self.__half_width * math.tan(math.radians(30))
-        self.__radius = 2 * self.__half_width / math.sqrt(3)
-        self.__side = self.__radius
-        # self.__radius = self.__half_width * math.sqrt(5) / 2
-        self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
+  @property
+  def serpent_syntax_exact_position(self):
+    return f"surf {self.id} hexyc {self.__center_x} {self.__center_y} {self.__half_width}\n"
 
-    def __generate_surfaces(self):
-        """
-            To rotate the plane-Y we consider the rotation of a vector with unitary length
-            pointing in the positive x-direction
-        
-        """
-        rot_ref_B = (self.__center_x + self.__radius, self.__center_y)
-        rot_ref_C = (self.__center_x + self.__radius, self.__center_y)
-        rot_ref_E = (self.__center_x - self.__radius, self.__center_y)
-        rot_ref_F = (self.__center_x - self.__radius, self.__center_y)
+  @property
+  def serpent_syntax_standard_position(self):
+    return f"surf {self.id} hexyc {0.0000} {0.0000} {self.__half_width}\n"
 
-        _A = PlaneY(self.__center_y + self.__half_width, boundary=self.__boundary, isClone=self.__isClone)
-        _B = PlaneX(self.__center_x + self.__radius, boundary=self.__boundary, isClone=self.__isClone)
-        _C = PlaneX(self.__center_x + self.__radius, boundary=self.__boundary, isClone=self.__isClone)
-        _D = PlaneY(self.__center_y - self.__half_width, boundary=self.__boundary, isClone=self.__isClone)
-        _E = PlaneX(self.__center_x - self.__radius, boundary=self.__boundary, isClone=self.__isClone)
-        _F = PlaneX(self.__center_x - self.__radius, boundary=self.__boundary, isClone=self.__isClone)
+  @property
+  def radius(self):
+    return self.__radius
 
-        _B.rotate(+30, rot_ref_B)
-        _C.rotate(-30, rot_ref_C)
-        _E.rotate(+30, rot_ref_E)
-        _F.rotate(-30, rot_ref_F)
-        
-        surfaces = [_A, _B, _C, _D, _E, _F ]
+  @property
+  def boundary(self):
+    return self.__boundary
 
-        return surfaces
-    
-    def clone(self, center_x, center_y, clone_vector=None):
-        """
-            It clones the surface: same id, but in a new center
-        """
-        clone_hexagon = InfiniteHexagonalCylinderYtype(center_x, center_y, self.__half_width, boundary=self.__boundary, isClone=True)
-        clone_hexagon.surf_A.id = self.__surf_A.id
-        clone_hexagon.surf_B.id = self.__surf_B.id
-        clone_hexagon.surf_C.id = self.__surf_C.id
-        clone_hexagon.surf_D.id = self.__surf_D.id
-        clone_hexagon.surf_E.id = self.__surf_E.id
-        clone_hexagon.surf_F.id = self.__surf_F.id
-        clone_hexagon.id = super().id
+  @property
+  def surf_A(self):
+    return self.__surf_A
+  
+  @property
+  def surf_B(self):
+    return self.__surf_B
+  
+  @property
+  def surf_C(self):
+    return self.__surf_C
+  
+  @property
+  def surf_D(self):
+    return self.__surf_D
 
-        return clone_hexagon
+  @property
+  def surf_E(self):
+    return self.__surf_E
 
-    def translate(self, translation_vector):
-        x_tr, y_tr = translation_vector
-        
-        self.__center_x += x_tr
-        self.__center_y += y_tr
+  @property
+  def surf_F(self):
+    return self.__surf_F
+  
+  @property
+  def half_width(self):
+    return self.__half_width
 
-        self.surf_A.translate(translation_vector)
-        self.surf_B.translate(translation_vector)
-        self.surf_C.translate(translation_vector)
-        self.surf_D.translate(translation_vector)
-        self.surf_E.translate(translation_vector)
-        self.surf_F.translate(translation_vector)
+  @property
+  def vertex_points(self):
+    return self.get_vertex_points()
 
-        return 1
-    
-    def scale(self, scale_f):
-        new_half_width = self.__half_width * scale_f
-        plane_move = new_half_width - self.__half_width
-
-        self.__surf_A.translate((0,plane_move))
-        self.__surf_B.translate((plane_move,plane_move))
-        self.__surf_C.translate((plane_move,-plane_move))
-        self.__surf_D.translate((0,-plane_move))
-        self.__surf_E.translate((-plane_move,-plane_move))
-        self.__surf_F.translate((-plane_move,plane_move))
-
-        self.__half_width = new_half_width
-        self.__radius *= scale_f
-
-    def isPointNegativeSide(self, point):
-        x, y = point
-        try:
-            assert self.__surf_A.isPointNegativeSide(point)
-            assert self.__surf_B.isPointNegativeSide(point)
-            assert self.__surf_C.isPointNegativeSide(point)
-            assert self.__surf_D.isPointPositiveSide(point)
-            assert self.__surf_E.isPointPositiveSide(point)
-            assert self.__surf_F.isPointPositiveSide(point)
-            return True
-        except AssertionError:
-            return False
-    
-    def isPointPositiveSide(self, point):
-        x, y = point
-        try:
-            assert(self.isPointNegativeSide((x,y)))
-            return False
-        except AssertionError:
-            return True
-    
-    def evaluate_enclosed_volume(self):
-        return self.__half_width * self.__radius * 3
-    
-    def evaluate_surface_area(self):
-        return {
-            self.__surf_A.id: self.__radius,
-            self.__surf_B.id: self.__radius,
-            self.__surf_C.id: self.__radius,
-            self.__surf_D.id: self.__radius,
-            self.__surf_E.id: self.__radius,
-            self.__surf_F.id: self.__radius,
-        }
-
-    def get_surface_orientation(self):
-        return {
-            self.__surf_A.id: "A",
-            self.__surf_B.id: "B",
-            self.__surf_C.id: "C",
-            self.__surf_D.id: "D",
-            self.__surf_E.id: "E",
-            self.__surf_F.id: "F",
-        }
-
-    def get_surface_relation(self):
-        return {
-            self.__surf_A.id: self.__surf_A,
-            self.__surf_B.id: self.__surf_B,
-            self.__surf_C.id: self.__surf_C,
-            self.__surf_D.id: self.__surf_D,
-            self.__surf_E.id: self.__surf_E,
-            self.__surf_F.id: self.__surf_F,
-        }
-
-    def get_neutron_current_directions(self):
-        # surf A --> outward current = +1 --> inward current = -1
-        # surf B --> outward current = +1 --> inward current = -1
-        # surf C --> outward current = +1 --> inward current = -1
-        # surf D --> outward current = -1 --> inward current = +1
-        # surf E --> outward current = -1 --> inward current = +1
-        # surf F --> outward current = -1 --> inward current = +1
-        return {
-            self.__surf_A.id: {"inward": "-1", "outward": "1"},
-            self.__surf_B.id: {"inward": "-1", "outward": "1"},
-            self.__surf_C.id: {"inward": "-1", "outward": "1"},
-            self.__surf_D.id: {"inward": "1", "outward": "-1"},
-            self.__surf_E.id: {"inward": "1", "outward": "-1"},
-            self.__surf_F.id: {"inward": "1", "outward": "-1"}
-        }
-
-    def get_vertex_points(self):
-        points = [
-            (self.__center_x - 0.5*self.__radius, self.__surf_A.y0),    # vertex F - A    
-            (self.__center_x + 0.5*self.__radius, self.__surf_A.y0),    # vertex A - B
-            (self.__center_x + self.__radius, self.__center_y),         # vertex B - C
-            (self.__center_x + 0.5*self.__radius, self.__surf_D.y0),    # vertex C - D
-            (self.__center_x - 0.5*self.__radius, self.__surf_D.y0),    # vertex D - E
-            (self.__center_x - self.__radius, self.__center_y),         # vertex E - F
-        ]        
-        return points
-
-    def get_side_middle_points(self):
-        sx = round((math.cos(math.radians(30)) * self.__half_width),8)
-        sy = round(0.5 * self.__half_width,8)
-        points = [
-            (self.__center_x, self.__surf_A.y0),            # A
-            (self.__center_x + sx, self.__center_y + sy),   # B
-            (self.__center_x + sx, self.__center_y - sy),   # C
-            (self.__center_x, self.__surf_D.y0),            # D
-            (self.__center_x - sx, self.__center_y - sy),   # E
-            (self.__center_x - sx, self.__center_y + sy),   # F
-        ]
-        return points
-
-    def get_x_coord_in_line_y(self, y0):
-        """
-            
-            Returns a the x-coordinates x1 & x2
-            of a y_line crossing the hexagon
-
-        """
-    
-        if y0 <= self.__center_y:
-            surf_f_point = round(self.__surf_F.useFunction(y0),8)
-            surf_b_point = round(self.__surf_B.useFunction(y0),8)
-            return surf_f_point, surf_b_point
-        elif y0 > self.__center_y:
-            surf_e_point = round(self.__surf_E.useFunction(y0),8)
-            surf_c_point = round(self.__surf_C.useFunction(y0),8)
-            return surf_e_point, surf_c_point
-        pass
-
-    @property
-    def serpent_syntax_exact_position(self):
-        return f"surf {self.id} hexyc {self.__center_x} {self.__center_y} {self.__half_width}\n"
-
-    @property
-    def serpent_syntax_standard_position(self):
-        return f"surf {self.id} hexyc {0.0000} {0.0000} {self.__half_width}\n"
-
-    @property
-    def radius(self):
-        return self.__radius
-
-    @property
-    def boundary(self):
-        return self.__boundary
-
-    @property
-    def surf_A(self):
-        return self.__surf_A
-    
-    @property
-    def surf_B(self):
-        return self.__surf_B
-    
-    @property
-    def surf_C(self):
-        return self.__surf_C
-    
-    @property
-    def surf_D(self):
-        return self.__surf_D
-
-    @property
-    def surf_E(self):
-        return self.__surf_E
-
-    @property
-    def surf_F(self):
-        return self.__surf_F
-    
-    @property
-    def half_width(self):
-        return self.__half_width
-
-    @property
-    def vertex_points(self):
-        return self.get_vertex_points()
-
-    @property
-    def center(self):
-        return self.__center_x, self.__center_y
-    
-    @center.setter
-    def center(self, point):
-        self.__center_x = point[0]
-        self.__center_y = point[1]
+  @property
+  def center(self):
+    return self.__center_x, self.__center_y
+  
+  @center.setter
+  def center(self, point):
+    self.__center_x = point[0]
+    self.__center_y = point[1]
 
 
-    @property
-    def center_x(self):
-        return self.__center_x
+  @property
+  def center_x(self):
+    return self.__center_x
 
-    @property
-    def center_y(self):
-        return self.__center_y
-    
+  @property
+  def center_y(self):
+    return self.__center_y
+  
 
 def reset_surface_counter():
-    surf_ids = []
-    return 0
-        
+  surf_ids = []
+  return 0
+      

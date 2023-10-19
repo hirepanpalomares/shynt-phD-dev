@@ -129,7 +129,6 @@ class PinCellMesh(GlobalMesh):
       map_nodes.append(map_row)
     return coarse_nodes, np.array(map_nodes)
   
-  
   def __get_pin_cell_coarse_node(self, pin_cell):
     
     def find_fuel_cell(cells):
@@ -216,8 +215,7 @@ class PinCellMesh(GlobalMesh):
     return cells, geometry_info
 
 
-
-class SquareMesh(GlobalMesh):
+class SquareGridMesh(GlobalMesh):
     
 
   def __init__(self, cell):
@@ -237,12 +235,12 @@ class SquareMesh(GlobalMesh):
   def __create_nodes_hex_assem(self):
 
     self.type_mesh = "square_hex_assembly"
-    # Getting node map -----------------------------------------------------------------
+    # Getting node map --------------------------------------------------------
     map_pins = self.__get_node_map()
     
     clean_map = self.__get_clean_map()
     # print_map_node = [print(row) for row in map_pins]
-    print("-"*100)
+    # print("-"*100)
     # print_map_node = [print(row) for row in clean_map]
     first_pin_id = clean_map[1][1][0]
     first_pin = self.universe.cells[first_pin_id]
@@ -261,7 +259,7 @@ class SquareMesh(GlobalMesh):
     self.coarse_nodes_map = self.__get_map_mesh(clean_map)
     print("self.coarse_nodes_map: ")
     print(self.coarse_nodes_map)
-    print("-"*100)
+    # print("-"*100)
     # print(self.coarse_nodes_map)
     self.__symmetry = self.__get_symmetry_hex_assem()
     self.coarse_nodes = self.__get_coarse_nodes_hex_assem(fuel_mat, coolant_mat, radius_fuel)
@@ -769,7 +767,9 @@ class SquareMesh(GlobalMesh):
     } 
     return cells, geometry_info
   
-  def __get_rectangle_content_side_edge(self, x1, x2, y1, y2, coolant_mat, fuel_mat, radius):
+  def __get_rectangle_content_side_edge(
+    self, x1, x2, y1, y2, coolant_mat, fuel_mat, radius
+  ):
     rectangle_surf = InfiniteRectangleCylinderZ(x1, x2, y1, y2)
     rectangle_height = y2 - y1
     rectangle_width = x2 - x1
@@ -907,7 +907,9 @@ class SquareMesh(GlobalMesh):
 
     return cells, geometry_info
 
-  def __get_rectangle_content_inside(self, x1, x2, y1, y2, coolant_mat, fuel_mat, radius):
+  def __get_rectangle_content_inside(self, 
+    x1, x2, y1, y2, coolant_mat, fuel_mat, radius
+  ):
     coolant_mat_1 = coolant_mat
     coolant_mat_2 = coolant_mat
     fuel_mat_1 = fuel_mat
@@ -1025,7 +1027,9 @@ class SquareMesh(GlobalMesh):
     } 
     return cells, geometry_info
 
-  def __get_rectangle_content_hex_pin(self, x1, x2, y1, y2, coolant_mat, fuel_mat, radius, outer_hex):
+  def __get_rectangle_content_hex_pin(self, 
+    x1, x2, y1, y2, coolant_mat, fuel_mat, radius, outer_hex
+  ):
     rectangle_surf = InfiniteRectangleCylinderZ(x1, x2, y1, y2)
     rectangle_height = y2 - y1
     rectangle_width = x2 - x1
@@ -1136,7 +1140,7 @@ class SquareMesh(GlobalMesh):
 
 
 
-class SquareMesh_3x3_Assem_no_J_share(GlobalMesh):
+class SquareGridMesh_no_J_share(GlobalMesh):
     
 
   def __init__(self, cell):
@@ -1155,12 +1159,12 @@ class SquareMesh_3x3_Assem_no_J_share(GlobalMesh):
   def __create_nodes_hex_assem(self):
 
     self.type_mesh = "square_hex_assembly"
-    # Getting node map -----------------------------------------------------------------
+    # Getting node map --------------------------------------------------------
     map_pins = self.__get_node_map()
     
     clean_map = self.__get_clean_map()
     # print_map_node = [print(row) for row in map_pins]
-    print("-"*100)
+    # print("-"*100)
     # print_map_node = [print(row) for row in clean_map]
     first_pin_id = clean_map[1][1][0]
     first_pin = self.universe.cells[first_pin_id]
@@ -1173,8 +1177,8 @@ class SquareMesh_3x3_Assem_no_J_share(GlobalMesh):
     coolant_mat = no_fuel[0].content
     
     outer_hex = super().cell.region.surface    
-    a = [print(row) for row in clean_map]
-    print("--"*70)
+    # a = [print(row) for row in clean_map]
+    # print("--"*70)
     third_pin_id = clean_map[2][1][0]
     third_pin = self.universe.cells[third_pin_id]
     # print("----------------------:   ",third_pin.region.surface.center)
@@ -1188,9 +1192,9 @@ class SquareMesh_3x3_Assem_no_J_share(GlobalMesh):
     ]
     self.points_mesh = self.__get_rectangles_from_mesh_coord(x_div, y_div)#, outer_hex, clean_map)
     self.coarse_nodes_map = self.__get_map_mesh(clean_map)
-    print("self.coarse_nodes_map: ")
-    print(self.coarse_nodes_map)
-    print("--"*70)
+    # print("self.coarse_nodes_map: ")
+    # print(self.coarse_nodes_map)
+    # print("--"*70)
 
     # print(self.coarse_nodes_map)
     self.__symmetry = self.__get_symmetry_hex_assem()
@@ -1238,10 +1242,10 @@ class SquareMesh_3x3_Assem_no_J_share(GlobalMesh):
         col for col in row if col != 0
       ] for row in self.coarse_nodes_map
     ]
-    print("--"*70)
-    print("self.__clean_mesh_map")
-    print_clean_mesh_map = [print(row) for row in self.__clean_mesh_map]
-    print("--"*70)
+    # print("--"*70)
+    # print("self.__clean_mesh_map")
+    # print_clean_mesh_map = [print(row) for row in self.__clean_mesh_map]
+    # print("--"*70)
     type_1 = self.__clean_mesh_map[0][0]  # 1
     type_2 = self.__clean_mesh_map[0][1]  # 2
     type_3 = self.__clean_mesh_map[1][0]  # 5
@@ -1377,9 +1381,9 @@ class SquareMesh_3x3_Assem_no_J_share(GlobalMesh):
           geometry_info["surfaces_for_detectors"]["boundary_guide_inv"] = new_guide_inv
 
 
-          print(node_id, geometry_info["surfaces_for_detectors"]["boundary_guide"])
-          print(node_id, geometry_info["surfaces_for_detectors"]["boundary_surfaces_areas"])
-          print()
+          # print(node_id, geometry_info["surfaces_for_detectors"]["boundary_guide"])
+          # print(node_id, geometry_info["surfaces_for_detectors"]["boundary_surfaces_areas"])
+          # print()
           # Now with these cells create a universe 
           rectangle_universe = Universe(name=f"rectangle_coarse_node_cell_{node_id}")
           rectangle_universe.cells = rectangle_cells

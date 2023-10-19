@@ -93,3 +93,27 @@ def read_detectors_data(det_inputs):
             # print(file_.detectors_relation.keys())
 
     return coarse_node_scores, detector_relation
+
+
+
+
+def read_detectors_data_new(det_inputs):
+  """For the hardcoded data of the big assembly
+  """
+  coarse_node_scores = {}
+  for id_, inp in det_inputs.items():
+    # id_ is a coarse node identifier
+    coarse_node_scores[id_] = {
+      
+    }
+    
+    for file_ in inp:
+      det_file_abs_name = file_ + "_det0.m"
+      # print(det_file_name)
+      file_data = serpentTools.read(det_file_abs_name)
+      detectors_data = file_data.detectors
+      
+      coarse_node_scores[id_].update(detectors_data)
+
+
+  return coarse_node_scores

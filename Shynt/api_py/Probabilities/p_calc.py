@@ -452,7 +452,10 @@ def get_surface_counts_lessDet(scores, det_relation, energy, regions, surfaces):
 
 
 
-def calculate_probabilities_main_nodes(det_inputs, mesh_info, coarse_nodes, fine_nodes, energy_groups, coarse_node_scores, detector_relation):                    
+def calculate_probabilities_main_nodes(
+    det_inputs, mesh_info, coarse_nodes, fine_nodes, energy_groups,
+    coarse_node_scores, detector_relation
+):                    
     """
         # TODO: The number of detectors can be reduced (see bellow)
 
@@ -563,4 +566,3 @@ def calculate_probabilities_main_nodes(det_inputs, mesh_info, coarse_nodes, fine
 
     return probabilities, uncertainties
     
-        

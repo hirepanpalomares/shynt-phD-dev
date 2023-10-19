@@ -10,12 +10,11 @@ from Shynt.api_py.materials import Material
 
 class MeshInfo:
 
-  def __init__(self, model_cell):
-    self.__coarse_nodes = model_cell.global_mesh.coarse_nodes
-    self.__fine_nodes = model_cell.local_mesh.fine_nodes
-    self.coarse_nodes_map = model_cell.global_mesh.coarse_nodes_map
+  def __init__(self, model_cell=None):
+    self.coarse_nodes = {}
+    self.fine_nodes = {}
+    self.coarse_nodes_map = {}
     # ------------------------------------------------------------
-    self.coarse_order = list(self.__coarse_nodes.keys())
     self.all_regions_order = []
     self.all_surfaces_order = []
     self.all_regions_vol = {}
@@ -29,20 +28,27 @@ class MeshInfo:
     self.region_type_rel = {}
     self.region_type_rel_switched = {}
     self.equal_nodes = {}
+    self.surface_twins = {}
     self.type_system = ""
-    if isinstance(model_cell.region.surface, InfiniteSquareCylinderZ):
-      self.type_system = "square"
-    elif isinstance(model_cell.region.surface, InfiniteHexagonalCylinderXtype):
-      self.type_system = "hexagonal"
-    elif isinstance(model_cell.region.surface, InfiniteHexagonalCylinderYtype):
-      self.type_system = "hexagonal"
 
-    self.__get_volume_and_areas()
-    self.__get_coarse_to_fine_rel_info()
-    self.__get_region_content_relation()
-    self.__equal_nodes()
-    self.__equal_regions()
-    self.__equal_surfaces()
+    self.coarse_order = list(self.coarse_nodes.keys())
+    if model_cell is not None:
+      self.__coarse_nodes = model_cell.global_mesh.coarse_nodes
+      self.__fine_nodes = model_cell.local_mesh.fine_nodes
+      self.coarse_nodes_map = model_cell.global_mesh.coarse_nodes_map
+      if isinstance(model_cell.region.surface, InfiniteSquareCylinderZ):
+        self.type_system = "square"
+      elif isinstance(model_cell.region.surface, InfiniteHexagonalCylinderXtype):
+        self.type_system = "hexagonal"
+      elif isinstance(model_cell.region.surface, InfiniteHexagonalCylinderYtype):
+        self.type_system = "hexagonal"
+
+    # self.__get_volume_and_areas()
+    # self.__get_coarse_to_fine_rel_info()
+    # self.__get_region_content_relation()
+    # self.__equal_nodes()
+    # self.__equal_regions()
+    # self.__equal_surfaces()
     db = True
 
   def __get_volume_and_areas(self):
@@ -73,7 +79,7 @@ class MeshInfo:
       have what material and what is the region of the material
 
       This is used to know which regions correspond to each other
-      between two coarse nodes that are of the same type
+      between two coarse nodes of the same type
         
     """
     for n_id, coarse_node in self.__coarse_nodes.items():
@@ -87,8 +93,6 @@ class MeshInfo:
         self.region_type_rel[n_id][material_name + f"_{region_cell.id}"] = r_id
         self.region_type_rel_switched[n_id][r_id] = material_name  + f"_{region_cell.id}"
               
-    
-
   def __equal_nodes(self):
     """
       Method to get all the nodes that are of the same type
@@ -104,7 +108,6 @@ class MeshInfo:
       for node_id in bin_:
         self.equal_nodes_rel[node_id] = head
   
-
   def __equal_regions(self):
       """
           The criteria for which a region is equal to other
@@ -119,8 +122,6 @@ class MeshInfo:
               reg_eq = type_regs[r]
               self.equivalence_region_rel[reg_id] = reg_eq
       
-
-
   def __equal_surfaces(self):
       """
           The criteria for which a surface is equal to other
@@ -145,7 +146,3 @@ class MeshInfo:
 
           self.equivalence_surface_rel.update(surface_rel)
       
-
-
-
-

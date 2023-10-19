@@ -1,7 +1,53 @@
 import numpy as np
 
 
+def getM_matrix_easier(mesh_info):
+  surface_twins = mesh_info.surface_twins
+  all_surfaces = mesh_info.all_surfaces_order
+
+  numSurfaces = len(all_surfaces)
+  surfaces_indexes = {all_surfaces[s]: s for s in range(numSurfaces)}
+
+  matrixM_shape = (numSurfaces, numSurfaces)
+  matrixM = np.zeros(matrixM_shape)
+
+  for s_id in all_surfaces:
+    twin_surf = surface_twins[s_id]
+    if twin_surf is not None:
+      matrixM[s_id][twin_surf] = 1
+      matrixM[twin_surf][s_id] = 1
+
+    else:
+      matrixM[s_id][s_id] = 1
+
+  return matrixM, surface_twins
+
+
 def getM_matrix(global_mesh, mesh_info):
+  """
+  Function to obtain the matrix M for the whole system
+  The procedure to calculate this matrix will be different
+  depending on the shape of the mesh.
+
+  Should twins be provided before? In the creation of the 
+  GlobalMesh for example 
+
+  Parameters
+  ----------
+  global_mesh : GlobalMesh
+    Global mesh class
+  mesh_info : MeshInfo
+    Mesh info class
+
+  Returns
+  -------
+  matrixM : np.array()
+    Matrix of the topological relationship between the surfaces
+    of the gobal nodes is expressed
+  twins : dict
+    Dictionary with the surfaces that share two global nodes.
+
+  """
   coarse_nodes = global_mesh.coarse_nodes
   all_surfaces = mesh_info.all_surfaces_order
   coarse_nodes_map = mesh_info.coarse_nodes_map
@@ -12,18 +58,18 @@ def getM_matrix(global_mesh, mesh_info):
 
   matrixM_shape = (numSurfaces, numSurfaces)
   matrixM = np.zeros(matrixM_shape)
-  
 
   numRows, numCols = coarse_nodes_map.shape
   
   surface_checked = {s: False for s in all_surfaces}
+  twins = {}
   for y in range(numRows):
     for x in range(numCols):
       n_id = coarse_nodes_map[y][x]
       if n_id != 0:
         node = coarse_nodes[n_id]
 
-        print(node.geometry_info["type"])
+        # print(node.geometry_info["type"])
         surface_directions = node.surface_directions
         surfaces_node =  node.surface_ids
         dbPoint = True
@@ -46,9 +92,14 @@ def getM_matrix(global_mesh, mesh_info):
                 x, y, numRows, numCols, node.geometry_info["type"]
               )
               matrixM = write_one_hex_square_mesh(surf_id, n_id, twin_surfs, surfaces_indexes, matrixM, contiguous_nodes, coarse_nodes, direction) # write 
+
               for tws in twin_surfs:
                 if tws:
+                  twins[surf_id] = tws
+                  twins[tws] = surf_id
                   surface_checked[tws] = True
+                else:
+                  twins[surf_id] = surf_id
             if type_mesh == "square_pin_mesh":
               twin_surf = twin_surface_squared_lattice(
                 n_id, coarse_nodes_map, 
@@ -60,34 +111,34 @@ def getM_matrix(global_mesh, mesh_info):
           continue
   
   
-  return matrixM
+  return matrixM, twins
 
 
 def twin_surface_squared_lattice(n_id, coarse_node_map, coarse_nodes, direction, x, y, numRows, numCols):
     """
-        Procedure to find a twin surface:
+    Procedure to find a twin surface:
 
-            1. Check direction
-            2. Calculate next cell position in the map towards such direction
-            3a. If the position is valid (not out of the map indexes):
-                4a. Get the id of the contiguous coarse node
-                4b. Get the coarse corresponding coarse node
-                4c. Get directions of the corresponding corse node
-                4d. Get the twin surface id based on the direction towrds the original node
-            3b. Else:
-                4b. return None (This mens that the direction corresponds to a boundary of the system)
+        1. Check direction
+        2. Calculate next cell position in the map towards such direction
+        3a. If the position is valid (not out of the map indexes):
+          4a. Get the id of the contiguous coarse node
+          4b. Get the coarse corresponding coarse node
+          4c. Get directions of the corresponding corse node
+          4d. Get the twin surface id based on the direction towrds the original node
+        3b. Else:
+          4b. return None (This mens that the direction corresponds to a boundary of the system)
     """
     new_position_transformations = {
-        "top": (y-1, x),
-        "right": (y, x+1),
-        "bottom": (y+1, x),
-        "left": (y, x-1),
+      "top": (y-1, x),
+      "right": (y, x+1),
+      "bottom": (y+1, x),
+      "left": (y, x-1),
     }
     direction_mirror = {
-        "top": "bottom",
-        "right": "left",
-        "bottom": "top",
-        "left": "right",
+      "top": "bottom",
+      "right": "left",
+      "bottom": "top",
+      "left": "right",
     }
     
     new_pos = new_position_transformations[direction] # position format (row, col)
@@ -338,7 +389,6 @@ def write_one_perfect_square_mesh(surf, surfaces_indexes, mM, tws):
   return mM
 
 
-
 def calculate_surf_to_surf_tw_proportion(x1_n, x2_n, x1_tw_n, x2_tw_n):
   """
     Check Klee's Algorithm
@@ -363,7 +413,6 @@ def calculate_surf_to_surf_tw_proportion(x1_n, x2_n, x1_tw_n, x2_tw_n):
   #   s_to_stw = 0
   #   stw_to_s = 0 
   return (s_to_stw, stw_to_s)
-
 
 
 def calculate_matching_segment(points):

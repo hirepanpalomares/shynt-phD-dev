@@ -44,16 +44,16 @@ class MaterialMesh(FineMesh):
   
   def get_material_nodes(self, coarse_node):
     """
-        Method to extract the fine nodes by material from a given cell
-        
-        Parameters
-        -------------------------------------------------------------
-        node        :   Cell type filled with universe or material
-        -------------------------------------------------------------
+      Method to extract the fine nodes by material from a given cell
+      
+      Parameters
+      -------------------------------------------------------------
+      node        :   Cell type filled with universe or material
+      -------------------------------------------------------------
 
-        returns Array(node_1, node_2, ..., node_N)
-        
-        each node is a Cell type
+      returns Array(node_1, node_2, ..., node_N)
+      
+      each node is a Cell type
     """
     fill = coarse_node.cell.content
     if isinstance(fill, Universe):
@@ -62,14 +62,14 @@ class MaterialMesh(FineMesh):
       fine_nodes = {}
       universe_cells = fill.cells
       for c_id, cell in universe_cells.items():
-          fine_node = FineNode(cell)
-          fine_nodes[c_id] = fine_node
+        fine_node = FineNode(cell)
+        fine_nodes[c_id] = fine_node
       return fine_nodes
     elif isinstance(fill, Material):
       print("Material here")
       fine_node = FineNode(coarse_node.cell)
       fine_nodes = {
-          coarse_node.cell.id: fine_node
+        coarse_node.cell.id: fine_node
       }
       return fine_nodes
     else:
