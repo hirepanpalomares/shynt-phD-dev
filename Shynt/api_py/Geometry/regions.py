@@ -117,11 +117,12 @@ class Region:
           surfaces_sides.update(self.child2.destructure_region())
           return surfaces_sides
 
-  def translate(self, trans_vector):
+  def translate(self, trans_vector, surfs_translated):
     if self.child1 is not None:  
-      self.child1.translate(trans_vector)
+      surfs_translated = self.child1.translate(trans_vector, surfs_translated)
     if self.child2 is not None:  
-      self.child2.translate(trans_vector)
+      surfs_translated = self.child2.translate(trans_vector, surfs_translated)
+    return surfs_translated
   
   def scale(self, scale_f):
       self.child1.scale(scale_f)
@@ -211,102 +212,107 @@ class Region:
 
 class SurfaceSide(Region):
 
-    def __init__(self, surface, side):
-        self.surface = surface
-        self.side = side
+  def __init__(self, surface, side):
+      self.surface = surface
+      self.side = side
 
-    def clone(self, new_center_x, new_center_y, clone_vector=None):
-        surface_clone = self.surface.clone(new_center_x, new_center_y, clone_vector=clone_vector)
-        if self.side == "-":
-            return -surface_clone
-        elif self.side == "+":
-            return +surface_clone
-        else:
-            raise SystemError
-
-    def __and__(self, other):
-        """
-        Class overloading operator __and__
-
-        This overwrites the parent class method so it performs the
-        boolean addition between two SurfaceSide classes.
-
-        It returns an instance of the Region Class by merging the euclidean
-        space between the two instances 'self' and 'other'
-
-        Parameters
-        ---------------------------------------------------------------
-        self        :   It is an instance of the class SurfaceSide
-        other       :   It is an instance of the class SurfaceSide
-        ---------------------------------------------------------------
-        
-        
-        
-        """
-        
-        return Region(self, other, operation="and")
-    
-    def encloses(self, other):
-        others_vertex = other.surface.vertex_points
-        for point in others_vertex:
-            if not self.surface.isPointNegativeSide(point):
-                return False
-        return True
-    
-    def isPointInsideRegion(self, point):
-        if self.side == "-":
-            return self.surface.isPointNegativeSide(point)
-        elif self.side == "+":
-            return self.surface.isPointPositiveSide(point)
-
-    def translate(self, trans_vector):
-      self.surface.translate(trans_vector)
-    
-    def scale(self, scale_f):
-      self.surface.scale(scale_f)
-
-    def get_point_in_region(self, percentage=0.1):
-      from Shynt.api_py.Geometry.surfaces import (
-        InfiniteCylinderZ, InfiniteSquareCylinderZ
+  def clone(self, new_center_x, new_center_y, clone_vector=None):
+      surface_clone = self.surface.clone(
+          new_center_x, new_center_y, clone_vector=clone_vector
       )
-      from Shynt.api_py.Geometry.surfaces import (
-        InfiniteHexagonalCylinderXtype, InfiniteHexagonalCylinderYtype
-      )
-      point = None
       if self.side == "-":
-          if isinstance(self.surface, InfiniteCylinderZ):
-              dx = self.surface.radius * (1-percentage)
-              point = (self.surface.center_x + dx, self.surface.center_y)
-              # point = self.surface.center
-          elif isinstance(self.surface, InfiniteSquareCylinderZ):
-              dx = self.surface.half_width * (1-percentage)
-              point = (self.surface.center_x + dx, self.surface.center_y)
-              # point = self.surface.center
-          elif isinstance(self.surface, InfiniteHexagonalCylinderXtype):
-              dx = self.surface.half_width * (1-percentage)
-              point = (self.surface.center_x + dx, self.surface.center_y)
-          elif isinstance(self.surface, InfiniteHexagonalCylinderYtype):
-              dy = self.surface.half_width * (1-percentage)
-              point = (self.surface.center_x, self.surface.center_y + dy)
+          return -surface_clone
       elif self.side == "+":
-          if isinstance(self.surface, InfiniteCylinderZ):
-              dx = self.surface.radius * (1+percentage)
-              point = (self.surface.center_x + dx, self.surface.center_y)
-              # point = self.surface.center
-          elif isinstance(self.surface, InfiniteSquareCylinderZ):
-              dx = self.surface.half_width * (1+percentage)
-              point = (self.surface.center_x + dx, self.surface.center_y)
-              # point = self.surface.center
-          elif isinstance(self.surface, InfiniteHexagonalCylinderXtype):
-              dx = self.surface.half_width * (1+percentage)
-              point = (self.surface.center_x + dx, self.surface.center_y)
-          elif isinstance(self.surface, InfiniteHexagonalCylinderYtype):
-              dy = self.surface.half_width * (1+percentage)
-              point = (self.surface.center_x, self.surface.center_y + dy)
-      return point
-    
-    @property
-    def center(self):
-      return self.surface.center
+          return +surface_clone
+      else:
+          raise SystemError
+
+  def __and__(self, other):
+      """
+      Class overloading operator __and__
+
+      This overwrites the parent class method so it performs the
+      boolean addition between two SurfaceSide classes.
+
+      It returns an instance of the Region Class by merging the euclidean
+      space between the two instances 'self' and 'other'
+
+      Parameters
+      ---------------------------------------------------------------
+      self        :   It is an instance of the class SurfaceSide
+      other       :   It is an instance of the class SurfaceSide
+      ---------------------------------------------------------------
+      
+      
+      
+      """
+      
+      return Region(self, other, operation="and")
+  
+  def encloses(self, other):
+      others_vertex = other.surface.vertex_points
+      for point in others_vertex:
+          if not self.surface.isPointNegativeSide(point):
+              return False
+      return True
+  
+  def isPointInsideRegion(self, point):
+      if self.side == "-":
+          return self.surface.isPointNegativeSide(point)
+      elif self.side == "+":
+          return self.surface.isPointPositiveSide(point)
+
+  def translate(self, trans_vector, surfs_translated):
+    if self.surface.id not in surfs_translated:
+      self.surface.translate(trans_vector)
+      surfs_translated.append(self.surface.id)
+    return surfs_translated
+  
+  def scale(self, scale_f):
+    self.surface.scale(scale_f)
+
+  def get_point_in_region(self, percentage=0.1):
+    from Shynt.api_py.Geometry.surfaces import (
+      InfiniteCylinderZ, InfiniteSquareCylinderZ
+    )
+    from Shynt.api_py.Geometry.surfaces import (
+      InfiniteHexagonalCylinderXtype, InfiniteHexagonalCylinderYtype
+    )
+    point = None
+    if self.side == "-":
+        if isinstance(self.surface, InfiniteCylinderZ):
+            dx = self.surface.radius * (1-percentage)
+            point = (self.surface.center_x + dx, self.surface.center_y)
+            # point = self.surface.center
+        elif isinstance(self.surface, InfiniteSquareCylinderZ):
+            dx = self.surface.half_width * (1-percentage)
+            point = (self.surface.center_x + dx, self.surface.center_y)
+            # point = self.surface.center
+        elif isinstance(self.surface, InfiniteHexagonalCylinderXtype):
+            dx = self.surface.half_width * (1-percentage)
+            point = (self.surface.center_x + dx, self.surface.center_y)
+        elif isinstance(self.surface, InfiniteHexagonalCylinderYtype):
+            dy = self.surface.half_width * (1-percentage)
+            point = (self.surface.center_x, self.surface.center_y + dy)
+    elif self.side == "+":
+        if isinstance(self.surface, InfiniteCylinderZ):
+            dx = self.surface.radius * (1+percentage)
+            point = (self.surface.center_x + dx, self.surface.center_y)
+            # point = self.surface.center
+        elif isinstance(self.surface, InfiniteSquareCylinderZ):
+            dx = self.surface.half_width * (1+percentage)
+            point = (self.surface.center_x + dx, self.surface.center_y)
+            # point = self.surface.center
+        elif isinstance(self.surface, InfiniteHexagonalCylinderXtype):
+            dx = self.surface.half_width * (1+percentage)
+            point = (self.surface.center_x + dx, self.surface.center_y)
+        elif isinstance(self.surface, InfiniteHexagonalCylinderYtype):
+            dy = self.surface.half_width * (1+percentage)
+            point = (self.surface.center_x, self.surface.center_y + dy)
+    return point
+  
+  @property
+  def center(self):
+    return self.surface.center
 
 

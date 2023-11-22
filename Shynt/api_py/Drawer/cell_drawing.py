@@ -23,13 +23,14 @@ from Shynt.api_py.Drawer.region_dr import draw_region
 from Shynt.api_py.Geometry.surfaces import (
   InfiniteHexagonalCylinderXtype,
   InfiniteHexagonalCylinderYtype,
-  InfiniteSquareCylinderZ
+  InfiniteSquareCylinderZ,
+  InfiniteCylinderZ
 )
 
 from Shynt.api_py.Drawer.surface_drawing import (
   draw_square, 
   draw_surface, 
-  draw_square_from_points, 
+  draw_polygon, 
   draw_line,
   write_text
 )
@@ -37,28 +38,30 @@ from Shynt.api_py.Drawer.surface_drawing import (
 
 
 
-class PlotAssembly:
+class PlotLattice:
+  """Class to plot an assembly
 
+  """
   def __init__(self, 
-    cell, dimensions=(1000,1000), name="", rectangle_mesh={},
-    y_div=[], x_div=[], rectangle_linewidth=5
-  ) -> None:
+    cell, dimensions=(2000,2000), name="", mesh={},
+  ):
     self.__mainCell = cell
     self.__imageDimensions = dimensions
     self.__imageName = name
-    self.__rectangles = rectangle_mesh
-    self.__rectangle_linewidth = rectangle_linewidth
+    self.__mesh = mesh
+
     self.__scaleF = self.__calculate_scaling_factor()
     self.__transVector = self.__calculate_dxdy(cell)
-    self.__mainCell.content.expand(self.__scaleF)
-    self.__surfacesToDraw = self.__get_surfaces_colors_from_lattice(self.__mainCell.content)
+    
+    self.__surfacesToDraw = self.__get_surfaces_and_colors_from_lattice(
+      self.__mainCell.content # The content is the lattice
+    )
 
     print("Pillow version:", Image.__version__)
     self.__img = Image.new('RGB', self.__imageDimensions, color=(254,254,254))
-    self.plot_assembly()
-    # self.plot_rectangles()
+    self.__plot_assembly()
     
-  def plot_assembly(self):
+  def __plot_assembly(self):
     x_max, y_max = self.__imageDimensions
 
     # plot surfaces ---------------------------------------------
@@ -66,72 +69,116 @@ class PlotAssembly:
     print(f"plotting {num_surfaces_to_plot} surfaces")
     for s in range(num_surfaces_to_plot):
       surf, material = self.__surfacesToDraw[s]
-      surf.scale(self.__scaleF)
       surf.translate(self.__transVector)
       color = material.color
-      self.__img = draw_surface(surf, self.__img,y_max, fill=color)
-
-  def plot_rectangles(self, rectangles, lw=2):
-    x_max, y_max = self.__imageDimensions
-    dx, dy = self.__transVector
-    num_rectangles = len(rectangles)
-    print(f"plotting {num_rectangles} rectangles")
-    for r, mesh in enumerate(rectangles):
-      x1,x2 = mesh[0]
-      y1,y2 = mesh[1]
-
-      x1 = x1*self.__scaleF+dx
-      x2 = x2*self.__scaleF+dx
-      y1 = y1*self.__scaleF+dy
-      y2 = y2*self.__scaleF+dy
-
-      self.__img = draw_square_from_points(
-        x1, x2, y_max-y1, y_max-y2, self.__img, width=lw
-      )
-
-      xc = (x2+x1)/2
-      yc = (y2+y1)/2
-      self.__img =  write_text((xc,y_max-yc), f"{r+1}", self.__img)
-
-  def plot_y_div(self, y_div, lw):
-    x_max, y_max = self.__imageDimensions
-    dx, dy = self.__transVector
-
-    for y_coor in y_div:
-      first_point = (0, y_coor*self.__scaleF + dy)
-      second_point = (x_max, y_coor*self.__scaleF + dy)
-
-      self.__img = draw_line(
-        [first_point, second_point],
-        self.__img,
-        width=lw
-      )
-    
-  def plot_x_div(self, x_div, lw):
-    x_max, y_max = self.__imageDimensions
-    dx, dy = self.__transVector
-
-    for x_coor_row in x_div:
-      for x_coor in x_coor_row:
-        first_point = (x_coor*self.__scaleF + dx, 0.0)
-        second_point = (x_coor*self.__scaleF + dy, y_max)
-
-        self.__img = draw_line(
-          [first_point, second_point],
-          self.__img,
-          width=lw
-        )
+      self.__img = draw_surface(surf, self.__img, y_max, fill=color)
   
-  def save(self):
-    print("rotating...")
+
+  def __transform_points(self, points):
+    x_max, y_max = self.__imageDimensions
+    dx, dy = self.__transVector
+
+    new_points = []
+    for p in points:
+      x, y = p
+      new_p = (
+        x*self.__scaleF+dx,
+        y_max - (y*self.__scaleF+dy)
+      )
+      new_points.append(new_p)
+    
+    return new_points
+  
+  def __get_square_points(self, node):
+    x1,x2 = node[0]
+    y1,y2 = node[1]
+    points = [
+      (x1,y1), (x2,y1), (x2,y2), (x1,y2)
+    ]
+    transformed_points = self.__transform_points(points)
+
+    return transformed_points
+
+  def plot_mesh(self, lw=2, type_mesh=""):
+    num_coarse_nodes = len(self.__mesh)
+    print(f"plotting {num_coarse_nodes} coarse_nodes ...")
+    points = []
+    for nid, node_points in self.__mesh.items():
+      print(nid, end=",")
+      if nid % 20 == 0: print()
+      
+      if type_mesh == "square_grid":
+        points = self.__get_square_points(node_points)
+      else:
+        points = self.__transform_points(node_points)
+
+      # print(points)
+      self.__img = draw_polygon(points, self.__img, width=lw)
+
+      xc, yc = self.__calc_centroid(points)
+      self.__img =  write_text((xc,yc), f"{nid}", self.__img)
+    print()
+
+  def plot_surface_numbers(self, nodes_surfaces, fill=""):
+    
+    print(f"Plotting surface numbers ... ")
+    for n__id, node_points in self.__mesh.items():
+      print(n__id, end=",")
+      if n__id % 20 == 0: print()
+      
+      points = self.__transform_points(node_points)
+      
+
+      xc, yc = self.__calc_centroid(points)
+      n_surfaces = nodes_surfaces[n__id]
+      for s_id, surf_points in n_surfaces.items():
+        surf_points = self.__transform_points(surf_points)
+
+        surf_centroid = self.__calc_centroid(surf_points)
+        
+
+        start_writing_s_id = self.__calc_centroid(((xc, yc), surf_centroid))
+
+  
+        self.__img =  write_text(
+          start_writing_s_id, f"{s_id}", self.__img, fill=fill
+        )
+    print()
+
+  def save(self, name=None):
+    # print("rotating...")
     # self.__img = self.__img.rotate(180)
     # self.__img = ImageOps.flip(self.__img, )
-    print("saving...")
-    self.__img.save(f"{self.__imageName}.png")
+    print("Saving...")
+    
+    if name is None:
+      save_name = f"{self.__imageName}.png"
+    else:
+      save_name = name
+
+    self.__img.save(save_name)
+    print(f"Saved as: {save_name}")
   
   def show(self):
     self.__img.show()
+  
+  def __calc_distance(self, p1, p2):
+    """Calculates distance between two points
     
+    """
+
+    return 0.0
+  
+  def __calc_centroid(self, points): 
+    xc = 0.0
+    yc = 0.0
+    num_points = len(points)
+    for p in points:
+      xp, yp = p
+      xc += xp
+      yc += yp
+
+    return xc/num_points, yc/num_points
   
   def __calculate_scaling_factor(self):
     # surface enclosing the cell -----
@@ -168,38 +215,78 @@ class PlotAssembly:
 
     return dx, dy
   
-  def __get_surfaces_colors_from_lattice(self, lattice):
+  def __get_surfaces_and_colors_from_lattice(self, lattice):
     coolant = Material("default_coolant", color=(100, 141, 176)) # default coolant
+    expanded_wrapper = self.__mainCell.region.surface.expand(self.__scaleF)
+    # print("Wrapper")
+    # print(expanded_wrapper.center)
+    # print(expanded_wrapper.half_width)
+    # print("-------")
     surfaces_to_draw = [
-      (self.__mainCell.region.surface, coolant)
+      (expanded_wrapper, coolant)
     ]
-    pin_cells = lattice.enclosed_cells
-    for pin_cell in pin_cells:
-      cells = pin_cell.content.cells
-      
-      pin_levels = find_cylinder_cells_in_universe(pin_cell.content)
+    # return surfaces_to_draw
     
-      
-      for level in pin_levels:
-        if isinstance(level.region, SurfaceSide):
-          surfaces_to_draw.append((level.region.surface, level.content))
-        elif isinstance(level.region, Region):
-          surf_1 = level.region.child1.surface
-          surf_2 = level.region.child2.surface
-          if surf_1.radius > surf_2.radius:
-            surfaces_to_draw.append((surf_1, level.content))
-          else:
-            surfaces_to_draw.append((surf_2, level.content))
+    new_centers = lattice.recalculate_pin_centers(self.__scaleF)
+    
+    if isinstance(lattice, HexagonalLatticeTypeX):
+      pin_surfaces = self.__get_pin_surfaces_hex_lattice(
+        new_centers, lattice
+      )
+      surfaces_to_draw += pin_surfaces
+    elif isinstance(lattice, SquareLattice):
+      pin_surfaces = self.__get_pin_surfaces_square_lattice(
+        new_centers, lattice
+      )
+      surfaces_to_draw += pin_surfaces
+    return surfaces_to_draw
+  
+  def __get_pin_surfaces_square_lattice(self, new_centers, lattice):
+    surfaces_to_draw = []
+    array_pins = lattice.array
+    for i, row in enumerate(array_pins):
+      for j, pin in enumerate(row):
+        cx, cy = new_centers[i][j]
+        pin_levels = pin.pin_levels
+        num_levels = len(pin_levels)
+        
+        for l in range(-2,-num_levels-1, -1): 
+          level = pin_levels[l]
+          cyl = InfiniteCylinderZ(cx, cy, level.radius*self.__scaleF)
+          # print(cx, cy, level.radius*self.__scaleF)
+          surfaces_to_draw.append((cyl, level.material))
+          
+    return surfaces_to_draw
+    
 
-    
+  def __get_pin_surfaces_hex_lattice(self, new_centers, lattice):
+    surfaces_to_draw = []
+    lattice_rings = lattice.rings
+    num_rings = len(lattice_rings)
+    for r in range(num_rings):
+      ring = lattice_rings[r]
+      num_pins = len(ring)
+      # if r == 5: break
+      for p in range(num_pins):
+        pin = lattice_rings[r][p]
+        cx, cy = new_centers[r][p]
+        pin_levels = pin.pin_levels
+        num_levels = len(pin_levels)
+        
+        for l in range(-2,-num_levels-1, -1): 
+          level = pin_levels[l]
+          cyl = InfiniteCylinderZ(cx, cy, level.radius*self.__scaleF)
+          
+          surfaces_to_draw.append((cyl, level.material))
+          
+        # return surfaces_to_draw
 
     return surfaces_to_draw
   
   def to_ipython_img(self):
     from IPython.display import Image
 
-    return Image(f"{self.__imageName}.png"
-                 )
+    return Image(f"{self.__imageName}.png")
 
   @property
   def img(self):

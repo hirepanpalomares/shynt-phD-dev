@@ -1,209 +1,313 @@
 
-from Shynt.api_py.Geometry.regions import SurfaceSide
-
-from Shynt.api_py.Geometry.universes import Pin
-
-from Shynt.api_py.Serpent.global_nodes_geometry import square_pin_cell as square_coarse_node_geometry
-from Shynt.api_py.Serpent.global_nodes_geometry import hexagonal_assembly as coarse_node_geometry
-
-
-
 class CoarseNode():
 
-  def __init__(self, cell, geometry_info=False) -> None:
-    self.__cell = cell
-    self.__id = None
+  def __init__(self, id_, surface_points, type_coarse_mesh):
+    self.id = id_
+    self.surface_points = surface_points
+    self.type_coarse_mesh = type_coarse_mesh
+    self.surfaces = {}
+    self.surfaces_areas = {}
+    self.__universe = None # set of cells that form the coarse node
+    self.__fine_mesh = None
+
+
+  def calculate_node_surfaces(self, s_id):
+    """Class method to calculate the surface of the coarse node defined by
+    two points. The neumbering of the surface based on the sides of the square
+    coarse node is the following:
+      1. West
+      2. North
+      3. East
+      4. South
     
-    if geometry_info:
-      self.__surfaces = geometry_info["surfaces_for_detectors"]["boundary_surfaces"]
-      self.__surface_areas = geometry_info["surfaces_for_detectors"]["boundary_surfaces_areas"]
-      self.__surface_directions = geometry_info["surfaces_for_detectors"]["boundary_guide_inv"]
-    else:
-      self.__surfaces = self.__getSurfaces()                      # Dictionary of surface classes {id: <Surface class>}
-      self.__surface_areas = self.__getSurfaceAreas()             # Dictionary of surfaces areas {id: area}
-      self.__surface_directions = self.__getSurfaceDirections()   # Dictionary with the direction of the surfaces
-    # self.fictional_surfaces = self.__getFictionalSurfaces()
-    self.__surface_ids = list(self.__surfaces.keys())           # Array with surface ids
-    self.__fine_nodes = {}                                      # Dictionary of cell classes {id: <FineNode class>}
-    self.__fine_nodes_ids = []                                  # Array with fine nodes ids
-    self.__fine_nodes_volume = {}                               # Dictionary of fine nodes volume {id: vol}
-    self.differentiator = ""
-
-  def __getSurfaces(self):
-    region = self.cell.region
-    relation = {}
-    if isinstance(region, SurfaceSide):
-      relation = region.surface.get_surface_relation()
-    return relation
-
-
-  def __getSurfaceAreas(self):
-    areas = {}
+    Parameters
+    ----------
+    s_id : int
+      Surface identifier from where the numbering for this node will start 
+      counting
     
-    region = self.cell.region
+    Returns
+    -------
+    s_id : int
 
-    if isinstance(region, SurfaceSide):
-      surface = self.cell.region.surface
-      # if isinstance(surface, InfiniteSquareCylinderZ):
-      areas = surface.evaluate_surface_area() 
-    else: 
-      for s_id in self.surface_ids:
-        a = self.surfaces[s_id].evaluate_surface_area()
-        areas[s_id] = a
-    return areas
-  
-  def __getSurfaceDirections(self):
-    directions = {}
-
-    region = self.cell.region
-    if isinstance(region, SurfaceSide):
-      surface = self.cell.region.surface
-      # if isinstance(surface, InfiniteSquareCylinderZ):
-      directions = surface.get_surface_orientation()
-    return directions
-
-  def setFineNodes(self, fine_nodes):
-    for id_, node in fine_nodes.items():
-      self.__fine_nodes[id_] = node
-      self.__fine_nodes_volume[id_] = node.cell.volume
-      self.__fine_nodes_ids.append(id_)
+    """
+    # nodes_surfaces = {}
+    
+    num_points = len(self.surface_points)
+    surfaces = {}
+    for p in range(num_points-1):
+      p1 = self.surface_points[p]
+      p2 = self.surface_points[p+1]
+      surf = (p1, p2) 
+      surfaces[s_id] = surf
+      s_id += 1
       
-  def getDiagonalRegions(self):
-    cell_content = self.__cell.content
-    if isinstance(cell_content, Pin):
-      # Retrieve levels of the pin
-      pin_levels = cell_content.pin_levels
 
+    p_last = self.surface_points[-1]
+    p_first = self.surface_points[0]
 
-  @property
-  def cell(self):
-    return self.__cell
+    last_surf = (p_last, p_first)
+    surfaces[s_id] = last_surf
 
-  @cell.setter
-  def cell(self, new_cell):
-    self.__cell = new_cell
+    self.surfaces = surfaces
+    return s_id+1
 
-  @property
-  def id(self):
-    return self.__id
+  def calculate_surfaces_areas(self):
+    areas = []
+    for surf in self.surfaces:
+      area = 0.0 # calc_area (euclidean distance)
+      areas.append(area)
+    self.surfaces_areas = areas
+
   
-  @id.setter
-  def id(self, id_):
-    self.__id = id_
 
   @property
-  def surfaces(self):
-    return self.__surfaces
-
-  @property
-  def surface_ids(self):
-    return self.__surface_ids
-
-  @property
-  def surface_areas(self):
-    return self.__surface_areas
-
-  @property
-  def surface_directions(self):
-    return self.__surface_directions
-
-  @property
-  def fine_nodes(self):
-    return self.__fine_nodes
-
-  @property
-  def fine_nodes_ids(self):
-    return self.__fine_nodes_ids
-
-  @property
-  def fine_nodes_volume(self):
-    return self.__fine_nodes_volume
-
-
-class SquarePinCoarseNode(CoarseNode):
-    
-  def __init__(self, cell, g_info):
-    super().__init__(cell, geometry_info=g_info)
-    self.geometry_info = g_info
-
-  def serpent_geometry(self):
-    return square_coarse_node_geometry.square_pin_cell(self.geometry_info)
+  def universe(self):
+    return self.__universe
   
-  def xs_generation_geometry(self):
-    return square_coarse_node_geometry.xs_generation_square_pin_cell(self.geometry_info)
-
-  def x1_x2(self, face="top"):
-    return self.geometry_info[f"x1_x2_{face}"]
-
+  @universe.setter
+  def universe(self, universe):
+    self.__universe = universe
 
   @property
-  def surface_ids(self):
-    return list(self.geometry_info["surfaces_for_detectors"]["boundary_surfaces"].keys())
-
-  @property
-  def surface_areas(self):
-    return self.geometry_info["surfaces_for_detectors"]["boundary_surfaces_areas"]
-    
-
-
-class HexAssemCoarseNode(CoarseNode):
-    
-  def __init__(self, cell, g_info):
-    super().__init__(cell, geometry_info=g_info)
-    self.geometry_info = g_info
-
-  def serpent_geometry(self):
-    if self.geometry_info["type"] == "top_edge":
-      return coarse_node_geometry.top_edge(self.geometry_info)
-    elif self.geometry_info["type"] == "corner":
-      return coarse_node_geometry.edge_with_void(self.geometry_info)
-    elif self.geometry_info["type"] == "side_edge":
-      return coarse_node_geometry.edge_with_void(self.geometry_info)
-    elif self.geometry_info["type"] == "inside":
-      hexagon_radius = self.geometry_info["hexagon_radius"]
-      return coarse_node_geometry.inside(self.geometry_info)
-    elif self.geometry_info["type"] == "corner_in_pin":
-      return coarse_node_geometry.corner_in_pin(self.geometry_info)
-    elif self.geometry_info["type"] == "offset_inside":
-      return coarse_node_geometry.inside_offset(self.geometry_info)
-    elif self.geometry_info["type"] == "offset_side_edge":
-      return coarse_node_geometry.edge_with_void_no_offset(self.geometry_info)
-    
-  def xs_generation_geometry(self):
-    rect_width = self.geometry_info["rectangle_width"]
-    rect_height = self.geometry_info["rectangle_height"]
-    radius = self.geometry_info["radius"]
-    cells = self.geometry_info["cells"]
-
-    if self.geometry_info["type"] == "top_edge":
-      return coarse_node_geometry.xs_generation_top_edge(self.geometry_info)
-    elif self.geometry_info["type"] == "corner":
-      return coarse_node_geometry.xs_generation_edge_with_void(self.geometry_info)
-    elif self.geometry_info["type"] == "side_edge":
-      return coarse_node_geometry.xs_generation_edge_with_void(self.geometry_info)
-    elif self.geometry_info["type"] == "inside":
-      hexagon_radius = self.geometry_info["hexagon_radius"]
-      return coarse_node_geometry.xs_generation_inside(self.geometry_info)
-    elif self.geometry_info["type"] == "corner_in_pin":
-      return coarse_node_geometry.xs_generation_corner_in_pin(self.geometry_info)
-    elif self.geometry_info["type"] == "offset_inside":
-      return coarse_node_geometry.xs_generation_inside_offset(self.geometry_info)
-    elif self.geometry_info["type"] == "offset_side_edge":
-      return coarse_node_geometry.xs_generation_edge_with_void_no_offset(self.geometry_info)
+  def fine_mesh(self):
+    return self.__fine_mesh
   
-  def serpent_detectors(self):
-    pass
-
-  def x1_x2(self, face="top"):
-    return self.geometry_info[f"x1_x2_{face}"]
+  @fine_mesh.setter
+  def fine_mesh(self, fine_mesh):
+    self.__fine_mesh = fine_mesh
 
 
-  @property
-  def surface_ids(self):
-    return list(self.geometry_info["surfaces_for_detectors"]["boundary_surfaces"].keys())
+class CoarseNodeSquarePinCell(CoarseNode):
 
-  @property
-  def surface_areas(self):
-    return self.geometry_info["surfaces_for_detectors"]["boundary_surfaces_areas"]
+  def __init__(self, id_, surface_points, type_coarse_mesh, pitch):
+    super().__init__(id_, surface_points, type_coarse_mesh)
+    self.pitch = pitch
+    self.detectors_surfaces = {}
+
+
+  def get_serpent_geometry(self):
+    serpent_syntax, regions = self.get_surfaces_serpent_syntax()
+    
+    # cells ---------------------------------------
+    for r_id, reg_info in regions.items():
+      serpent_syntax += f"cell {r_id} pin_fuel{self.id} "
+      serpent_syntax += f"{reg_info['material']} -{reg_info['surf(-)']} "
+      serpent_syntax += f"{reg_info['surf(+)']}\n"
+      
+    serpent_syntax += f"cell root_in 0 fill pin_fuel{self.id} "
+    serpent_syntax += f"-closing_surf\n"
+
+    serpent_syntax += f"cell root_out 0 outside closing_surf\n"
+    
+    boundary_ids = list(self.surfaces.keys()) 
+
+    serpent_syntax += "\n\n% ----- Surface for detectors --------\n"
+    half_pitch = self.pitch / 2
+    detectors_surfaces = {
+      boundary_ids[0]: {
+        "syntax": f"surf {boundary_ids[0]} px -{half_pitch}\n",
+        "j_in_dir": 1
+      },
+      boundary_ids[1]: {
+        "syntax": f"surf {boundary_ids[1]} py {half_pitch}\n",
+        "j_in_dir": -1
+      },
+      boundary_ids[2]: {
+        "syntax": f"surf {boundary_ids[2]} px {half_pitch}\n",
+        "j_in_dir": -1
+      },
+      boundary_ids[3]: {
+        "syntax": f"surf {boundary_ids[3]} py -{half_pitch}\n",
+        "j_in_dir": 1
+      }
+    }
     
 
+    for surf_serpent in detectors_surfaces.values():
+      serpent_syntax += surf_serpent["syntax"]
+
+    
+    self.detectors_surfaces = detectors_surfaces
+
+    return serpent_syntax, detectors_surfaces
+    
+  def get_gcu_geometry(self, ene):
+
+    serpent_syntax, regions = self.get_surfaces_serpent_syntax()
+    
+    # cells ---------------------------------------
+    u4gcu = []
+    gcu_id = 1
+    for r_id, reg_info in regions.items():
+      serpent_syntax += f"cell {r_id+1000}  u4gcu{gcu_id} "
+      serpent_syntax += f"{reg_info['material']} "
+      serpent_syntax += f"-{reg_info['surf(-)']} {reg_info['surf(+)']}\n"
+
+      serpent_syntax += f"cell {r_id+2000} pin_fuel{self.id} fill "
+      serpent_syntax += f"u4gcu{gcu_id} "
+      serpent_syntax += f"-{reg_info['surf(-)']} {reg_info['surf(+)']}\n"
+
+      u4gcu.append(f"u4gcu{gcu_id}")
+      gcu_id += 1
+
+    serpent_syntax += f"cell root_in 0 fill pin_fuel{self.id} "
+    serpent_syntax += f"-closing_surf\n"
+
+    serpent_syntax += f"cell root_out 0 outside closing_surf\n\n"
+    
+    
+    serpent_syntax += f"set gcu "
+    for gcu in u4gcu:
+      serpent_syntax += f"{gcu} "
+    serpent_syntax += f"\n\nplot 3 500 500\nset nfg {ene}\n\n"
+    
+    return serpent_syntax
+    
+  def get_surfaces_serpent_syntax(self):
+    from Shynt.api_py.Geometry.universes import Pin
+    serpent_syntax = ""
+    node_universe = super().universe
+
+    try:
+      assert isinstance(node_universe, Pin)
+      pin_levels = node_universe.pin_levels
+
+      assert len(pin_levels) > 1
+      # regions = {
+      #   cell_id: {
+      #     "material":mat_name,
+      #     "surf-": id_,
+      #     "surf+": id_,
+      #   }
+      # }
+
+      # cylinders = {
+      #   s_id: radius
+      # }
+      # Closing surface: square with  id = 100
+
+      half_pitch = self.pitch / 2
+      closing_square = f"surf closing_surf "
+      closing_square += f"sqc 0.0000 0.0000 {half_pitch}\n\n\n"
+
+      cylinders = {}
+      regions = {}
+      num_surf = 1
+
+      # surfaces ---------------------------------------
+      for l, level in enumerate(pin_levels):
+        num_cell = level.cell_id
+        if level.radius is not None:
+          cylinders[f"{num_surf}_geom"] = level.radius
+          regions[num_cell] = {
+            "material": level.material.name,
+            "surf(-)": f"{num_surf}_geom",
+            "surf(+)": ""
+          }
+          if l >= 1:
+            regions[num_cell]["surf(+)"] = f"{num_surf-1}_geom"
+        else:
+          # is surroundings of pin
+          regions[num_cell] = {
+            "material": level.material.name,
+            "surf(-)": "closing_surf",
+            "surf(+)": f"{num_surf-1}_geom"
+          }
+        num_surf += 1
+      
+      serpent_syntax += "\n\n\n"
+      for s_id, rad in cylinders.items():
+        serpent_syntax += f"surf {s_id} cyl 0.0000 0.0000 {rad}\n"
+      serpent_syntax += closing_square
+      return serpent_syntax, regions
+    except AssertionError:
+      raise NotImplementedError
+    
+  def get_serpent_detectors_fuel_region(self, cell_id, ene):
+    det_syntax = ""
+
+    # Additional surface for the fuel 
+    cell = self.fine_mesh.regions[cell_id]
+    surf_fuel = cell.region.surface
+    radius = surf_fuel.radius
+    det_syntax += f"surf fuel_surf cyl 0.0000 0.0000 {radius}\n\n\n\n"
+    
+    regions = self.fine_mesh.regions
+    main_cell = regions[cell_id]
+
+    det_syntax += "% Detectors ------------------------------------\n"
+    det_syntax += f"det total_rate_reg{cell_id} de {ene} dr -1 "
+    det_syntax += f"{main_cell.content.name} dc {cell_id} \n"
+    det_syntax += f"det j_in_reg{cell_id}  ds {'fuel_surf'} -1 "
+    det_syntax += f"de {ene} dfl 1 1\n"
+    det_syntax += f"det j_out_reg{cell_id} ds {'fuel_surf'}  1 "
+    det_syntax += f"de {ene} dfl 1 3  dfl 2 1\n"
+
+    det_syntax += f"det all_to_reg_{cell_id} dr -1 {main_cell.content.name} "
+    det_syntax += f"dc {cell_id} de {ene}  dfl 1 2  dfl 1 0\n"
+
+    for r_id, cell in regions.items():
+      if r_id == cell_id: continue
+      det_syntax += f"det reg{r_id}_reg{cell_id} de {ene} dr -1 "
+      det_syntax += f"{cell.content.name} dc {r_id}    dfl 2 2  dfl 2 0\n"
+    
+    for s_id in self.detectors_surfaces.keys():
+      j_out_dir = self.detectors_surfaces[s_id]["j_in_dir"] * -1
+      det_syntax += f"det reg{r_id}__to_surface{s_id} de {ene} ds {s_id} "
+      det_syntax += f"{j_out_dir}  dfl 2 2  dfl 2 0\n"
+    return det_syntax
+
+  def get_serpent_detectors_nonFuel_region(self, cell_id, ene):
+    det_syntax = "\n\n\n"
+    det_syntax += "% Detectors ------------------------------------\n"
+    regions = self.fine_mesh.regions
+    main_cell = regions[cell_id]
+    det_syntax += f"det reg{cell_id}_reg{cell_id} de {ene} dr -1 "
+    det_syntax += f"{main_cell.content.name} dc {cell_id}   "
+    det_syntax += "dfl 1 2  dfl 1 0  dfl 1 1\n"
+    det_syntax += f"det total_rate_reg{cell_id} de {ene} dr -1 "
+    det_syntax += f"{main_cell.content.name} dc {cell_id}    dfl 1 1\n"
+    for r_id, cell in regions.items():
+      if r_id == cell_id: continue
+      det_syntax += f"det reg{r_id}_to_reg{cell_id} de {ene} dr -1 "
+      det_syntax += f"{cell.content.name} dc {r_id}    dfl 1 2  dfl 1 0\n"
+    
+    for s_id in self.detectors_surfaces.keys():
+      j_out_dir = self.detectors_surfaces[s_id]["j_in_dir"] * -1
+      det_syntax += f"det reg{r_id}_to_surface{s_id} de {ene} ds {s_id} "
+      det_syntax += f"{j_out_dir}  dfl 1 2  dfl 1 0\n"
+
+    return det_syntax
+
+  def get_serpent_detectors_surfaces(self, ene):
+    det_syntax = "\n\n\n"
+    det_syntax += "% Detectors ------------------------------------\n"
+
+    surface_flags = {}
+    flag = 1
+    for s_id in self.detectors_surfaces.keys():
+      surface_flags[s_id] = flag
+      flag += 1
+    
+    for s_id in self.detectors_surfaces.keys():
+      j_in_dir = self.detectors_surfaces[s_id]["j_in_dir"] * -1
+      det_syntax += f"det surface_{s_id}_jin ds {s_id} {j_in_dir} de {ene} "
+      det_syntax += f"dfl {surface_flags[s_id]} {1}\n"
+    
+    regions = self.fine_mesh.regions
+    for s_id in self.detectors_surfaces.keys():
+      s_flag = surface_flags[s_id]
+      for r_id, cell in regions.items():
+
+        det_syntax += f"det surface_{s_id}_to_reg{r_id} de {ene} dr -1"
+        det_syntax += f" {cell.content.name} dc {r_id} dfl {s_flag} 2 "
+        det_syntax += f"dfl {s_flag} 0 \n"
+
+      for s_id_p in self.detectors_surfaces.keys():
+        jout_sidp = self.detectors_surfaces[s_id_p]["j_in_dir"] * -1
+        det_syntax += f"det surface_{s_id}_to_surface{s_id_p} de {ene} "
+        det_syntax += f"ds {s_id_p} {jout_sidp} "
+        det_syntax += f"dfl {s_flag} 2  dfl {s_flag} 0 \n"
+    # print(det_syntax)
+    return det_syntax

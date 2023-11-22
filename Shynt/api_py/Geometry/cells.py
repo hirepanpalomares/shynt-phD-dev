@@ -125,72 +125,75 @@ class Cell:
 
 
   def calculateId(self):
-      """
-          Class method to calculate the consecutive id of the cell
+    """
+      Class method to calculate the consecutive id of the cell
 
-          
-          Parameters
-          ----------------------------------------------------------------
-          No parameters
-          ----------------------------------------------------------------
-      """
-      if len(cell_ids) == 0:
-          id_ = 1
-          cell_ids.append(id_)
-          return id_
-      else:
-          id_ = cell_ids[-1] + 1
-          cell_ids.append(id_)
-          return id_
+      
+      Parameters
+      ----------
+      
+      Returns
+      -------
+    """
+    if len(cell_ids) == 0:
+      id_ = 1
+      cell_ids.append(id_)
+      return id_
+    else:
+      id_ = cell_ids[-1] + 1
+      cell_ids.append(id_)
+      return id_
 
   def __calculate_volume(self):
-      region = self.__region
-      if isinstance(region, Region) and isinstance(region, SurfaceSide):
-          # Only surface Side ===> Simple volume of the figure
-          surf = region.surface
-          side = region.side
-          if side == "-":
-              vol = surf.evaluate_enclosed_volume()
-              return vol
-          elif side == "+":
-              #area outside the surface
-              pass
-      elif isinstance(region, Region) and not isinstance(region, SurfaceSide):
-          # Regions moderator-like outside of a circle enclosed by a square for example
-          child1 = region.child1
-          child2 = region.child2
-          try:
-              # Two Surface sides that contains each other
-              assert isinstance(child1,SurfaceSide), "Error calculating cell volume, check source code"
-              assert isinstance(child2,SurfaceSide), "Error calculating cell volume, check source code"
-              vol1 = child1.surface.evaluate_enclosed_volume()
-              vol2 = child2.surface.evaluate_enclosed_volume()
-              if child1.encloses(child2):
-                  return vol1 - vol2
-              elif child2.encloses(child1)                :
-                  return vol2 - vol1
-          except AssertionError:
-              raise SystemError             
+    region = self.__region
+    if isinstance(region, Region) and isinstance(region, SurfaceSide):
+      # Only surface Side ===> Simple volume of the figure
+      surf = region.surface
+      side = region.side
+      if side == "-":
+        vol = surf.evaluate_enclosed_volume()
+        return vol
+      elif side == "+":
+        #area outside the surface
+        pass
+    elif isinstance(region, Region) and not isinstance(region, SurfaceSide):
+      # Regions moderator-like outside of a circle enclosed by a square 
+      # for example
+      child1 = region.child1
+      child2 = region.child2
+      try:
+        # Two Surface sides that contains each other
+        message = "Error calculating cell volume, check source code"
+        assert isinstance(child1,SurfaceSide), message
+        assert isinstance(child2,SurfaceSide), message
+        vol1 = child1.surface.evaluate_enclosed_volume()
+        vol2 = child2.surface.evaluate_enclosed_volume()
+        if child1.encloses(child2):
+          return vol1 - vol2
+        elif child2.encloses(child1)                :
+          return vol2 - vol1
+      except AssertionError:
+        raise SystemError             
 
   def calculate_surface_area_relation(self):
-      relation = {}
-      if isinstance(self.__region, SurfaceSide):
-          relation = self.__region.surface.evaluate_surface_area()
-      self.__surf_area_relation = relation
+    relation = {}
+    if isinstance(self.__region, SurfaceSide):
+      relation = self.__region.surface.evaluate_surface_area()
+    self.__surf_area_relation = relation
   
   def getSurface_relation(self):
-      relation = {}
-      if isinstance(self.__region, SurfaceSide):
-          relation = self.__region.surface.getSurface_relation()
-      return relation
+    relation = {}
+    if isinstance(self.__region, SurfaceSide):
+      relation = self.__region.surface.getSurface_relation()
+    return relation
       
   def check_region(self, reg):
-      print_statement = "Argument 'region' must be either of type <class Region> or <class SurfaceSide>"
-      if reg is None:
-          # it can be defined later
-          return None
-      assert isinstance(reg, Region) or isinstance(reg, SurfaceSide), print_statement
-      return reg
+    print_statement = "Argument 'region' must be either of type <class Region> or <class SurfaceSide>"
+    if reg is None:
+      # it can be defined later
+      return None
+    assert isinstance(reg, Region) or isinstance(reg, SurfaceSide), print_statement
+    return reg
 
   def check_fill(self, fill):
     from .universes import (
@@ -204,44 +207,43 @@ class Cell:
       When a cell is filled with a universe check the coordinates 
       of that universe. 
       
-      If it is the case of a lattice, translate all the content of the universe 
-      to the cell bounded by the surface. The middle of the universe will be used 
-      as a reference to fill the surface of the cell.
+      If it is the case of a lattice, translate all the content of the universe
+      to the cell bounded by the surface. The middle of the universe will be 
+      used as a reference to fill the surface of the cell.
       
       If it is not a defined universe do not translate anything
     """
     
     if isinstance(fill, Universe):
-        #  Here translate content of the universe
-        if isinstance(fill, Pin):
-            # declare last cell
-            fill.close_last_level(self.__region)
-        elif isinstance(fill, HexagonalLatticeTypeX):
-            x0, y0 = fill.center
-            x1, y1 = self.__region.surface.center
-            xv = x1 - x0 # translation vector - x
-            yv = y1 - y0 # translation vector - y
-            fill.translate((xv,yv))
-            fill.calculate_enclosed_cells(self.__region)
-        elif isinstance(fill, SquareLattice):
-            x0, y0 = fill.left_bottom # left bottom corner of lattice
-            x1, y1 = self.__region.surface.left_bottom #  center of the enclosing square
-            xv = x1 - x0 # translation vector - x
-            yv = y1 - y0 # translation vector - y
-            fill.translate((xv,yv))
-            print("lattice translated")
-        elif isinstance(fill, Lattice):
-            # Not supported
-            raise SystemError
-        elif isinstance(fill, Root):
-            # Not supported
-            raise SystemError
-        else:
-            # option developed to calculate the regions enclosed
-            # by a surface inside a bigger universe
+      #  Here translate content of the universe
+      if isinstance(fill, Pin):
+        # declare last cell
+        fill.close_last_level(self.__region)
+      elif isinstance(fill, HexagonalLatticeTypeX):
+        x0, y0 = fill.center
+        x1, y1 = self.__region.surface.center
+        xv = x1 - x0 # translation vector - x
+        yv = y1 - y0 # translation vector - y
+        fill.translate((xv,yv))
+        # fill.calculate_enclosed_cells(self.__region)
+      elif isinstance(fill, SquareLattice):
+        x0, y0 = fill.left_bottom # left bottom corner of lattice
+        x1, y1 = self.__region.surface.left_bottom # center of the enclosing square
+        xv = x1 - x0 # translation vector - x
+        yv = y1 - y0 # translation vector - y
+        fill.translate((xv,yv))
+      elif isinstance(fill, Lattice):
+        # Not supported
+        raise SystemError
+      elif isinstance(fill, Root):
+        # Not supported
+        raise SystemError
+      else:
+        # option developed to calculate the regions enclosed
+        # by a surface inside a bigger universe
 
-            pass
-        return fill
+        pass
+      return fill
     elif isinstance(fill, Material):
       # the cell is being filled by a material
       return fill
@@ -251,13 +253,17 @@ class Cell:
       return fill
     return None
   
-  def translate(self, trans_vector):
+  def translate(self, trans_vector, surfs_translated):
     # translating the surface delimitting the cell
-    self.region.translate(trans_vector)
+    # print(self.region.surface)
+    surfs_translated = self.region.translate(
+      trans_vector, surfs_translated
+    )
+
+    if self.content_is_universe():
+      surfs_translated = self.content.translate(trans_vector, surfs_translated)
     
-    if self.content_is_universe:
-      self.content.translate(trans_vector)
-    
+    return surfs_translated
     # surfaces = get_all_surfaces_in_a_cell(self)
     # for id_, surf in surfaces.items():
     #   surf.translate(trans_vector)
@@ -382,18 +388,18 @@ class Cell:
       return syntax
 
   def serpent_syntax_pin_cell_inside(self):
-      """
-          This is used when we want to extract the flux from each cell
-      """
-      # print(universe.cells)
-      syntax = ""
-      if isinstance(self.content, Pin):
-          pin_uni = self.content
-          for id_, cell in pin_uni.cells.items():
-              syntax += cell.serpent_syntax()
+    """
+        This is used when we want to extract the flux from each cell
+    """
+    # print(universe.cells)
+    syntax = ""
+    if isinstance(self.content, Pin):
+      pin_uni = self.content
+      for id_, cell in pin_uni.cells.items():
+        syntax += cell.serpent_syntax()
 
 
-      return syntax
+    return syntax
 
   def clone(self, new_center_x, new_center_y, clone_vector=None):
       from .universes import Universe

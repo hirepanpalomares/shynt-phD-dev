@@ -12,7 +12,7 @@ from Shynt.api_py.Geometry.cells import Cell
 
 from Shynt.api_py.materials import Material
 
-from Shynt.api_py.Mesh.fine_node import FineNode
+from Mesh.__deprecated_fine_node import FineNode
 
 
 class FineMesh(object):

@@ -1,7 +1,7 @@
 
 from Shynt.api_py.Serpent.global_nodes_geometry import square_pin_cell as square_coarse_node_geometry
 
-from Shynt.api_py.Mesh.coarse_node import CoarseNode
+from Mesh.__deprecated_coarse_node import CoarseNode
 
 class SquarePinCoarseNode(CoarseNode):
     

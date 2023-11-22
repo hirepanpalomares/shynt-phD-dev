@@ -1,9 +1,4 @@
 
-from Shynt.api_py.Mesh.local_mesh import (
-  MaterialMesh, 
-  CellMesh, 
-  PieMesh
-)
 
 from Shynt.api_py.Mesh.coarse_mesh_pin_cell import PinCellMesh
 from Shynt.api_py.Mesh.coarse_mesh_triangular import TriangularMesh
@@ -15,15 +10,16 @@ from Shynt.api_py.Geometry.cells import Cell
 
 
 class Mesh():
-  """Class used to represent a mesh, it creates:
+  """Class that manashes the mesh, it creates:
     - coarse mesh (Every coarse node)
-    - the fine mesh for every coarse node
-    - probably the map
-    - a list of coarse nodes
+    - the fine mesh (for every coarse node)
+    
   
-    Every coarse Node should have as attributes:
-      - fine mesh
-      - The serpent syntax to simulate that coarse node
+    Steps to generate a mesh:
+    1. Generate coarse mesh and its attributes see CoarseMesh class
+    2. Generate fine mesh and its attributes
+    3. generate surfaces areas
+    4. generate regions volumes
 
   ...
 
@@ -61,13 +57,7 @@ class Mesh():
     self.offset = offset
     
     self.coarse_mesh = None
-    self.coarse_nodes = None
-    self.coarse_nodes_map = None
-    self.fine_mesh = None
-    self.fine_nodes = None
-
-    self.create_coarse_mesh()
-    self.create_fine_mesh()
+    
 
 
   def create_coarse_mesh(self) -> None:
@@ -79,8 +69,9 @@ class Mesh():
       - square_mesh_pin_no_share
     
     """
-    coarse_mesh = None
-    if self.global_mesh_type == "pin_cell":    
+    print("creating coarse mesh ...")
+    
+    if self.global_mesh_type == "pin_cell":
       coarse_mesh =  PinCellMesh(self.cell)
     elif self.global_mesh_type == "square_grid":
       coarse_mesh =  SquareGridMeshHexAssembly(
@@ -90,11 +81,25 @@ class Mesh():
       coarse_mesh =  TriangularMesh(self.cell)
 
     self.coarse_mesh = coarse_mesh
-    self.coarse_nodes = coarse_mesh.coarse_nodes
-    self.coarse_nodes_map = coarse_mesh.coarse_nodes_map
 
   def create_fine_mesh(self) -> None:
-    pass
+    """Helper method to create the fine mesh,
+    It chooses between different meshes depending on the attribute 
+    local_mesh_type. Types available:
+      - material 
+    
+      The fine mesh will be a dictionary with coarse node ids as keys
+      and <class FineMesh> as value
+    """
+    from Shynt.api_py.Mesh.local_mesh_material import MaterialMesh
+
+    print("creating fine mesh ...")
+
+    coarse_nodes = self.coarse_mesh.coarse_nodes
+    if self.local_mesh_type == "material":
+      for nid, coarse_node in coarse_nodes.items():
+        fine_mesh_of_node = MaterialMesh(coarse_node, self.global_mesh_type)
+        coarse_node.fine_mesh = fine_mesh_of_node
 
 
 

@@ -1,6 +1,6 @@
 import sys
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mpl_colors
@@ -88,13 +88,11 @@ def draw_square(surf, img, y_max, fill=(254,254,254)):
   draw.polygon(new_square_points, outline=(0,0,0), fill=fill)
   return img
 
-def draw_square_from_points(x1, x2, y1, y2, img, outline=(0,0,0), width=3):
+def draw_polygon(points, img, outline=(0,0,0), width=3):
   # print(x1, x2, y1, y2)
   
   draw = ImageDraw.Draw(img)
-  points = [
-    (x1,y1), (x2,y1), (x2,y2), (x1,y2)
-  ]
+  
   draw.polygon(points, outline=outline, width=width)
   return img
 
@@ -123,9 +121,10 @@ def draw_hexagon_y(surf, img, y_max, fill=(254,254,254)):
   draw.polygon(new_hex_points, outline=(0,0,0), fill=fill)
   return img
 
-def write_text(xy, text, img):
+def write_text(xy, text, img, fill=(0,0,0), font_size=25):
   draw = ImageDraw.Draw(img)
-
-  draw.text(xy, text, fill=(0,0,0))
+  # font = ImageFont.truetype("sans-serif.ttf", 24)
+  
+  draw.text(xy, text, fill=fill, font_size=font_size)
 
   return img

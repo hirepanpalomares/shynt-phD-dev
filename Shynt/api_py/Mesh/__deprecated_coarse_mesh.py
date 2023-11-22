@@ -1,7 +1,8 @@
 import numpy as np
 import math
 
-from Shynt.api_py.Geometry.surfaces import CylinderPad, PlaneX, PlaneY, InfiniteCylinderZ
+from Shynt.api_py.Geometry.surfaces import CylinderPad, PlaneX, PlaneY
+from Shynt.api_py.Geometry.surfaces import InfiniteCylinderZ
 from Shynt.api_py.Geometry.surfaces import InfiniteSquareCylinderZ
 from Shynt.api_py.Geometry.surfaces import InfiniteHexagonalCylinderXtype
 from Shynt.api_py.Geometry.surfaces import InfiniteHexagonalCylinderYtype
@@ -9,11 +10,19 @@ from Shynt.api_py.Geometry.surfaces import InfiniteRectangleCylinderZ
 
 from Shynt.api_py.Geometry.regions import SurfaceSide
 
-from Shynt.api_py.Geometry.universes import SquareLattice, HexagonalLatticeTypeX, Pin, Universe
+from Shynt.api_py.Geometry.universes import SquareLattice
+from Shynt.api_py.Geometry.universes import HexagonalLatticeTypeX
+from Shynt.api_py.Geometry.universes import Pin
+from Shynt.api_py.Geometry.universes import Universe
+
+
 from Shynt.api_py.Geometry.cells import Cell
 from Shynt.api_py.Geometry.utilities_geometry import change_boundary_guide
 
-from Shynt.api_py.Mesh.coarse_node import CoarseNode, HexAssemCoarseNode, SquarePinCoarseNode
+from Mesh.__deprecated_coarse_node import CoarseNode
+from Mesh.__deprecated_coarse_node import HexAssemCoarseNode
+from Mesh.__deprecated_coarse_node import SquarePinCoarseNode
+
 
 from Shynt.api_py.materials import Material
 
@@ -21,7 +30,7 @@ from Shynt.api_py.Serpent.global_nodes_geometry import hexagonal_assembly
 
 
 
-class GlobalMesh():
+class CoarseMesh():
 
   def __init__(self, cell):
     super().__init__()
@@ -36,7 +45,7 @@ class GlobalMesh():
 
 
 
-class PinCellMesh(GlobalMesh):
+class PinCellMesh(CoarseMesh):
     
   def __init__(self, cell):
     super().__init__(cell)
@@ -215,7 +224,7 @@ class PinCellMesh(GlobalMesh):
     return cells, geometry_info
 
 
-class SquareGridMesh(GlobalMesh):
+class SquareGridMesh(CoarseMesh):
     
 
   def __init__(self, cell):
@@ -1139,8 +1148,7 @@ class SquareGridMesh(GlobalMesh):
     return cells, geometry_info
 
 
-
-class SquareGridMesh_no_J_share(GlobalMesh):
+class SquareGridMesh_no_J_share(CoarseMesh):
     
 
   def __init__(self, cell):
