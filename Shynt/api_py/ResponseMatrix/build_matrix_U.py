@@ -140,7 +140,7 @@ def getMatrixU_system_byGroup(mesh_info, energy_g, probabilities):
           surfaces_n = coarse_nodes_surfaces[n_id]
 
           mat_u_n = build_U(
-              probabilities[n_id],
+              probabilities,
               surfaces_n,
               surface_areas,
               regions,

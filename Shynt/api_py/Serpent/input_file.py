@@ -39,6 +39,7 @@ class SerpentInputFile():
     self.surfaces_ids = []
     
     self.xs_gcu = {}
+    self.type_of_detectors = ""
 
     with open(name, "w") as self.__file:
       self.__write_title()
@@ -48,48 +49,57 @@ class SerpentInputFile():
       self.__write_mc_params()
       self.__write_energy_grid()
       if xs_generation:
-        geometry = self.coarse_node.get_gcu_geometry(self.energy_grid.name)
+        geometry, xs_gcu = self.coarse_node.get_gcu_geometry(
+          self.energy_grid.name
+        )
+        self.xs_gcu = xs_gcu
         self.__file.write(geometry)
       else:
         geometry, detector_surfs = self.coarse_node.get_serpent_geometry()
         self.__file.write(geometry)
         self.detector_surfs = detector_surfs
+      self.__file.write("\n\n plot 3 500 500\n\n")
         
 
   def write_detectors(self,
-    type_="region", is_material_fuel=False, reg_id=0
+    type_, reg_id=None
   ):
     ene = self.energy_grid.name
     with open(self.name, "a") as self.__file:
       coarse_node = self.coarse_node
-      detectors_syntax = ""
-      if type_ == "region":
-        if is_material_fuel:
-          detectors_syntax = coarse_node.get_serpent_detectors_fuel_region(
-            reg_id, ene
-          )
-        else: 
-          detectors_syntax = coarse_node.get_serpent_detectors_nonFuel_region(
-            reg_id, ene
-          )
+      det_syntax = ""
+      det_rel = {}
+      if type_ == "region_fuel":
+        det_syntax, det_rel = coarse_node.get_serpent_detectors_fuel_region(
+          reg_id, ene
+        )
+      elif type_ == "region_nonFuel":
+        det_syntax, det_rel = coarse_node.get_serpent_detectors_nonFuel_region(
+          reg_id, ene
+        )
       elif type_ == "surfaces":
-        detectors_syntax = coarse_node.get_serpent_detectors_surfaces(
+        det_syntax, det_rel = coarse_node.get_serpent_detectors_surfaces(
           ene
         )
-     
-      self.__file.write(detectors_syntax)
+
+      self.type_of_detectors = type_
+      self.detectors_relation = det_rel
+      self.__file.write(det_syntax)
 
   def __write_title(self):
     file_title = self.name.split("/")[-2] + "/" + self.name.split("/")[-1]
     self.__file.write(f"set title \"{file_title}\"\n\n")
 
   def __write_material(self):
+    written_materials = []
     for cell in self.regions:
       mat = cell.content 
       if mat.name == "void":
         continue
-      syntax = mat.serpent_syntax
-      self.__file.write(syntax+"\n")
+      if mat.name not in written_materials:
+        syntax = mat.serpent_syntax
+        self.__file.write(syntax+"\n")
+        written_materials.append(mat.name)
 
   def __write_libraries(self):
     self.__file.write(self.libraries.serpent_syntax)
@@ -106,8 +116,23 @@ class SerpentInputFile():
       self.__file.write(self.energy_grid.serpent_syntax())
     
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 class SerpentInputFileDetectorsRegion(SerpentInputFile):
-  
+  """
+  #! DPRECATED
+  """
   def __init__(self, coarse_node, regions, name, root, reg_id):
     super().__init__(coarse_node, regions, name, root)
     self.detector_flags = []
@@ -481,9 +506,10 @@ class SerpentInputFileDetectorsRegion(SerpentInputFile):
           self.detectors_relation["regions"][self.region_id]["surfaces"][s] = det
           self.detectors.append(det)
 
-
 class SerpentInputFileDetectorsSurface(SerpentInputFile):
-    
+  """
+  #! DPRECATED
+  """
   def __init__(self, coarse_node, regions, name, root) -> None:
     super().__init__(coarse_node, regions, name, root)
     self.detector_flags = []
@@ -637,19 +663,20 @@ class SerpentInputFileDetectorsSurface(SerpentInputFile):
               self.detectors.append(det)
               self.detectors_relation["surfaces"][s]["surfaces"][sp] = det
 
-
 class SerpentInputFileDetectorsXsGeneration(SerpentInputFile):
-    
+  """
+  #! DPRECATED
+  """
   def __init__(self, coarse_node, regions, name, root) -> None:
     super().__init__(coarse_node, regions, name, root, xs_generation=True)
     with open(self.name, "a") as self.__file:
       
       self.__file.write(f"\nset nfg {self.energy_grid.name}\n")
        
-
-
 class SerpentInputFileReferenceFlux():
   """
+  
+  #! DPRECATED
       
   Parameters:
   ----------

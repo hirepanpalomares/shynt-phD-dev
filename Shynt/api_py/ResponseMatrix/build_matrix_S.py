@@ -133,6 +133,7 @@ def getMatrixS_system_byGroup(mesh_info, energy_g, xs, probabilities):
   surface_areas = mesh_info.all_surfaces_area
   regions_volume = mesh_info.all_regions_vol
 
+  print(regions_volume)
   matrix_S_system_byGroup = {}
   for g in range(energy_g):
     # for each energy group
@@ -144,7 +145,7 @@ def getMatrixS_system_byGroup(mesh_info, energy_g, xs, probabilities):
       xs_node = {r: xs[r] for r in regions}
       mS = build_S(  
         xs_node,
-        probabilities[c_id],
+        probabilities,
         surfaces,
         surface_areas,
         regions,
@@ -158,7 +159,9 @@ def getMatrixS_system_byGroup(mesh_info, energy_g, xs, probabilities):
   return matrix_S_system_byGroup
 
 
-def build_S(xs, probabilities, surfaces, surface_areas, regions, regions_volume, g):
+def build_S(
+  xs, probabilities, surfaces, surface_areas, regions, regions_volume, g
+):
   """
   Builds the matrix S for a coarse node
 
@@ -215,6 +218,7 @@ def build_S(xs, probabilities, surfaces, surface_areas, regions, regions_volume,
     
     for a in range(numSurf):
       s_id = surfaces[a]
+      
       area_a = surface_areas[s_id]
       p_a_j = probabilities["surfaces"][s_id]["regions"][region_j_id][g]
       mS[j][a] =  area_a * p_a_j / (xsTotal_j * vol_j)

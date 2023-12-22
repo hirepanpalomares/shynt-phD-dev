@@ -5,33 +5,36 @@ from pathlib import Path
 import xlsxwriter
 
 
-def write_excel(probabilities, mesh_info, root, dir_):
+def write_excel(probabilities, root, dir_="", name=""):
   energy_g = root.energy_grid.energy_groups
 
-  input_file_argument = sys.argv[0]
-  input_file_absolute = str(Path(input_file_argument).absolute())
-  input_file_dir = "/".join(input_file_absolute.split("/")[:-1]) + "/"
+  input_file_dir = os.getcwd() + '/'
+  prob_dir = input_file_dir
 
-  name_prob_file = dir_ + "/probabilities.xlsx"
+  name_prob_file = prob_dir + f"/probabilities_{name}.xlsx"
   workbook = xlsxwriter.Workbook(name_prob_file)
-  unique_nodes = mesh_info.equal_nodes
+
+  mesh = root.mesh
+  coarse_nodes = mesh.coarse_mesh.coarse_nodes
+  unique_nodes = mesh.coarse_mesh.unique_nodes
   print("Printing out probabilities")
   for c_id in unique_nodes:
-    regions_mat = mesh_info.region_type_rel_switched[c_id]
     worksheet = workbook.add_worksheet(f"Node type {c_id}")
 
     start_row = 0
     start_col = 0
 
-    surfaces = list(mesh_info.coarse_surface_rel[c_id])
+    surfaces = list(coarse_nodes[c_id].surfaces.keys())
     col_idx  = 0
     row_idx = 0
     
+    regions = coarse_nodes[c_id].fine_mesh.regions
     for g in range(energy_g):
       # write headers ------------------------------------
       worksheet.write(row_idx, col_idx, f"g = {g}")
       col_idx += 1
-      for r_id, mat in regions_mat.items():
+      for r_id, cell in regions.items():
+        mat = cell.content.name
         worksheet.write(row_idx, col_idx, f"{mat}-{r_id}")
         col_idx += 1
       for s in surfaces:
@@ -40,15 +43,17 @@ def write_excel(probabilities, mesh_info, root, dir_):
       col_idx = 0
       row_idx += 1
       # write region to x prob values ---------------------------
-      for r_id, mat in regions_mat.items():
+      for r_id, cell in regions.items():
+        mat = cell.content.name
         worksheet.write(row_idx, col_idx, f"{mat}-{r_id}")
         col_idx = 1
-        for rp_id in regions_mat.keys():
-          prob_val = probabilities[c_id]["regions"][r_id]["regions"][rp_id][g]
+        for rp_id, cell in regions.items():
+          mat = cell.content.name
+          prob_val = probabilities["regions"][r_id]["regions"][rp_id][g]
           worksheet.write(row_idx, col_idx, prob_val)
           col_idx += 1
         for s in surfaces:
-          prob_val = probabilities[c_id]["regions"][r_id]["surfaces"][s][g]
+          prob_val = probabilities["regions"][r_id]["surfaces"][s][g]
           worksheet.write(row_idx, col_idx, prob_val)
           col_idx += 1
         col_idx = 0
@@ -58,12 +63,13 @@ def write_excel(probabilities, mesh_info, root, dir_):
       for s in surfaces:
         worksheet.write(row_idx, col_idx, s)
         col_idx = 1
-        for rp_id in regions_mat.keys():
-          prob_val = probabilities[c_id]["surfaces"][s]["regions"][rp_id][g]
+        for rp_id, cell in regions.items():
+          mat = cell.content.name
+          prob_val = probabilities["surfaces"][s]["regions"][rp_id][g]
           worksheet.write(row_idx, col_idx, prob_val)
           col_idx += 1
         for sp in surfaces:
-          prob_val = probabilities[c_id]["surfaces"][s]["surfaces"][sp][g]
+          prob_val = probabilities["surfaces"][s]["surfaces"][sp][g]
           worksheet.write(row_idx, col_idx, prob_val)
           col_idx += 1
         row_idx += 1

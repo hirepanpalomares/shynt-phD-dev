@@ -8,14 +8,13 @@ from Shynt.api_py.Geometry.utilities_geometry import (
    declare_pin_by_cells
 )
 
-from .surfaces import *
 from Shynt.api_py.materials import Material
 
-from Shynt.api_py.Geometry import surfaces
+from Shynt.api_py.Geometry.surfaces import *
 from Shynt.api_py.Geometry.regions import SurfaceSide
 
 from Shynt.api_py.Geometry.cells import reset_cell_counter
-from Shynt.api_py.Geometry.surfaces import reset_surface_counter
+
 
 
 
@@ -167,9 +166,11 @@ class Pin(Universe):
     """
     super().__init__(name)
     self.__pin_levels = [] # These are the cells of the universe Pin
+    self.pin_volumes = []
     self.__clone = False
     self.__outer_most_surface = None
     self.__last_region = None
+
     
     # self.__check_init_levels(material, radius, surroundings)
       
@@ -241,18 +242,23 @@ class Pin(Universe):
     Level = namedtuple("Level", ["cell_id", "radius", "material"])
     corresponding_cyl = None
     if radius:
+      cell_volume = None
       corresponding_cyl = InfiniteCylinderZ(0.0, 0.0, radius)
       if len(self.__pin_levels) == 0:
         # First level to be declared
         self.__last_region = -corresponding_cyl # SurfaceSide type
+        cell_volume = corresponding_cyl.volume
       else:
         self.__last_region = +self.__outer_most_surface & -corresponding_cyl  # Region type
+        cell_volume = corresponding_cyl.volume - self.__outer_most_surface.volume
       self.__outer_most_surface = corresponding_cyl
+      
       cell = Cell(
         "%s_level_%s"%(self.name,len(self.__pin_levels)), 
         fill=material,
         region=self.__last_region,
-        universe=self.name
+        universe=self.name,
+        volume=cell_volume
       )
       
       level = Level(cell.id, radius, material)
@@ -289,6 +295,7 @@ class Pin(Universe):
     first_level = self.__pin_levels[0]
     ll_id = last_level.cell_id
     num_levels = len(self.__pin_levels)
+    last_level_volume = None
     if num_levels == 0:
       # Void pin with no materials inside
       pass
@@ -297,8 +304,10 @@ class Pin(Universe):
       if first_level.radius is None:
         # Pin only with the surroundings (no cylinders inside)
         region = -surface
-        
+        last_level_volume = surface.volume
         super().cells[ll_id].region = region
+        super().cells[ll_id].volume = last_level_volume
+
       else:
         # It means that there is a cylinder and could be an error
         # because the pin will be closed with a void space (no material)
@@ -308,9 +317,12 @@ class Pin(Universe):
       if last_level.radius is None:
         # the last level is infinite and will be closed with the region
         # Closing the last region, normally the coolant:
+        last_level_volume = surface.volume - self.__outer_most_surface.volume
         new_half_space = -surface
         ll_region = super().cells[ll_id].region & new_half_space
         super().cells[ll_id].region = ll_region
+        super().cells[ll_id].volume = last_level_volume
+
   
   def add_pin_levels(self, materials, radius, clone=False):
     """
@@ -357,6 +369,7 @@ class Pin(Universe):
     """
     materials = []
     radius = []
+    volumes = []
     first_level = self.__pin_levels[0]
     cell = super().cells[first_level.cell_id]
     if first_level.radius is None: # Void pin
@@ -522,7 +535,7 @@ class SquareLattice(Universe):
     new_array = [
       [None for i in range(num_cols)] for j in range(num_rows)
     ]
-    self.pin_centers = self.__calculate_pin_centers(
+    self.pin_centers = self.calculate_pin_centers(
       pitch=self.__pitch, left_bottom=self.__left_bottom
     )
     
@@ -546,7 +559,7 @@ class SquareLattice(Universe):
 
     self.__array = new_array
 
-  def __calculate_pin_centers(self, pitch=0.0, left_bottom=(0.0,0.0)):
+  def calculate_pin_centers(self, pitch=0.0, left_bottom=(0.0,0.0)):
     num_rows = self.__nx
     num_cols = self.__ny
     
@@ -583,7 +596,7 @@ class SquareLattice(Universe):
     lb_x, lb_y = self.__left_bottom
     left_bottom = (lb_x*scale_f, lb_y*scale_f)
 
-    new_pin_centers = self.__calculate_pin_centers(
+    new_pin_centers = self.calculate_pin_centers(
       pitch=pitch, left_bottom=left_bottom
     )
     
@@ -760,9 +773,10 @@ class HexagonalLatticeTypeX(Universe):
     from .cells import Cell
     
     
-    if len(self.rings) == 0: # Assembly with only one pin type
-      self.rings = self.__create_rings()
-      self.pin_centers = self.__calculate_pin_centers()
+    if len(self.rings) == 0: 
+      # Assembly with only one pin type
+      self.create_rings()
+      self.pin_centers = self.calculate_pin_centers()
     else:
       pass
     
@@ -782,7 +796,7 @@ class HexagonalLatticeTypeX(Universe):
       new_rings.append(new_ring)
     self.rings = new_rings
     
-  def __create_rings(self):
+  def create_rings(self):
     """ Class method to obtain the rings of the hexagonal assembly
 
     Returns
@@ -799,10 +813,10 @@ class HexagonalLatticeTypeX(Universe):
 
       rings.append(ring)
       num_pins_next_ring += 6
-
+    self.rings = rings
     return rings
 
-  def __calculate_pin_centers(self, pitch=None):
+  def calculate_pin_centers(self, pitch=None):
     """Class method to calculate the centers of all the pins in the hexagonal
     assembly. They are calculated as follows. I starts in the center and then 
     moves to the outer ring by applying a dx to the left and start calculating
@@ -846,7 +860,7 @@ class HexagonalLatticeTypeX(Universe):
       }
     }
     hexagon_sides =  ['F','A','B','C','D','E']
-
+    
     for r in range(1,self.__num_rings): # Ring sweep
       
       ring = self.rings[r]
@@ -885,7 +899,7 @@ class HexagonalLatticeTypeX(Universe):
     """
     pitch = self.__pitch * scale_f
 
-    new_pin_centers = self.__calculate_pin_centers(pitch=pitch)
+    new_pin_centers = self.calculate_pin_centers(pitch=pitch)
 
     return new_pin_centers
 
@@ -1033,9 +1047,14 @@ class HexagonalLatticeTypeX(Universe):
     return self.__enclosed_cells
 
 
-def translate_universe(universe, trans_vector):
-  # return super().translate(trans_vector)
-  surfaces_universe = get_all_surfaces_in_a_universe(universe)
-  for id_, surf in surfaces_universe.items():
-    surf.translate(trans_vector)
+# def translate_universe(universe, trans_vector):
+#   # return super().translate(trans_vector)
+#   surfaces_universe = get_all_surfaces_in_a_universe(universe)
+#   for id_, surf in surfaces_universe.items():
+#     surf.translate(trans_vector)
 
+if __name__=='__main__':
+  hex_lat = HexagonalLatticeTypeX('test', (0,0), 30.0, num_rings=18)
+  hex_lat.create_rings()
+  centers = hex_lat.calculate_pin_centers()
+  print(centers)

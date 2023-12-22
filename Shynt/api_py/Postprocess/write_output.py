@@ -17,7 +17,6 @@ class OutputFile:
     flux_sigma, 
     iter_number, 
     convergence, 
-    mesh_info, 
     nameOut, 
     phi_src, 
     probs,
@@ -30,30 +29,24 @@ class OutputFile:
     self.iterations = iter_number
     self.convergence_keff = convergence[0]
     self.convergence_flux = convergence[1]
-    self.mesh_info = mesh_info
+    # self.mesh_info = mesh_info
+    self.mesh = root.mesh
     self.phi_src = phi_src
     self.nameOut = nameOut
     self.probs = probs
 
-
-    input_file_argument = sys.argv[0]
-    self.input_file_name = nameOut
-
-    input_file_absolute = str(Path(input_file_argument).absolute())
-    input_file_dir = "/".join(input_file_absolute.split("/")[:-1]) + "/"
-
+    input_file_dir = os.getcwd() + '/'
     self.output_dir = input_file_dir + "output_RMM_" + nameOut
     try:
       assert(os.path.isdir(self.output_dir))
     except AssertionError:
       os.mkdir(self.output_dir)
-    write_excel(probs, mesh_info, root, self.output_dir)
     self.__write()
   
 
   def __write(self):
     with open(
-      self.output_dir+f"/{self.input_file_name}_rmm.out", "w"
+      self.output_dir+f"/{self.nameOut}_rmm.out", "w"
     ) as f_:
       f_.write(f"Title: {self.root.name}\n\n")
       f_.write("-------------------------------------------- \n")
@@ -68,14 +61,14 @@ class OutputFile:
       f_.write(f"Keff: {self.keff}")
 
     with open(
-      self.output_dir+f"/{self.input_file_name}_rmm_flux.csv", "w"
+      self.output_dir+f"/{self.nameOut}_rmm_flux.csv", "w"
     ) as f_:
       f_.write(self.__write_flux())
 
-    with open(
-      self.output_dir+f"/{self.input_file_name}_rmm_xs.csv", "w"
-    ) as f_:
-      f_.write(self.__write_xs())
+    # with open(
+    #   self.output_dir+f"/{self.input_file_name}_rmm_xs.csv", "w"
+    # ) as f_:
+    #   f_.write(self.__write_xs())
 
     # with open(
     #   self.output_dir+f"/{self.input_file_name}_rmm_source.csv", "w"
@@ -101,11 +94,11 @@ class OutputFile:
 
   def __write_flux(self):
     numEner = self.root.energy_grid.energy_groups
-    all_regions = self.mesh_info.all_regions_order
+    all_regions = self.mesh.all_regions_order
     numRegions = len(all_regions)
-    region_coarse_rel = self.root.mesh.coarse_mesh.regions_coarse_node
-    regions_material = self.root.mesh.coarse_mesh.coarse_nodes_regions_material
-    regions_volume = self.root.mesh.coarse_mesh.regions_volume
+    regions_to_coarse_rel = self.mesh.create_regions_to_coarse_node_rel()
+    coarse_nodes = self.mesh.coarse_mesh.coarse_nodes
+    regions_volume = self.root.mesh.all_regions_vol
     statement = ""
 
     if self.flux_sigma:
@@ -114,9 +107,9 @@ class OutputFile:
       for g in range(numEner):
         for r in range(numRegions):
           reg_id = all_regions[r]
-          n_id = region_coarse_rel[reg_id]
+          n_id = regions_to_coarse_rel[reg_id]
           flux = self.flux[g][r]
-          mat = regions_material[reg_id]
+          mat = coarse_nodes[n_id].fine_mesh.regions[reg_id].content.name
           vol = regions_volume[reg_id]
           statement += f"{g+1},{n_id},{reg_id},{mat},{flux},"
           statement += f"{self.flux_sigma[g][n_id][reg_id]},{vol}\n"
@@ -126,16 +119,16 @@ class OutputFile:
       for g in range(numEner):
         for r in range(numRegions):
           reg_id = all_regions[r]
-          n_id = region_coarse_rel[reg_id]
+          n_id = regions_to_coarse_rel[reg_id]
           flux = self.flux[g][r]
-          mat = regions_material[reg_id]
+          mat = coarse_nodes[n_id].fine_mesh.regions[reg_id].content.name
           vol = regions_volume[reg_id]
           statement += f"{g+1},{n_id},{reg_id},{mat},{flux},{vol}\n"
     return statement
 
   def __write_xs(self):
     numEner = self.root.energy_grid.energy_groups
-    coarse_nodes_ids = self.mesh_info.coarse_order
+    coarse_nodes_ids = self.mesh.coarse_order
     coarse_regions_rel = self.root.mesh.coarse_mesh.coarse_nodes_regions
     
     regions_material = self.root.mesh.coarse_mesh.coarse_nodes_regions_material

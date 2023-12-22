@@ -2,7 +2,7 @@ import numpy as np
 
 
 def getM_matrix_easier(mesh_info):
-  surface_twins = mesh_info.surface_twins
+  surface_twins = mesh_info.coarse_mesh.surface_twins
   all_surfaces = mesh_info.all_surfaces_order
 
   numSurfaces = len(all_surfaces)
@@ -12,13 +12,14 @@ def getM_matrix_easier(mesh_info):
   matrixM = np.zeros(matrixM_shape)
 
   for s_id in all_surfaces:
+    print(s_id)
     twin_surf = surface_twins[s_id]
     if twin_surf is not None:
-      matrixM[s_id][twin_surf] = 1
-      matrixM[twin_surf][s_id] = 1
+      matrixM[s_id-1][twin_surf-1] = 1
+      matrixM[twin_surf-1][s_id-1] = 1
 
     else:
-      matrixM[s_id][s_id] = 1
+      matrixM[s_id-1][s_id-1] = 1
 
   return matrixM, surface_twins
 

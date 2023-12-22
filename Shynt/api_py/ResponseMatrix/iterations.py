@@ -29,7 +29,7 @@ from Shynt.api_py.Probabilities.propagation import propagate_prob_uncertainty
 
 
 
-def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma={}):
+def solveKeff_byGroup(root, xs, probabilities, prob_sigma={}):
   """
   It solves the eigenvalue problem using the response matrix method (RMM)
 
@@ -62,13 +62,18 @@ def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma={}):
   """
 
   energy_g = root.energy_grid.energy_groups
-  global_mesh = root.cell.global_mesh
+  mesh = root.mesh
+  coarse_mesh = root.mesh.coarse_mesh
 
   # Useful mesh information ---------------------------------------------------
-  coarse_nodes_ids = mesh_info.coarse_order
-  coarse_nodes_regions = mesh_info.coarse_region_rel
-  all_regions = mesh_info.all_regions_order
-  all_surfaces = mesh_info.all_surfaces_order
+  coarse_nodes_ids = mesh.get_all_coarse_nodes_ids()
+  all_regions = mesh.get_all_regions()
+  all_surfaces = mesh.get_all_surfaces()
+  mesh.create_coarse_region_rel()
+  mesh.create_coarse_surface_rel()
+  mesh.create_all_surfaces_area()
+  mesh.create_all_regions_vol()
+  
   numRegions = len(all_regions)
   numSurfaces = len(all_surfaces)
   print(f"Number of regions: {numRegions}")
@@ -77,52 +82,39 @@ def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma={}):
 
   # BUILDING MATRIXES ---------------------------------------------------------
   print("Building matrix S .......", end="")
-  matrixS_bg = getMatrixS_system_byGroup(mesh_info, energy_g, xs, probabilities)
+  matrixS_bg = getMatrixS_system_byGroup(mesh, energy_g, xs, probabilities)
   print(matrixS_bg[0].shape)
   print("Building matrix U .......", end="")
-  matrixU_bg = getMatrixU_system_byGroup(mesh_info, energy_g, probabilities) 
+  matrixU_bg = getMatrixU_system_byGroup(mesh, energy_g, probabilities) 
   print(matrixU_bg[0].shape)
   print("Building matrix T .......", end="")
-  matrixT_bg = getMatrixT_system_byGroup(mesh_info, energy_g, xs, probabilities)
+  matrixT_bg = getMatrixT_system_byGroup(mesh, energy_g, xs, probabilities)
   print(matrixT_bg[0].shape)
   print("Building matrix R .......", end="")
-  matrixR_bg = getResponseMatrix_byGroup(mesh_info, energy_g, probabilities) 
+  matrixR_bg = getResponseMatrix_byGroup(mesh, energy_g, probabilities) 
   print(matrixR_bg[0].shape)
   #print(matrixR_bg[7][:10,:10])
   print("Building matrix M .......", end="")
-  matrixM, twin_surfs = getM_matrix_easier(mesh_info)  
+  matrixM, twin_surfs = getM_matrix_easier(mesh)  
   print(matrixM.shape)
-  # plotting matrix sparsity --------------------------------------------------
-  #plot_matrix_sparsity(matrixR_bg[7], "matrix R")
-  #plot_matrix_sparsity(matrixS_bg[7], "matrix S")
-  #plot_matrix_sparsity(matrixT_bg[7], "matrix T")
-  #plot_matrix_sparsity(matrixU_bg[7], "matrix U")
-  #plot_matrix_sparsity(matrixM, "matrix M")
-  # plot_matrix_sparsity(fission_source, "fission source")
+  print(matrixM)
+  print(matrixR_bg[0])
+  # plotting matrix sparsity? -------------------------------------------------
 
-  #print(matrixM[:8,:8]) ------------------------------------------------------
-  # surf_to_check = [0,1,2,3,4,5,6,7,8,9,10,11,83,84,85,86,87,88,89,90]
-  # for sid in surf_to_check:
-  #   one_idx = find_index_one(matrixM, sid)
-  #   print(f"{sid}: {one_idx}")
-  # ---------------------------------------------------------------------------
-
+  # Inverting the matrix -----------------------------------------------------
   print("Inverting (I - MxR)......")  
-  inverse_IMR_bg = calculate_inverseIMR(matrixM, matrixR_bg, energy_g, numSurfaces)
+  inverse_IMR_bg = calculate_inverseIMR(
+    matrixM, matrixR_bg, energy_g, numSurfaces
+  )
   print(inverse_IMR_bg[0].shape)
-  #raise SystemExit 
   
-  # check matrix M ------------------------------------------------------------
-  #checkMatrixM(matrixM, twin_surfs)
-
   # Building the initial source -----------------------------------------------
   print("Building initial source .......")
   systemSource = SourceQ( # scattering matrix and fission matrix per region
-    coarse_nodes_ids, coarse_nodes_regions, energy_g, xs
+    mesh, energy_g, xs
   ) 
   fission_source = systemSource.buildFissionSource( # for power iteration
-    coarse_nodes_ids, coarse_nodes_regions, mesh_info.all_regions_vol, 
-    probabilities
+    mesh, probabilities
   )
 
   
@@ -138,7 +130,8 @@ def solveKeff_byGroup(root, xs, probabilities, mesh_info, prob_sigma={}):
   iteration = 1
   k_array = []
   phi_source_array = []
-
+  
+  # print(matrixS_bg[0])
   while k_converge >= tolerance or phi_converge >= tolerance:
     print("-"*50)
 
@@ -402,8 +395,13 @@ def calculate_inverseIMR(matrixM, matrixR, energy_g, numSurfaces):
     # det_IMR = np.linalg.det(mI_MR)
     
     # print(f"determinant = {det_IMR:.8f}")
-    
-    inverse = np.linalg.pinv(mI_MR)
+
+    try:    
+      inverse = np.linalg.inv(mI_MR)
+    except np.linalg.LinAlgError:
+      inverse = np.linalg.pinv(mI_MR)
+
+
     # print(inverse)
     inv[g] = inverse
 

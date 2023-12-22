@@ -50,10 +50,10 @@ class Grid:
     """
         
     """
-    syntax = f"ene {self.__name} 1 "
+    syntax = f"ene {self.__name} 1 \n"
 
     for ener in self.__energy_mesh:
-        syntax += f"{format(ener, '.8E')} "
+        syntax += f"{format(ener, '.8E')} \n"
     syntax += "\n"
     
     return syntax

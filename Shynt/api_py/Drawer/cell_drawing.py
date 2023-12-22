@@ -145,14 +145,14 @@ class PlotLattice:
         )
     print()
 
-  def save(self, name=None):
+  def save(self, name=None, im_format='png'):
     # print("rotating...")
     # self.__img = self.__img.rotate(180)
     # self.__img = ImageOps.flip(self.__img, )
     print("Saving...")
     
     if name is None:
-      save_name = f"{self.__imageName}.png"
+      save_name = f"{self.__imageName}.{im_format}"
     else:
       save_name = name
 

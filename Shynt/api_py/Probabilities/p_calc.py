@@ -2,567 +2,404 @@ import numpy as np
 
 from Shynt.api_py.materials import Material
 
+def get_fuel_counts(
+  scores, detectors,regions, surfaces#, fuel_regions
+):
+  """ 
+  Method to extract the following rates:
+    - fuel --> regions
+    - fuel --> surfaces
+  
+  This methods counts the neutrons of every possible interaction 
+  fuel -> clad, fuel -> coolant, etc
+  """  
 
-def get_nonFuel_counts(scores, det_relation, energy, regions, surfaces, fuel_region):
-    """
-        Method to extract the following rates:
-            - mod --> regions
-            - mod --> surface
-    """
-    nonFuel_counts = {
-        r: {
-            "regions": {
-                r: np.zeros(energy) for r in regions
-            },
-            "surfaces": {
-                s: np.zeros(energy) for s in surfaces
-            }
-        } for r in regions if r != fuel_region
-    }
+  # Total reaction rate in the fuel
+  det_name_total = detectors["total_rate"]
+
+  # All neutrons entering the fuel through surface
+  det_name_all_incoming = detectors["all_to_fuel"]
+
+  # Neutrons  fuel to fuel        
+  total_tallies = abs(scores[det_name_total].tallies)
+  all_incoming_tallies = abs(scores[det_name_all_incoming].tallies)
+  neutrons_fuel_to_fuel = total_tallies - all_incoming_tallies 
+  
+  total_errors = scores[det_name_total].errors
+  all_inc_errors = scores[det_name_all_incoming].errors
+  sqrt_sum = np.power(all_inc_errors,2) + np.power(total_errors,2)
+  errors_fuel_to_fuel = np.sqrt(sqrt_sum)
+
+  # Neutrons that interact in the fuel and then in other regions
+  fuel_regions_counts = {}
+  fuel_regions_errors = {}
+  region_to_region = detectors["region_to_region"]
+  cfr = None
+  for rp in regions:
+    if rp not in region_to_region: 
+      cfr = rp
+      fuel_regions_counts[cfr] = { "regions": {}, "surfaces": {} }
+      fuel_regions_errors[cfr] = { "regions": {}, "surfaces": {} }
+
+  for rp in regions:
+    if rp != cfr:
+      det_name = region_to_region[rp]
+      region_tallies = np.flip(abs(scores[det_name].tallies))
+      error_region_tallies = np.flip(abs(scores[det_name].errors))
+      fuel_regions_counts[cfr]["regions"][rp] = region_tallies
+      fuel_regions_errors[cfr]["regions"][rp] = error_region_tallies
+      # print(f"reg_{cfr}_to_reg_{rp}: {region_tallies}")
+      
+    else:
+      
+      fuel_regions_counts[cfr]["regions"][cfr] = np.flip(neutrons_fuel_to_fuel)
+      fuel_regions_errors[cfr]["regions"][cfr] = np.flip(errors_fuel_to_fuel)
+      # print(f"reg_{cfr}_to_reg_{cfr}: {neutrons_fuel_to_fuel}")
+
+
+
+  # Neutrons fuel to surfaces
+  region_to_surfaces = detectors["region_to_surface"]
+  for s in surfaces:
+    det_name_surface = region_to_surfaces[s]
+    surface_tallies = np.flip(abs(scores[det_name_surface].tallies))
+    error_surface_tallies = np.flip(abs(scores[det_name_surface].errors))
+    fuel_regions_counts[cfr]["surfaces"][s] = surface_tallies
+    fuel_regions_errors[cfr]["surfaces"][s] = error_surface_tallies
+    # print(f"reg_{cfr}_to_surf_{s}: {surface_tallies}")
+
+
+      
+  return fuel_regions_counts, fuel_regions_errors
+
+def get_fuel_probabilities(
+  fuel_neutrons, regions, surfaces, energy, fuel_regions
+):
+  p_fuel = {
+    fr : {
+      "regions": { },
+      "surfaces": { }
+    } for fr in fuel_regions
+  }
+  
+
+  # tneff : total_neutrons_emmited_from_fuel
+  for fr in fuel_regions:
+    tneff = np.zeros(energy)
+    for r in regions:
+      tneff += fuel_neutrons[fr]["regions"][r]
+    for s in surfaces:
+      tneff += fuel_neutrons[fr]["surfaces"][s]
+    # Calculation of probabilities
+    for r in regions:
+      p_fuel[fr]["regions"][r] = fuel_neutrons[fr]["regions"][r] / tneff
+    for s in surfaces:
+      p_fuel[fr]["surfaces"][s] = fuel_neutrons[fr]["surfaces"][s] / tneff
+
+  
+  return p_fuel
+
+def get_nonFuel_counts(
+  scores, detectors, regions, surfaces, nonFuel_regions
+):
+  """
+  Method to extract the following rates:
+    - mod --> regions
+    - mod --> surface
+  """
+  
+
+  # nonFuel_counts = {}
+  # nonFuel_errors = {}
+  region_to_region = detectors["region_to_region"]
+  region_to_surface = detectors["region_to_surface"]
+  # print(region_to_region)
+  # print(region_to_surface)
+  # print(detectors.keys())
+  cnfr = None
+  for rp in regions:
+    if rp not in region_to_region: cnfr = rp
+  nonFuel_counts = { cnfr: { "regions": { }, "surfaces": { } } }
+  nonFuel_errors = { cnfr: { "regions": { }, "surfaces": { } } }
+  
+  # print(f"Region {cnfr}")
+
+  # ppp = [print(i,j) for i, j in scores.items()]
+  for rp, cell in regions.items(): 
+    # print(rp, cell.content.name)
+    if rp == cnfr: continue
+    # rp is the region where the neutron intercts for the second time
+    det_name_rp = region_to_region[rp]
+    tallies = np.flip(abs(scores[det_name_rp].tallies))
+    errors = np.flip(abs(scores[det_name_rp].errors))
+    nonFuel_counts[cnfr]["regions"][rp] = tallies
+    nonFuel_errors[cnfr]["regions"][rp] = errors
+    # print(f"reg_{cnfr}_to_reg_{rp}: {tallies}")
+
+  det_name_same_region = detectors["same_region"]
+  same_region_tallies = np.flip(abs(scores[det_name_same_region].tallies))
+  same_region_errors = np.flip(abs(scores[det_name_same_region].errors))
+  # print(f"reg_{cnfr}_to_reg_{cnfr}: {same_region_tallies}")
+
+
+  nonFuel_counts[cnfr]["regions"][cnfr] = same_region_tallies
+  nonFuel_errors[cnfr]["regions"][cnfr] = same_region_errors
+
+  
+  for s in surfaces:
+    det_name_surface = region_to_surface[s]
+    tallies = np.flip(abs(scores[det_name_surface].tallies))
+    errors = np.flip(abs(scores[det_name_surface].errors))
+    nonFuel_counts[cnfr]["surfaces"][s] = tallies
+    nonFuel_errors[cnfr]["surfaces"][s] = errors
+    # print(f"reg_{cnfr}_to_surf_{s}: {tallies}")
+
+
+
+  return nonFuel_counts, nonFuel_errors
+
+def get_nonFuel_probabilities(
+  nf_neutrons, regions, surfaces, energy, nonFuel_regions
+):
     
+  nfr = list(nf_neutrons.keys())[0]
+  p_nonFuel = { nfr: { "regions": {}, "surfaces": {} } }
+  # tne_nf : total neutrons emmited from non fuel
+  tne_nf = np.zeros(energy)
+  for rp in regions:
+    tne_nf += nf_neutrons[nfr]["regions"][rp]
+  for s in surfaces:
+    tne_nf += nf_neutrons[nfr]["surfaces"][s]
+
+  # Calculating probabilities
+  for rp in regions:
+    p_nonFuel[nfr]["regions"][rp] = nf_neutrons[nfr]["regions"][rp]/tne_nf
+  for s in surfaces:
+    p_nonFuel[nfr]["surfaces"][s] = nf_neutrons[nfr]["surfaces"][s]/tne_nf
+   
+  return p_nonFuel
+
+
+def get_surface_counts(
+  scores, detectors, energy, regions, surfaces
+):
+  """
+  Method to extract the following rates:
+    - surface --> regions
+    - surface --> surface
+
+  """
+  # print(surfaces)
+
+  # Preparing surface_counts
+  surface_counts = {    
+    s: {
+      "regions": {
+        r: np.zeros(energy) for r in regions
+      },
+      "surfaces": {
+        su: np.zeros(energy) for su in surfaces
+      }
+    } for s in surfaces
+  }
+  surface_errors = {    
+    s: {
+      "regions": {
+        r: np.zeros(energy) for r in regions
+      },
+      "surfaces": {
+        su: np.zeros(energy) for su in surfaces
+      }
+    } for s in surfaces
+  }
+
+  # print(surfaces)
+  for s in surfaces:
+    # print(s)
+    surface_to_region = detectors["surface_to_region"][s]
+    surface_to_surface = detectors["surface_to_surface"][s]
+    for r in regions:
+      det_name_region = surface_to_region[r]
+      region_tallies = np.flip(abs(scores[det_name_region].tallies))
+      # print(f"surf_{s}_to_reg_{r}: {region_tallies}")
+      error_region_tallies = np.flip(abs(scores[det_name_region].errors))
+      surface_counts[s]["regions"][r] = region_tallies
+      surface_errors[s]["regions"][r] = error_region_tallies
+    for sp in surfaces:
+      det_name_surface = surface_to_surface[sp]
+      surf_tallies = np.flip(abs(scores[det_name_surface].tallies))
+      error_surf_tallies = np.flip(abs(scores[det_name_surface].errors))
+      # print(f"surf_{s}_to_surf_{sp}: {surf_tallies}")
+      surface_counts[s]["surfaces"][sp] = surf_tallies
+      surface_errors[s]["surfaces"][sp] = error_surf_tallies
+
+  return surface_counts, surface_errors
+  
+def get_surface_probabilities(
+  surf_neutrons, energy, regions, surfaces
+):
+  # tne_s : total neutrons emmited from surfaces
+  # print(surf_neutrons[2]["regions"][13])
+  tne_s = {
+    s: np.zeros(energy) for s in surfaces
+  }
+
+  p_surfaces = {
+    s: {
+      "regions": {
+        r: None for r in regions
+      },
+      "surfaces": {
+        sp: None for sp in surfaces
+      }
+    } for s in surfaces 
+  }
+
+  
+  for s in surfaces:
 
     for r in regions:
-        if r != fuel_region:
-            detectors = det_relation["regions"][r]
-            for g in range(energy):
-                for gp in range(energy):
-                    if g < gp:
-                        continue # To avoid upscaterring detectors
-                    energy_index = energy - 1 - gp # To get array fast ---> thermal
+      tne_s[s] += surf_neutrons[s]["regions"][r]
+      # print(s, surf_neutrons[s]["regions"][r])
+    for sp in surfaces:
+      tne_s[s] += surf_neutrons[s]["surfaces"][sp]
+      # print(s, surf_neutrons[s]["surfaces"][sp])
+    # print(s, tne_s[s], "total")
 
-                    for rp in regions: # rp is the region where the neutron intercts for the second time
-                        det_name_rp = detectors["regions"][rp][g][gp].name
-                        nonFuel_counts[r]["regions"][rp][energy_index] += abs(scores[det_name_rp].tallies)
-                    
-                    for s in surfaces:
-                        det_name_surface = detectors["surfaces"][s][g][gp].name
-                        nonFuel_counts[r]["surfaces"][s][energy_index] += abs(scores[det_name_surface].tallies)
+  # Calculate probabilities -------------------------------------------------
+  for s in surfaces:
+    for r in regions:
+      p_surfaces[s]["regions"][r] = surf_neutrons[s]["regions"][r]/tne_s[s]
+    for sp in surfaces:
+      p_surfaces[s]["surfaces"][sp] = surf_neutrons[s]["surfaces"][sp]/tne_s[s]
 
-    return nonFuel_counts
-
-def get_fuel_counts(scores, det_relation, energy, regions, surfaces, fuel_region):
-    """
-        Method to extract the following rates:
-            - fuel --> regions
-            - fuel --> surfaces
-        
-        This methods counts the neutrons of every possible interaction fuel -> clad, fuel -> coolant, etc
-    """  
-    region_fuel_counts = {
-        "regions": {
-            r: np.zeros(energy) for r in regions
-        },
-        "surfaces": {
-            s: np.zeros(energy) for s in surfaces
-        }
-    }
-    
-    detectors = det_relation["regions"][fuel_region]
-    for g in range(energy):
-        energy_index = energy - 1 - g # To get array fast ---> thermal
-        # Total reaction rate in the fuel
-        det_name_total = detectors["total"][g].name
-
-        # All neutrons entering the fuel through surface
-        det_name_all_incoming = detectors["all_to_fuelReg"][g].name
-
-        # Neutrons that interact in the fuel and then in other regions
-        for r in regions:
-            if r != fuel_region:
-                det_name_region = detectors["regions"][r][g].name
-                region_fuel_counts["regions"][r][energy_index] = abs(scores[det_name_region].tallies)
-
-        # Neutrons  fuel to fuel        
-        region_fuel_counts["regions"][fuel_region][energy_index] = abs(scores[det_name_total].tallies)\
-            - abs(scores[det_name_all_incoming].tallies)
-
-        # Neutrons fuel to surfaces
-        for s in surfaces:
-            det_name_surface = detectors["surfaces"][s][g].name
-            region_fuel_counts["surfaces"][s][energy_index] = abs(scores[det_name_surface].tallies)
-        
-    return region_fuel_counts
-
-def get_surface_counts(scores, det_relation, energy, regions, surfaces):
-    """
-        Method to extract the following rates:
-            - surface --> regions
-            - surface --> surface
-
-    """
-
-    # Preparing surface_counts
-    surface_counts = {    
-        s: {
-            "regions": {
-                r: np.zeros(energy) for r in regions
-            },
-            "surfaces": {
-                su: np.zeros(energy) for su in surfaces
-            }
-        } for s in surfaces
-    }
-
-    for g in range(energy):
-        for s in det_relation.keys():
-            for r in regions:
-                energy_index = energy - 1 - g  # To get array fast ---> thermal
-                det_name_region = det_relation[s]["regions"][r][g].name
-                surface_counts[s]["regions"][r][energy_index] = abs(scores[det_name_region].tallies)
-                for sp in surfaces:
-                    det_name_surface = det_relation[s]["surfaces"][sp][g].name
-                    surface_counts[s]["surfaces"][sp][energy_index] = abs(scores[det_name_surface].tallies)
-    return surface_counts
-
-def get_fuel_probabilities(fuel_neutrons, fuel_errors, regions, surfaces, energy, fuel_regions):
-    
-
-    p_fuel = {
-        fr : {
-            "regions": { },
-            "surfaces": { }
-        } for fr in fuel_regions
-    }
-    p_fuel_uncertainty = {
-        fr : {
-            "regions": { },
-            "surfaces": { }
-        } for fr in fuel_regions
-    }
-
-    for fr in fuel_regions:
-        total_neutrons_emmited_from_fuel = np.zeros(energy)
-        for r in regions:
-            total_neutrons_emmited_from_fuel += fuel_neutrons[fr]["regions"][r]
-        for s in surfaces:
-            total_neutrons_emmited_from_fuel += fuel_neutrons[fr]["surfaces"][s]
-        # Calculation of probabilities
-        for r in regions:
-            p_fuel[fr]["regions"][r] = fuel_neutrons[fr]["regions"][r] / total_neutrons_emmited_from_fuel
-        for s in surfaces:
-            p_fuel[fr]["surfaces"][s] = fuel_neutrons[fr]["surfaces"][s] / total_neutrons_emmited_from_fuel
-
-        # Calculation of uncertainty
-        for r in regions:
-            prob_ = p_fuel[fr]["regions"][r]
-            sqrt_sum = np.zeros(energy)
-            for rs in regions:
-                if rs == r:
-                    sqrt_sum += np.power((np.ones(energy) - prob_), 2) * np.power(fuel_errors[fr]["regions"][rs], 2)
-                else:
-                    sqrt_sum += np.power(prob_, 2) * np.power(fuel_errors[fr]["regions"][rs], 2)
-            for s in surfaces:
-                sqrt_sum += np.power(prob_, 2) * np.power(fuel_errors[fr]["surfaces"][s], 2)
-            uncertainty = np.sqrt(sqrt_sum)/total_neutrons_emmited_from_fuel
-            p_fuel_uncertainty[fr]["regions"][r] = uncertainty
-        for s in surfaces:
-            prob_ = p_fuel[fr]["surfaces"][s]
-            sqrt_sum = np.zeros(energy)
-            for rs in regions:
-                sqrt_sum += np.power(prob_, 2) * np.power(fuel_errors[fr]["regions"][rs], 2)
-            for sp in surfaces:
-                if sp == s:
-                    sqrt_sum += np.power((np.ones(energy) - prob_), 2) * np.power(fuel_errors[fr]["surfaces"][sp], 2)
-                else:
-                    sqrt_sum += np.power(prob_, 2) * np.power(fuel_errors[fr]["surfaces"][sp], 2)
-            uncertainty = np.sqrt(sqrt_sum)/total_neutrons_emmited_from_fuel
-            p_fuel_uncertainty[fr]["surfaces"][s] = uncertainty
-            
-
-
-    return p_fuel, p_fuel_uncertainty
-
-def get_nonFuel_probabilities(nonFuel_neutrons, nonFuel_errors, regions, surfaces, energy, nonFuel_regions):
-    
-    p_nonFuel = {
-        r: {
-            "regions": {
-                rp: None for rp in regions
-            },
-            "surfaces": {
-                s: None for s in surfaces
-            }
-        } for r in nonFuel_regions
-    }
-
-    p_nonFuel_uncertainty = {
-        r: {
-            "regions": {
-                rp: None for rp in regions
-            },
-            "surfaces": {
-                s: None for s in surfaces
-            }
-        } for r in nonFuel_regions
-    }
-
-    for nfr in nonFuel_regions:
-        total_emmited_from_nonFuel = np.zeros(energy)
-        for rp in regions:
-           total_emmited_from_nonFuel += nonFuel_neutrons[nfr]["regions"][rp]
-        for s in surfaces:
-            total_emmited_from_nonFuel += nonFuel_neutrons[nfr]["surfaces"][s]
-
-        # Calculating probabilities
-        for rp in regions:
-            p_nonFuel[nfr]["regions"][rp] = nonFuel_neutrons[nfr]["regions"][rp]/total_emmited_from_nonFuel
-        for s in surfaces:
-            p_nonFuel[nfr]["surfaces"][s] = nonFuel_neutrons[nfr]["surfaces"][s]/total_emmited_from_nonFuel
-        
-        # Calculation of uncertainty
-        for r in regions:
-            prob_ = p_nonFuel[nfr]["regions"][r]
-            sqrt_sum = np.zeros(energy)
-            for rs in regions:
-                if rs == r:
-                    sqrt_sum += np.power((np.ones(energy) - prob_), 2) * np.power(nonFuel_errors[nfr]["regions"][rs], 2)
-                else:
-                    sqrt_sum += np.power(prob_, 2) * np.power(nonFuel_errors[nfr]["regions"][rs], 2)
-            for s in surfaces:
-                sqrt_sum += np.power(prob_, 2) * np.power(nonFuel_errors[nfr]["surfaces"][s], 2)
-            uncertainty = np.sqrt(sqrt_sum)/total_emmited_from_nonFuel
-            p_nonFuel_uncertainty[nfr]["regions"][r] = uncertainty
-        for s in surfaces:
-            prob_ = p_nonFuel[nfr]["surfaces"][s]
-            sqrt_sum = np.zeros(energy)
-            for rs in regions:
-                sqrt_sum += np.power(prob_, 2) * np.power(nonFuel_errors[nfr]["regions"][rs], 2)
-            for sp in surfaces:
-                if sp == s:
-                    sqrt_sum += np.power((np.ones(energy) - prob_), 2) * np.power(nonFuel_errors[nfr]["surfaces"][sp], 2)
-                else:
-                    sqrt_sum += np.power(prob_, 2) * np.power(nonFuel_errors[nfr]["surfaces"][sp], 2)
-            uncertainty = np.sqrt(sqrt_sum)/total_emmited_from_nonFuel
-            p_nonFuel_uncertainty[nfr]["surfaces"][s] = uncertainty
-    
-    return p_nonFuel, p_nonFuel_uncertainty
-
-
-def get_surface_probabilities(surface_neutrons, surface_errors, energy, regions, surfaces):
-    total_emmited_from_surfaces = {
-        s: np.zeros(energy) for s in surfaces
-    }
-
-    p_surfaces = {
-        s: {
-            "regions": {
-                r: None for r in regions
-            },
-            "surfaces": {
-                sp: None for sp in surfaces
-            }
-        } for s in surfaces 
-    }
-
-    p_surfaces_uncertainty = {
-        s: {
-            "regions": {
-                r: None for r in regions
-            },
-            "surfaces": {
-                sp: None for sp in surfaces
-            }
-        } for s in surfaces 
-    }
-
-    for s in surfaces:
-        for r in regions:
-            total_emmited_from_surfaces[s] += surface_neutrons[s]["regions"][r]
-        for sp in surfaces:
-            total_emmited_from_surfaces[s] += surface_neutrons[s]["surfaces"][sp]
-    for s in surfaces:
-        # Calculate probabilities
-        for r in regions:
-            p_surfaces[s]["regions"][r] = surface_neutrons[s]["regions"][r]/total_emmited_from_surfaces[s]
-        for sp in surfaces:
-            p_surfaces[s]["surfaces"][sp] = surface_neutrons[s]["surfaces"][sp]/total_emmited_from_surfaces[s]
-    
-        # Calculation of uncertainty
-        for r in regions:
-            # Loop for the uncertainties from surface to region
-            prob_ = p_surfaces[s]["regions"][r]
-            sqrt_sum = np.zeros(energy)
-            for r_sigma in regions:
-                if r_sigma == r:
-                    sqrt_sum += np.power((np.ones(energy) - prob_), 2) * np.power(surface_errors[s]["regions"][r_sigma], 2)
-                else:
-                    sqrt_sum += np.power(prob_, 2) * np.power(surface_errors[s]["regions"][r_sigma], 2)
-            for s_sigma in surfaces:
-                sqrt_sum += np.power(prob_, 2) * np.power(surface_errors[s]["surfaces"][s_sigma], 2)
-            uncertainty = np.sqrt(sqrt_sum)/total_emmited_from_surfaces[s]
-            p_surfaces_uncertainty[s]["regions"][r] = uncertainty
-        for sp in surfaces:
-            # Loop for the uncertainties from surface to surface
-            prob_ = p_surfaces[s]["surfaces"][sp]
-            sqrt_sum = np.zeros(energy)
-            for r_sigma in regions:
-                sqrt_sum += np.power(prob_, 2) * np.power(surface_errors[s]["regions"][r_sigma], 2)
-            for sp_s in surfaces:
-                if sp_s == sp:
-                    sqrt_sum += np.power((np.ones(energy) - prob_), 2) * np.power(surface_errors[s]["surfaces"][sp_s], 2)
-                else:
-                    sqrt_sum += np.power(prob_, 2) * np.power(surface_errors[s]["surfaces"][sp_s], 2)
-            uncertainty = np.sqrt(sqrt_sum)/total_emmited_from_surfaces[s]
-            p_surfaces_uncertainty[s]["surfaces"][sp] = uncertainty
-
-    return p_surfaces, p_surfaces_uncertainty
-
-
-def get_nonFuel_counts_lessDet(scores, det_relation, energy, regions, surfaces, nonFuel_regions):
-    """
-        Method to extract the following rates:
-            - mod --> regions
-            - mod --> surface
-    """
-    nonFuel_counts = {
-        r: {
-            "regions": { },
-            "surfaces": { }
-        } for r in nonFuel_regions
-    }
-
-    nonFuel_errors = {
-        r: {
-            "regions": { },
-            "surfaces": { }
-        } for r in nonFuel_regions
-    }
-    
-
-    for r in nonFuel_regions:
-        
-        detectors = det_relation["regions"][r]
-        
-        for rp in regions: # rp is the region where the neutron intercts for the second time
-            det_name_rp = detectors["regions"][rp].name
-            nonFuel_counts[r]["regions"][rp] = np.flip(abs(scores[det_name_rp].tallies))
-            nonFuel_errors[r]["regions"][rp] = np.flip(abs(scores[det_name_rp].errors))
-
-        
-        for s in surfaces:
-            det_name_surface = detectors["surfaces"][s].name
-            nonFuel_counts[r]["surfaces"][s] = np.flip(abs(scores[det_name_surface].tallies))
-            nonFuel_errors[r]["surfaces"][s] = np.flip(abs(scores[det_name_surface].errors))
-
-
-    return nonFuel_counts, nonFuel_errors
-
-def get_fuel_counts_lessDet(scores, det_relation, energy, regions, surfaces, fuel_regions):
-    """
-        Method to extract the following rates:
-            - fuel --> regions
-            - fuel --> surfaces
-        
-        This methods counts the neutrons of every possible interaction fuel -> clad, fuel -> coolant, etc
-    """  
-    fuel_regions_counts = {
-        r: {
-            "regions": { },
-            "surfaces": { }
-        } for r in fuel_regions
-    }
-
-    fuel_regions_errors = {
-        r: {
-            "regions": { },
-            "surfaces": { }
-        } for r in fuel_regions
-    }
-    
-    for fr, detectors in det_relation["regions"].items():
-    
-        # Total reaction rate in the fuel
-        det_name_total = detectors["total"].name
-
-        # All neutrons entering the fuel through surface
-        det_name_all_incoming = detectors["all_to_fuelReg"].name
-
-        # Neutrons  fuel to fuel        
-        neutrons_fuel_to_fuel = abs(scores[det_name_total].tallies) - abs(scores[det_name_all_incoming].tallies)
-        sqrt_sum = np.power(scores[det_name_total].errors,2) + np.power(scores[det_name_all_incoming].errors,2)
-        errors_fuel_to_fuel = np.sqrt(sqrt_sum)
-
-        # Neutrons that interact in the fuel and then in other regions
-        for rp in regions:
-            if rp != fr:
-                det_name_region = detectors["regions"][rp].name
-                fuel_regions_counts[fr]["regions"][rp] = np.flip(abs(scores[det_name_region].tallies))
-                fuel_regions_errors[fr]["regions"][rp] = np.flip(abs(scores[det_name_region].errors))
-            else:
-                fuel_regions_counts[fr]["regions"][fr] = np.flip(neutrons_fuel_to_fuel)
-                fuel_regions_errors[fr]["regions"][fr] = np.flip(errors_fuel_to_fuel)
-
-
-        # Neutrons fuel to surfaces
-        for s in surfaces:
-            det_name_surface = detectors["surfaces"][s].name
-            fuel_regions_counts[fr]["surfaces"][s] = np.flip(abs(scores[det_name_surface].tallies))
-            fuel_regions_errors[fr]["surfaces"][s] = np.flip(abs(scores[det_name_surface].errors))
-
-        
-    return fuel_regions_counts, fuel_regions_errors
-
-def get_surface_counts_lessDet(scores, det_relation, energy, regions, surfaces):
-    """
-        Method to extract the following rates:
-            - surface --> regions
-            - surface --> surface
-
-    """
-
-    # Preparing surface_counts
-    surface_counts = {    
-        s: {
-            "regions": {
-                r: np.zeros(energy) for r in regions
-            },
-            "surfaces": {
-                su: np.zeros(energy) for su in surfaces
-            }
-        } for s in surfaces
-    }
-    surface_errors = {    
-        s: {
-            "regions": {
-                r: np.zeros(energy) for r in regions
-            },
-            "surfaces": {
-                su: np.zeros(energy) for su in surfaces
-            }
-        } for s in surfaces
-    }
-
-    
-    for s in det_relation.keys():
-        for r in regions:
-            det_name_region = det_relation[s]["regions"][r].name
-            surface_counts[s]["regions"][r] = np.flip(abs(scores[det_name_region].tallies))
-            surface_errors[s]["regions"][r] = np.flip(abs(scores[det_name_region].errors))
-            for sp in surfaces:
-                det_name_surface = det_relation[s]["surfaces"][sp].name
-                surface_counts[s]["surfaces"][sp] = np.flip(abs(scores[det_name_surface].tallies))
-                surface_errors[s]["surfaces"][sp] = np.flip(abs(scores[det_name_surface].errors))
-
-    return surface_counts, surface_errors
-
-
-
-
-
-
+  return p_surfaces
 
 
 def calculate_probabilities_main_nodes(
-    det_inputs, mesh_info, coarse_nodes, fine_nodes, energy_groups,
-    coarse_node_scores, detector_relation
+  coarse_mesh, det_inputs, coarse_node_scores, energy
 ):                    
-    """
-        # TODO: The number of detectors can be reduced (see bellow)
+  """
+    # TODO: The number of detectors can be reduced (see bellow)
 
-        The probability for a neutron to enter the cell through a given surface
-        and go out through the same surface without interacting is CERO
+    The probability for a neutron to enter the cell through a given surface
+    and go out through the same surface without interacting is CERO
+    
+    The energy structure of scores are ordered from thermal --> fast  
+
+    ------------------------------------------------------------------------
+    
+    coarse_node_scores.keys() - scores of the detectors by name
+  """
+  
+  
+  probabilities = {}
+  uncertainties = {}
+  equivalent_regions = coarse_mesh.equivalent_regions
+  equivalent_surfaces = coarse_mesh.equivalent_surfaces
+  coarse_nodes = coarse_mesh.coarse_nodes
+  # ----------------------------------------------------------------------------------------------------
+  for n_id in det_inputs: # Loop for the different coarse nodes
+    print(n_id)
+    regions = coarse_nodes[n_id].fine_mesh.regions
+    surfaces = coarse_nodes[n_id].surfaces
+    fuel_regions = [
+      r for r, cell in regions.items() if cell.content.isFuel
+    ]
+    nonFuel_regions = [
+      r for r, cell in regions.items() if not cell.content.isFuel
+    ]
+    probabilities[n_id] = { 
+      "regions": {},
+      "surfaces": {}
+    }
+    uncertainties[n_id] = { 
+      "regions": {},
+      "surfaces": {}
+    }
+
+    fuel_probabilities = {}
+    nonFuel_probabilities = {}
+    surface_probabilities = {}
+    
+    for detector_file in det_inputs[n_id]:
+      type_ = detector_file.type_of_detectors
+      detectors = detector_file.detectors_relation
+      name_file = detector_file.name.split("/")[-1]
+      if type_ == "region_fuel":
+        fuel_neutrons, fuel_errors = get_fuel_counts(
+          coarse_node_scores[n_id],
+          detectors,
+          regions,
+          surfaces, 
+          # fuel_regions
+        )
+        fuel_probabilities = get_fuel_probabilities(
+          fuel_neutrons,
+          regions,
+          surfaces,
+          energy,
+          fuel_regions
+        )
+        # fuel_uncertainties = calculate_fuel_uncertainties()
+      elif type_ == "region_nonFuel":
+        print(f"Extracting non fuel region detector scores", end="")
+        print(f"\tnode {n_id}\t\tfile name: {name_file}")
+
+        nonFuel_neutrons, nonFuel_errors = get_nonFuel_counts(
+          coarse_node_scores[n_id],
+          detectors,
+          regions,
+          surfaces,
+          nonFuel_regions
+        )
+        print(f"Calculating collision probabilities\t\tnode {n_id}", end="")
+        print(f"\t\tfile name: {name_file}")
         
-        The energy structure of scores are ordered from thermal --> fast  
+        nonFuel_probabilities = get_nonFuel_probabilities(
+          nonFuel_neutrons,
+          regions,
+          surfaces,
+          energy, 
+          nonFuel_regions
+        )
 
-        ------------------------------------------------------------------------
-        
-        detector_relation.keys() - Relation of detectors by type of counters
-        coarse_node_scores.keys() - scores of the detectors by name
-    """
-    
-    
-    probabilities = {}
-    uncertainties = {}
+        # nonFuel_uncertainties = calculate_onnFuel_uncertainties()
 
-    # ----------------------------------------------------------------------------------------------------
-    for id_ in det_inputs: # Loop for the different coarse nodes
-        regions = mesh_info.coarse_region_rel[id_]
-        surfaces = mesh_info.coarse_surface_rel[id_]
-        fuel_regions = [r for r in fine_nodes[id_] if fine_nodes[id_][r].cell.content.isFuel]
-        nonFuel_regions = [r for r in fine_nodes[id_] if not fine_nodes[id_][r].cell.content.isFuel]
+        # print(nonFuel_uncertainty)
+        # print("-"*50)
+      elif type_ == "surfaces":
+        # print("---------------------------------")
+        surface_neutrons, surface_errors = get_surface_counts(
+          coarse_node_scores[n_id],
+          detectors,
+          energy,
+          regions,
+          surfaces
+        )
+        # print(surface_neutrons)
+        surface_probabilities  = get_surface_probabilities(
+          surface_neutrons,
+          energy,
+          regions,
+          surfaces
+        )
+        # surface_uncertainties = calculate_surface_uncertainties()
 
-        probabilities[id_] = { 
-            "regions": {},
-            "surfaces": {}
-        }
-        uncertainties[id_] = { 
-            "regions": {},
-            "surfaces": {}
-        }
-        region_probabilities = {}
-        fuel_probabilities = {}
-        nonFuel_probabilities = {}
-        surface_probabilities = {}
-        for type_ in detector_relation[id_].keys():
-            if type_ == "region_fuel":
-                fuel_neutrons, fuel_errors = get_fuel_counts_lessDet(
-                    coarse_node_scores[id_]["region_fuel"],
-                    detector_relation[id_]["region_fuel"],
-                    energy_groups,
-                    regions,
-                    surfaces, 
-                    fuel_regions
-                )
-                fuel_probabilities, fuel_prob_uncertainty = get_fuel_probabilities(
-                    fuel_neutrons,
-                    fuel_errors,
-                    regions,
-                    surfaces,
-                    energy_groups,
-                    fuel_regions
-                )
-                # print(fuel_prob_uncertainty)
-                # print(fuel_neutrons)
-                # print("-"*50)
-            elif type_ == "region_nonFuel":
-                nonFuel_neutrons, nonFuel_errors = get_nonFuel_counts_lessDet(
-                    coarse_node_scores[id_]["region_nonFuel"],
-                    detector_relation[id_]["region_nonFuel"],
-                    energy_groups,
-                    regions,
-                    surfaces, 
-                    nonFuel_regions
-                )
-                nonFuel_probabilities, nonFuel_uncertainty = get_nonFuel_probabilities(
-                    nonFuel_neutrons,
-                    nonFuel_errors, 
-                    regions,
-                    surfaces,
-                    energy_groups, 
-                    nonFuel_regions
-                )
-                # print(nonFuel_uncertainty)
-                # print("-"*50)
-            elif type_ == "surfaces":
-                surface_neutrons, surface_errors = get_surface_counts_lessDet(
-                    coarse_node_scores[id_]["surfaces"],
-                    detector_relation[id_]["surfaces"]["surfaces"],
-                    energy_groups,
-                    regions,
-                    surfaces
-                )
-                surface_probabilities, surface_uncertainties = get_surface_probabilities(
-                    surface_neutrons,
-                    surface_errors, 
-                    energy_groups,
-                    regions,
-                    surfaces
-                )
-                # print(surface_uncertainties)
-                probabilities[id_]["surfaces"] = surface_probabilities
-                # print(surface_neutrons)
-            else:
-                print("Warning in calculate probabilities, type of detector not valid")
-                raise SystemError
-        # ----------------------------------------------------------------------------------------------------
-    
-        probabilities[id_]["regions"].update(fuel_probabilities)
-        probabilities[id_]["regions"].update(nonFuel_probabilities)
-        probabilities[id_]["surfaces"].update(surface_probabilities)
-        uncertainties[id_]["regions"].update(fuel_prob_uncertainty)
-        uncertainties[id_]["regions"].update(nonFuel_uncertainty)
-        uncertainties[id_]["surfaces"].update(surface_uncertainties)
+        probabilities[n_id]["surfaces"] = surface_probabilities
+      else:
+        print("Warning in calculate probabilities, type of detector not valid")
+        raise SystemError
+      probabilities[n_id]["regions"].update(fuel_probabilities)
+      probabilities[n_id]["regions"].update(nonFuel_probabilities)
+      probabilities[n_id]["surfaces"].update(surface_probabilities)
+      # uncertainties[n_id]["regions"].update(fuel_prob_uncertainty)
+      # uncertainties[n_id]["regions"].update(nonFuel_uncertainty)
+      # uncertainties[n_id]["surfaces"].update(surface_uncertainties)
 
 
-    return probabilities, uncertainties
+
+
+
+  return probabilities
     

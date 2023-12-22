@@ -39,7 +39,7 @@ def run(
     # get XS and probabilities ------------------------------------------------
     xs = get_xs_data(mesh_info, root, xs_inputs)
     probabilities, prob_sigma = get_probabilities(
-      det_inputs, mesh_info, root
+      det_inputs, mesh_info, root, xs
     )
     reset_surface_counter()
     reset_cell_counter()

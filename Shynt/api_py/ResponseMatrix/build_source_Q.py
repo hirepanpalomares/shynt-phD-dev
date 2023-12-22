@@ -50,7 +50,7 @@ class SourceQ:
 
   """
 
-  def __init__(self, coarse_nodes, coarse_nodes_regions, energy_g, xs) -> None:
+  def __init__(self, mesh, energy_g, xs) -> None:
     """
     Parameters
     ----------
@@ -63,8 +63,7 @@ class SourceQ:
     xs : dict
       Cross sections of every region
     """
-    self.__coarseNodes = coarse_nodes
-    self.__coarseNodesRegions = coarse_nodes_regions
+    self.__coarseNodes = mesh.coarse_mesh.coarse_nodes
     self.__energyG = energy_g
     self.__xs = xs
 
@@ -96,8 +95,8 @@ class SourceQ:
     fission = {}
    
     for n_id in self.__coarseNodes:
-      regions = self.__coarseNodesRegions[n_id]
-      for r in regions:
+      regions = self.__coarseNodes[n_id].fine_mesh.regions
+      for r in regions.keys():
         fission[r] = np.zeros((self.__energyG, self.__energyG))
         nuFiss_xs = self.__xs[r]["nuSigFission"]
         chi_xs = self.__xs[r]["chi"]
@@ -132,8 +131,8 @@ class SourceQ:
 
     scattering = {}
     for n_id in self.__coarseNodes:
-      regions = self.__coarseNodesRegions[n_id]
-      for r in regions:
+      regions = self.__coarseNodes[n_id].fine_mesh.regions
+      for r in regions.keys():
         scattMatrix = self.__xs[r]["scatter"]
         scattering[r] = scattMatrix
     return scattering
@@ -156,7 +155,7 @@ class SourceQ:
     return new_flux
 
   def buildFissionSource(self, 
-    coarse_nodes_ids, coarse_nodes_regions, regions_vol, probabilities
+    mesh, probabilities
   ):
     """
     Method to build the Fission Source that is used to calculate the keff in
@@ -196,10 +195,11 @@ class SourceQ:
 
     """
 
-
+    coarse_nodes_ids = mesh.coarse_order
+    regions_vol = mesh.all_regions_vol
     array_of_matrixes = []
     for n_id in coarse_nodes_ids:
-      regions = coarse_nodes_regions[n_id]
+      regions = list(self.__coarseNodes[n_id].fine_mesh.regions.keys())
       numRegions = len(regions)
       mF = np.zeros((numRegions*self.__energyG,numRegions*self.__energyG))
       for i in range(numRegions): 
@@ -213,7 +213,7 @@ class SourceQ:
             # Loop to concatenate the vector of the block
             reg_j = regions[j]
             vol_j = regions_vol[reg_j]
-            prob = probabilities[n_id]["regions"][reg_j]["regions"][reg_i][g]
+            prob = probabilities["regions"][reg_j]["regions"][reg_i][g]
             array = self.__fissionMatrix[reg_j][g] * vol_j * prob
             row_matrix = np.concatenate((row_matrix, array), axis=0)
           index_mF_row = i * self.__energyG  + g
@@ -254,6 +254,8 @@ class SourceQ:
       Source vectors, with energy groups as keys
 
     """
+    from math import pi
+    
     if not fluxOrdered_bg:
       flux = self.__orderFlux(flux, total_regions)
 
@@ -270,12 +272,12 @@ class SourceQ:
         fission_term = 0.0
         for gp in range(self.__energyG):
           # scattering --------------------
-          scatt_term += scatt_matrix[g][gp] * flux[gp][r]
+          scatt_term += scatt_matrix[g][gp] * flux[gp][r] 
           # fission -----------------------
           fission_term += fiss_matrix[g][gp] * flux[gp][r]
 
         _Q[g][r] = scatt_term + fission_term / keff
-
+        _Q[g][r] = _Q[g][r] # / (pi*4)
     return _Q
 
 

@@ -1,4 +1,5 @@
 
+from Shynt.api_py.Mesh.coarse_node import CoarseNodeTriangularMesh
 from Shynt.api_py.Mesh.coarse_mesh import CoarseMesh
 
 # from Shynt.api_py.Geometry.universes import SquareLattice
@@ -69,10 +70,12 @@ class TriangularMesh(CoarseMesh):
     self.hex_assembly = super().cell.content
     self.points_mesh = {}
     self.mesh_rings = []
+    self.coarse_nodes = {}
+    self.type_nodes = {}
     self.nodes_surfaces = {}
-    self.surfaces = {}
     self.num_surfaces = 0
     self.surface_twins = {}
+    self.surfaces = {}
 
     # self.calculate_nodes_coordinates()
     # self.calculate_nodes_surfaces()
@@ -80,7 +83,7 @@ class TriangularMesh(CoarseMesh):
     
     self.map_pins = []
     self.symmetry = {}
-    self.clean_mesh_map = []
+    self.mesh_map = [] # mesh in rings
 
 
     self.equivalent_nodes = {}
@@ -89,75 +92,71 @@ class TriangularMesh(CoarseMesh):
     self.coarse_nodes_regions_material = {}
     self.regions_volume = {}
 
-    self.coarse_nodes = {}
     self.type_mesh = ""
 
     # self.map_nodes = self.__get_node_map()
     # self.clean_map = self.__get_clean_map()
     
   
-  def __create_nodes_switch(self, universe):
-    coarse_nodes = None
-    coarse_nodes_map = None
-    try:
-      assert isinstance(universe, HexagonalLatticeTypeX)
-      coarse_nodes, coarse_nodes_map = self.__create_nodes_HexagonalLattice(
-        universe
-      )
-    except AssertionError:
-      print("type of mesh not supported for cell")
-      raise NotImplementedError
+  
+  
+  def create_coarse_nodes(self):
+    """Class method that created the coarse nodes and the 
+    ids of its surfaces.
+    
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+    self.__create_nodes_points()
+    coarse_nodes = {}
+    surfaces = {}
+    s_id = 0
+    num_rings = len(self.mesh_rings)
+    for r, ring in enumerate(self.mesh_rings):
+      for n_id in ring:
+        surface_points = self.points_mesh[n_id]
+        
+        node = CoarseNodeTriangularMesh(
+          n_id, 'triangular', self.hex_assembly.pitch
+        )
+        surfs, s_id = node.calculate_surfaces(surface_points, s_id)
+        surfaces.update(surfs)
+        
+        # "inner_triangle"
+        # "corner_triangle"
+        # "square_side"
+        print(surface_points)
+        if r < num_rings - 1:  node.type_coarse_node = "inner_triangle"
+        else:
+          num_points = len(surface_points)
+          if num_points == 4: node.type_coarse_node = "square_side"
+          elif num_points == 3: node.type_coarse_node = "corner_triangle"
+          
+        coarse_nodes[n_id] = node
     
     self.coarse_nodes = coarse_nodes
-    self.coarse_nodes_map = coarse_nodes_map
+    self.nodes_surfaces = surfaces
+    self.num_surfaces = s_id
 
+  def __create_nodes_points(self):
+    nodes_surfaces, nodes_map = self.__get_mesh_in_rings()
 
-  def __create_nodes_HexagonalLattice(self, universe):
-    map_nodes = []
-    coarse_nodes = {}
-    node_counter = 1
-    triangle_coords = self.get_triangules_coordinates()
+    self.points_mesh = nodes_surfaces
+    self.mesh_rings = nodes_map
 
-    self.points_mesh = triangle_coords
-    self.__symmetry = {
-      1: {
-        1: {"same": ""},
-        2: {"mirror": "right"},
-        3: {"same": ""},
-        4: {"mirror": "right"},
-        5: {"same": ""},
-        6: {"mirror": "right"},
-        7: {"same": ""},
-        8: {"mirror": "right"},
-        9: {"same": ""},
-        10: {"mirror": "right"},
-        11: {"same": ""},
-        12: {"mirror": "right"},
-      }  
-    }
-
-    for n_id, triangle_points in triangle_coords.items():
-      triangle_cells, geometry_info = self.get_cells()
-  
-  def calculate_nodes_coordinates(self):
-    triangles = {}
-    coarse_node_mesh_rings = []
-
-    n_id, nodes_points_inside, mesh_rings = self.__get_mesh_in_rings()
-    triangles.update(nodes_points_inside)
-    coarse_node_mesh_rings += mesh_rings
-
-    n_id, nodes_points_boundary, mesh_rings = self.__get_mesh_in_boundary(n_id)
-    triangles.update(nodes_points_boundary)
-
-    coarse_node_mesh_rings += [mesh_rings]
-
-    self.points_mesh = triangles
-    self.mesh_rings = coarse_node_mesh_rings
 
   def __get_mesh_in_rings(self):
-    triangles = {}
-    triangle_rings = []
+    """
+    The function __get_mesh_in_rings calculates the triangles and 
+    triangle rings for a mesh based on the pin centers of an assembly.
+    :return: three values: node_id, triangles, and triangle_rings.
+    """
+    nodes_surfaces = {}
+    nodes_map = []
     assembly = self.cell.content
     pin_centers = assembly.pin_centers
     num_rings = assembly.num_rings
@@ -171,10 +170,10 @@ class TriangularMesh(CoarseMesh):
       p1 = center
       p2 = pin_centers[1][p]
       p3 = pin_centers[1][p+1]
-      triangles[node_id] = (p1, p2, p3)
+      nodes_surfaces[node_id] = (p1, p2, p3)
       nid_ring.append(node_id)
       node_id += 1
-    triangle_rings.append(nid_ring)
+    nodes_map.append(nid_ring)
 
     # Other rings -------------
     num_pins_on_side = 1
@@ -190,13 +189,13 @@ class TriangularMesh(CoarseMesh):
           p1 = pin_centers[r][p]
           p2 = prev_ring[prev_ring_idx]
           p3 = prev_ring[prev_ring_idx+1]
-          triangles[node_id] = (p1, p2, p3)
+          nodes_surfaces[node_id] = (p1, p2, p3)
           nid_ring.append(node_id)
           
           p1 = pin_centers[r][p]
           p2 = pin_centers[r][p+1]
           p3 = prev_ring[prev_ring_idx+1]
-          triangles[node_id+1] = (p1, p2, p3)
+          nodes_surfaces[node_id+1] = (p1, p2, p3)
           nid_ring.append(node_id+1)
 
           node_id += 2
@@ -209,7 +208,7 @@ class TriangularMesh(CoarseMesh):
           p3 = prev_ring[prev_ring_idx]
           on_side = True
 
-          triangles[node_id] = (p1, p2, p3)
+          nodes_surfaces[node_id] = (p1, p2, p3)
           nid_ring.append(node_id)
 
           node_id += 1
@@ -217,11 +216,15 @@ class TriangularMesh(CoarseMesh):
         if on_side_pins_counter == num_pins_on_side: 
           on_side = False
           on_side_pins_counter = 0
-      triangle_rings.append(nid_ring)
+      nodes_map.append(nid_ring)
       num_pins_on_side += 1
 
-    return node_id, triangles, triangle_rings
-  
+    nsurfs_boundary, boundary_ring = self.__get_mesh_in_boundary(node_id)
+    nodes_surfaces.update(nsurfs_boundary)
+    nodes_map.append(boundary_ring)
+    
+    return nodes_surfaces, nodes_map
+
   def __get_mesh_in_boundary(self, node_id):
     from math import cos
     from math import sin
@@ -456,7 +459,7 @@ class TriangularMesh(CoarseMesh):
         side_idx += 1
         distance = 0.0
       
-    return node_id, nodes, node_ring  
+    return nodes, node_ring  
 
   def calculate_nodes_surfaces(self):
     nodes_surfaces = {}
@@ -518,8 +521,8 @@ class TriangularMesh(CoarseMesh):
     for ring_idx, ring in enumerate(self.mesh_rings):
       # print(ring)
       for n_id in ring:
-
-        node_surfs = self.nodes_surfaces[n_id]
+        node = self.coarse_nodes[n_id]
+        node_surfs = node.surfaces
       
         for s_id, points in node_surfs.items():
   
@@ -576,7 +579,8 @@ class TriangularMesh(CoarseMesh):
       # if n_id == 7: print(ring)
       for other_n_id in ring:
         if n_id == other_n_id: continue
-        node_surfs = self.nodes_surfaces[other_n_id]
+        node = self.coarse_nodes[n_id]
+        node_surfs = node.surfaces
         for s_id_other, points_other in node_surfs.items():
           p1_other, p2_other = points_other
           p1_other = (round(p1_other[0], 10), round(p1_other[1], 10))
@@ -600,111 +604,105 @@ class TriangularMesh(CoarseMesh):
           
     # return surf_twin
   
-
-  def get_cells(self, 
-    triangle_points, outer_surf, pin_radius, fuel_mat, coolant_mat
-  ):
-    from math import pi
-    from Shynt.api_py.Geometry.surfaces import (
-      CylinderPad, InfiniteRectangleCylinderZ, PlaneX
-    )
-
-    p1, p2, p3 = triangle_points
-    height = outer_surf.half_width
-    base = outer_surf.radius / 2
-    hypotenuse = outer_surf.radius
-    rectangle_height = height
-    rectangle_width = base
-    triangle_volume = base * height / 2
-    center_fuel2 = (-1, 1)
-
-    x1, y2 = p1
-    x2 = p2[0]
-    y1 = p3[0]
-
-    # center_fuel2 = (None,None)
-    fuel1_surf = CylinderPad(0.0, 0.0, 0.0, pin_radius, 90, 120)
-    fuel2_surf = CylinderPad(center_fuel2[0], center_fuel2[1], 0.0, pin_radius, 300, 120)
-    rectangle_surf = InfiniteRectangleCylinderZ(x1, x2, y1, y2, pin_radius)
-    hypotenuse_plane = PlaneX(x1)
-    hypotenuse_plane.rotate(angle=-30, ref_point=(x1, y1))
+  def find_equivalent_nodes(self):
+    """Class method to calculate the equivalent nodes in the triangular mesh.
     
-    region_fuel1 = -fuel1_surf
-    region_fuel2 = -fuel2_surf
-    region_coolant = +hypotenuse_plane & +fuel1_surf & +fuel2_surf
-
-    vol_circ = pi * pin_radius* pin_radius
+    For an hexagonal assembly with one pin_cell type there is only three types
+    of nodes:
+      - the triangular subchannel inside the hexagon
+      - the triangular subchannel in the corner
+      - the squared subchannel on the edges
     
-    vol_fuel1 = vol_circ / 12
-    vol_fuel2 = vol_circ / 2
-    vol_cool = triangle_volume - vol_fuel1 - vol_fuel2
+    So the proccess, to find the equivalent nodes is simply to check the zone
+    where the coarse node is. This is all nodes are the same contained in all
+    rings, except for the last ring.  In the last ring the way to differentiate
+    is the number of points to check if it is a square or a triangle.
 
-    coolant_cell = Cell(
-      name="coolant_trianglular_mesh_hexagonal_assembly", 
-      fill=coolant_mat,
-      volume=vol_cool,
-      region=region_coolant
-    )
-    fuel1_cell = Cell(
-      name="fuel1_trianglular_mesh_hexagonal_assembly", 
-      fill=fuel_mat,
-      volume=vol_fuel1,
-      region=region_fuel1
-    )
-    fuel2_cell = Cell(
-      name="fuel2_trianglular_mesh_hexagonal_assembly", 
-      fill=fuel_mat,
-      volume=vol_fuel2,
-      region=region_fuel2
-    )
-    cells = {
-      coolant_cell.id: coolant_cell,
-      fuel1_cell.id: fuel1_cell,
-      fuel2_cell.id: fuel2_cell,
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+    
+    equivalent_nodes = {
+      1: [], 2: [], 3: []
     }
-    surfaces_for_detectors = {
-      "fuel": {
-        fuel1_surf.id: f"surf {fuel1_surf.id} pad 0.0 0.0 0.0 {pin_radius} 270 360",
-        fuel2_surf.id: f"surf {fuel1_surf.id} pad {center_fuel2[0]} {center_fuel2[1]} 0.0 {pin_radius} 270 360"
-      },
-      "boundary": {
-        rectangle_surf.surf_top.id: f"surf {rectangle_surf.surf_top.id} py {rectangle_height}\n",
-        rectangle_surf.surf_right.id: f"surf {rectangle_surf.surf_right.id} px {rectangle_width}\n",
-        hypotenuse_plane.id: f"surf {hypotenuse_plane.id} px 0.00\ntrans s {hypotenuse_plane.id} 0.0 0.0 0.0 0.0 0.0 30\n\n\n",
-      },
-      "boundary_guide": {
-        "left": hypotenuse_plane.id,
-        "top": rectangle_surf.surf_top.id,
-        "right": rectangle_surf.surf_right.id,
-      },
-      "boundary_guide_inv": {
-        hypotenuse_plane.id : "left",
-        rectangle_surf.surf_top.id : "top",
-        rectangle_surf.surf_right.id : "right",
-      },
-      "boundary_surfaces": {
-        hypotenuse_plane.id: hypotenuse_plane,
-        rectangle_surf.surf_top.id: rectangle_surf.surf_top,
-        rectangle_surf.surf_right.id: rectangle_surf.surf_right,
-      },
-      "boundary_surfaces_areas": {
-        hypotenuse_plane.id: hypotenuse,
-        rectangle_surf.surf_top.id: rectangle_width,
-        rectangle_surf.surf_right.id: rectangle_height,
-      },
-      "current_directions": {
-        fuel1_surf.id: {"inward": "-1", "outward": "1"},
-        fuel2_surf.id: {"inward": "-1", "outward": "1"},
-        rectangle_surf.surf_top.id: {"inward": "-1", "outward": "1"},
-        rectangle_surf.surf_right.id: {"inward": "-1", "outward": "1"},
-        hypotenuse_plane.id: {"inward": "1", "outward": "-1"}
-      }
+    
+    # Assuming a single pin type inside the hexagonal assembly
+    num_rings = len(self.mesh_rings)
+    for r in range(num_rings-1):
+      ring = self.mesh_rings[r]
+      for n_id in ring:
+        equivalent_nodes[1].append(n_id)
+
+    last_ring = self.mesh_rings[-1]
+    for n_id in last_ring:
+      node_surfs = self.points_mesh[n_id]
+      
+      if len(node_surfs) == 3:
+        equivalent_nodes[2].append(n_id)
+      if len(node_surfs) == 4:
+        equivalent_nodes[3].append(n_id)
+    
+    
+    # print(equivalent_nodes[2])
+    self.equivalent_nodes = {
+      equivalent_nodes[1][0]: equivalent_nodes[1], # inner triangles
+      equivalent_nodes[2][0]: equivalent_nodes[2], # corner triangles
+      equivalent_nodes[3][0]: equivalent_nodes[3], # square sides
     }
 
-    geometry_info = {
-      "surfaces_for_detectors": surfaces_for_detectors
+    self.type_nodes = {
+      "inner_triangle": equivalent_nodes[1],
+      "corner_triangle": equivalent_nodes[2],
+      "square_side": equivalent_nodes[3],
     }
-
-    return cells, geometry_info
-    pass
+    self.unique_nodes = list(self.equivalent_nodes.keys())
   
+  def find_equivalent_nodes_symmetry(self):
+    """Class method to calculate the equivalent nodes symmetry 
+    in the triangular mesh.
+    
+    
+      - the triangular subchannel inside the hexagon
+      - the triangular subchannel in the corner
+      - the squared subchannel on the edges
+    
+    For the inner triangles and for the squares the symmetry is the same,
+    and for the corner triangles it is {"mirror" : "right"}
+
+    #TODO Check if it is neccesary to change for the inner triangles to 
+    #TODO mirror-down when it comes to region symmetry
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+    nodes_symmetry = {}
+    
+    type_nodes_symmetry = {
+      "inner_triangle": {"same": ""},
+      "corner_triangle": {"mirror": "right"},
+      "square_side": {"same": ""},
+    }
+    for ttype, eq_nodes_list in self.type_nodes.items():
+      main_node = eq_nodes_list[0]
+      nodes_symmetry[main_node] = {}
+      for n_eq in eq_nodes_list:
+        nodes_symmetry[main_node][n_eq] = type_nodes_symmetry[ttype]
+
+    self.symmetry = nodes_symmetry
+    
+
+
+
+
+
+
+
+
+

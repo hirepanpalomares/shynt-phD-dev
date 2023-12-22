@@ -621,6 +621,10 @@ class InfiniteSquareCylinderZ(Surface):
   def center(self):
       return (self.__center_x, self.__center_y)
   
+  @property
+  def volume(self):
+    return self.evaluate_enclosed_volume()
+  
   @center.setter
   def center(self, center):
       self.__center_x = center[0]
@@ -1003,7 +1007,7 @@ class InfiniteCylinderZ(Surface):
   #     """%(self.name, self.id, self.__radius)
   
   def evaluate_enclosed_volume(self):
-      return np.pi * self.__radius * self.__radius
+    return np.pi * self.__radius * self.__radius
   
   def evaluate_surface_area(self):
       return {
@@ -1025,7 +1029,7 @@ class InfiniteCylinderZ(Surface):
   
   @property
   def volume(self):
-      return self.evaluate_enclosed_volume()
+    return self.evaluate_enclosed_volume()
   
   @center.setter
   def center(self, center):
@@ -1392,7 +1396,7 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
 
     self.__radius = round(2 * self.__half_width / math.sqrt(3),8)
 
-    self.volume = 3 * math.sqrt(3) * self.__radius * self.__radius / 2
+    # self.volume = 3 * math.sqrt(3) * self.__radius * self.__radius / 2
     self.__side = self.__radius
     self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
 
@@ -1612,6 +1616,11 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
     return self.__half_width
 
   @property
+  def volume(self):
+    vol = self.evaluate_enclosed_volume()
+    return vol
+  
+  @property
   def center_x(self):
     return self.__center_x
   
@@ -1810,12 +1819,12 @@ class InfiniteHexagonalCylinderYtype(Hexagon):
 
   def get_vertex_points(self):
     points = [
-      (self.__center_x - 0.5*self.__radius, self.__surf_A.y0),    # vertex F - A    
-      (self.__center_x + 0.5*self.__radius, self.__surf_A.y0),    # vertex A - B
-      (self.__center_x + self.__radius, self.__center_y),         # vertex B - C
-      (self.__center_x + 0.5*self.__radius, self.__surf_D.y0),    # vertex C - D
-      (self.__center_x - 0.5*self.__radius, self.__surf_D.y0),    # vertex D - E
-      (self.__center_x - self.__radius, self.__center_y),         # vertex E - F
+      (self.__center_x - 0.5*self.__radius, self.__surf_A.y0),  # vertex F - A
+      (self.__center_x + 0.5*self.__radius, self.__surf_A.y0),  # vertex A - B
+      (self.__center_x + self.__radius, self.__center_y),       # vertex B - C
+      (self.__center_x + 0.5*self.__radius, self.__surf_D.y0),  # vertex C - D
+      (self.__center_x - 0.5*self.__radius, self.__surf_D.y0),  # vertex D - E
+      (self.__center_x - self.__radius, self.__center_y),       # vertex E - F
     ]        
     return points
 
@@ -1897,6 +1906,11 @@ class InfiniteHexagonalCylinderYtype(Hexagon):
   def vertex_points(self):
     return self.get_vertex_points()
 
+  @property
+  def volume(self):
+    vol = self.evaluate_enclosed_volume()
+    return vol
+  
   @property
   def center(self):
     return self.__center_x, self.__center_y

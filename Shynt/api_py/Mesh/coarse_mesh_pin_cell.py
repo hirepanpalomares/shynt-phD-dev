@@ -1,9 +1,19 @@
 from Shynt.api_py.Mesh.coarse_mesh import CoarseMesh
-from Shynt.api_py.Mesh.coarse_node import CoarseNodeSquarePinCell
+from Shynt.api_py.Mesh.coarse_node import (
+  CoarseNodeSquarePinCell,
+  CoarseNodeHexagonalPinCell
+)
 
-from Shynt.api_py.Geometry.universes import SquareLattice
+from Shynt.api_py.Geometry.universes import (
+  SquareLattice, 
+  Pin
+)
 from Shynt.api_py.Geometry.cells import Cell
 
+from Shynt.api_py.Geometry.surfaces import (
+  InfiniteHexagonalCylinderXtype,
+  InfiniteSquareCylinderZ
+)
 import numpy as np
 
 
@@ -29,63 +39,39 @@ class PinCellMesh(CoarseMesh):
     
   def __init__(self, cell):
     try:
-      assert isinstance(cell.content, SquareLattice)
+      if isinstance(cell.content, SquareLattice):
+        pass
+      elif isinstance(cell.content, Pin):
+        pass
+      else:
+        raise AssertionError
     except AssertionError:
       print(" ************ Error ************ ")
-      print("PinCellMesh only supported for SquareLattice")
+      print("PinCellMesh only supported for SquareLattice or Pin")
       raise SystemExit
+    
     super().__init__(cell)
+    self.__isPin = False
+    if isinstance(cell.content, Pin):
+      self.__isPin = True
+
     self.type_mesh = ""
     self.lattice = super().cell.content
     self.points_mesh = {}
     self.coarse_nodes_map = []
     self.coarse_nodes = {}
     self.num_surfaces = 0
+    self.surfaces = {}
     self.surface_twins = {}
 
     self.unique_nodes = []
     self.equivalent_nodes = {}
+    self.equivalent_regions = {}
+    self.equivalent_surfaces = {}
     self.symmetry = {}
-  
-  def __check_lattice(self):
-    message = "Type of lattice not supported in square pin cell coarse mesh"
-    try:
-      print(self.lattice)
-      assert isinstance(self.lattice, SquareLattice)
-    except AssertionError:
-      print(message)
-      raise NotImplementedError
-  
-  def calculate_nodes_coordinates(self):
-    """Class method to calculate the points of the coarse nodes 
-    starting from the lower-left point following a clock-wise sense
-    to number the points.
-    
-    """
-    squares = {}
-    # print(self.lattice.left_bottom)
-    pin_centers = self.lattice.pin_centers
-    half_pitch = self.lattice.pitch / 2
 
-    n_id = 1
-    nodes_map = []
-    for i, row in enumerate(pin_centers):
-      row_node = []
-      for j, center in enumerate(row):
-        cx, cy = center
-        # print(center)
-        p1 = (cx-half_pitch, cy-half_pitch) # lower-left
-        p2 = (cx-half_pitch, cy+half_pitch) # upper-left
-        p3 = (cx+half_pitch, cy+half_pitch) # upper-right
-        p4 = (cx+half_pitch, cy-half_pitch) # lower-right
-        squares[n_id] = (p1, p2, p3, p4)
-        row_node.append(n_id)
-        n_id += 1
-      nodes_map.append(row_node)
-    
-
-    self.coarse_nodes_map = nodes_map
-    self.points_mesh = squares
+  
+  
     
   def create_coarse_nodes(self):
     """Class method that created the coarse nodes and the 
@@ -99,54 +85,59 @@ class PinCellMesh(CoarseMesh):
 
     """
     coarse_nodes = {}
-    s_id = 1
-    for i, row in enumerate(self.coarse_nodes_map):
-      for j, n_id in enumerate(row):
-        surface_points = self.points_mesh[n_id]
-        pin_universe = self.lattice.array[i][j]
+    surfaces = {}
+    nodes_map = []
+    s_id = 0
+    n_id = 1
+    if self.__isPin:
+      # check surface
+      pin_universe = super().cell.content
+      print(pin_universe)
+      pin_cell_wrapper = super().cell.region.surface
+      if isinstance(pin_cell_wrapper, InfiniteSquareCylinderZ):
         node = CoarseNodeSquarePinCell(
-          n_id, surface_points, 'pin_cell_mesh', self.lattice.pitch
+          n_id, 'pin_cell_mesh', pin_cell_wrapper.half_width,
+          pin_cell_wrapper.center
         )
+        s_id = node.calculate_surfaces(s_id)
+        surfaces.update(node.surfaces)
+        coarse_nodes[1] = node
+      else:
+        # hexagonal cell
+        node = CoarseNodeHexagonalPinCell(
+          n_id, 'pin_cell_mesh', pin_cell_wrapper
+        )
+        s_id = node.calculate_surfaces(s_id)
         node.universe = pin_universe 
+        surfaces.update(node.surfaces)
+        coarse_nodes[1] = node
+      
+    else:
+      pin_centers = self.lattice.pin_centers
+      half_pitch = self.lattice.pitch / 2
+      
+      for i, row in enumerate(pin_centers):
+        row_node = []
+        for j, center in enumerate(row):
+          pin_universe = self.lattice.array[i][j]
 
-        s_id = node.calculate_node_surfaces(s_id)
-        coarse_nodes[n_id] = node
-    
+          node = CoarseNodeSquarePinCell(
+            n_id, 'pin_cell_mesh', half_pitch, center
+          )
+          s_id = node.calculate_surfaces(s_id)
+          surfaces.update(node.surfaces)
+          node.universe = pin_universe 
+          coarse_nodes[n_id] = node
+
+          row_node.append(n_id)
+          n_id += 1
+        nodes_map.append(row_node)
+        
+    self.surfaces = surfaces
+    self.coarse_nodes_map = nodes_map
     self.coarse_nodes = coarse_nodes
     self.num_surfaces = s_id
 
-  def calculate_surfaces_twins(self):
-    """Class method to extract the surface twins of every node. It sweeps all
-    surfaces and then call the method  find_surface_twin()
-
-    Returns
-    -------
-    surface_twins : dict
-
-    """
-
-    num_coarse_nodes = len(self.coarse_nodes)
-    print(f"Calculating surface twins for {num_coarse_nodes} coarse_nodes ...")
-
-    surf_checked = {s_idx: False for s_idx in range(1,self.num_surfaces+2)}
-    surface_twins = {s_idx: None for s_idx in range(1,self.num_surfaces+2)}
-    for n_id, coarse_node in self.coarse_nodes.items():
-      print(n_id, end=",")
-      if n_id % 20 == 0: print()
-      
-      node_surfs = coarse_node.surfaces
-    
-      for s_id, points in node_surfs.items():
-        if surf_checked[s_id]: continue
-        twin = self.__find_surface_twin(n_id, points, s_id)
-        # if n_id == 7: print(s_id, twin)
-        if twin:
-          surface_twins[s_id] = twin
-          surface_twins[twin] = s_id
-          surf_checked[twin] = True
-          surf_checked[s_id] = True
-    
-    self.surface_twins = surface_twins
 
   def find_equivalent_nodes(self):
     """Class method to calculate the equivalent nodes in the square lattice.
@@ -159,22 +150,25 @@ class PinCellMesh(CoarseMesh):
     -------
 
     """
-    array = self.lattice.array
-    pin_types = {
-
-    }
-    for i, row in enumerate(array):
-      for j, pin in enumerate(row):
-        node_id = self.coarse_nodes_map[i][j]
-        try:
-          pin_types[pin.name].append(node_id)
-        except KeyError:
-          pin_types[pin.name] = [node_id]
-    
     equivalent_nodes = {}
-    unique_nodes = {}
-    for pin_name, array in pin_types.items():
-      equivalent_nodes[array[0]] = array
+
+    if self.__isPin:
+      equivalent_nodes[1] = [1]
+    else:
+      array = self.lattice.array
+      pin_types = {
+
+      }
+      for i, row in enumerate(array):
+        for j, pin in enumerate(row):
+          node_id = self.coarse_nodes_map[i][j]
+          try:
+            pin_types[pin.name].append(node_id)
+          except KeyError:
+            pin_types[pin.name] = [node_id]
+      
+      for pin_name, array in pin_types.items():
+        equivalent_nodes[array[0]] = array
     
     self.equivalent_nodes = equivalent_nodes
     self.unique_nodes = list(equivalent_nodes.keys())
@@ -198,52 +192,65 @@ class PinCellMesh(CoarseMesh):
         nodes_symmetry[n_id][n_eq] = {"same": ""}
     self.symmetry = nodes_symmetry
 
-  def __find_surface_twin(self, n_id, points, s_id):
-    """Class method to find the surface twin of one surface. It sweeps all the
-    surfaces and compare the points  in order to determine wether is a twin or
-    not.
-    
+  def find_eq_regions(self):
+    """Class method to find the equivalent regions of nodes of the same type
+    with respect to the main node. The criteria is the order in the 
+    fine_mesh.regions dictionary since the regions are declared in the same 
+    order.
+
     Parameters
     ----------
-    n_id : int
-
-    points : tuple
-
-    rings : list
 
     Returns
     -------
-    surf_twin : int or None
-    """
-    p1, p2 = points
-    p1 = (round(p1[0], 10), round(p1[1], 10))
-    p2 = (round(p2[0], 10), round(p2[1], 10))
-
-    p1x, p1y = p1
-    p2x, p2y = p2
-
-    # if n_id <= 6: print("surf: ", s_id, p1,p2, "searching -----------")
-    surf_twin = None
-
-    # print(rings)
     
-    for other_n_id, coarse_node in self.coarse_nodes.items():
-      if n_id == other_n_id: continue      
-      node_surfs = coarse_node.surfaces
-      for s_id_other, points_other in node_surfs.items():
-        p1_other, p2_other = points_other
-        p1_other = (round(p1_other[0], 10), round(p1_other[1], 10))
-        p2_other = (round(p2_other[0], 10), round(p2_other[1], 10)) 
+    """
+    regions_eq = {}
 
-        p1x_o, p1y_o = p1_other
-        p2x_o, p2y_o = p2_other
-        
-        if p1x == p1x_o and p1y == p1y_o and p2x == p2x_o and p2y == p2y_o:
-          return s_id_other
-        
-        if p1x == p2x_o and p1y == p2y_o and p2x == p1x_o and p2y == p1y_o:
-          return s_id_other
 
+    for n_id, eq_nodes in self.equivalent_nodes.items():
+      # coarse_node_regions = coarse_node.fine_mesh.regions
+      regs_main_node = list(self.coarse_nodes[n_id].fine_mesh.regions.keys())
+      # print(regs_main_node)
+      for reg in regs_main_node:
+        regions_eq[reg] = reg
+      for eq_node in eq_nodes:
+        regions_eq_node = list(
+          self.coarse_nodes[eq_node].fine_mesh.regions.keys()
+        )
+        for r, reg_p in enumerate(regions_eq_node):
+          regions_eq[reg_p] = regs_main_node[r]
+
+    self.equivalent_regions = regions_eq
+
+  def find_eq_surfaces(self):
+    """Class method to find the equivalent regions of nodes of the same type
+    with respect to the main node. The criteria is the order in the dictionary
+    since the surfaces are declared in the same order.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    
+    """
+    surfaces_eq = {}
+
+    for n_id, eq_nodes in self.equivalent_nodes.items():
+      # coarse_node_regions = coarse_node.fine_mesh.regions
+      surfs_main_node = list(self.coarse_nodes[n_id].surfaces)
+      for surf in surfs_main_node:
+        surfaces_eq[surf] = surf
+      for eq_node in eq_nodes:
+        surfs_eq_node = list(
+          self.coarse_nodes[eq_node].surfaces.keys()
+        )
+        for s, s_p in enumerate(surfs_eq_node):
+          surfaces_eq[s_p] = surfs_main_node[s]
+    self.equivalent_surfaces = surfaces_eq
+
+  
   @property
   def nodes_surfaces(self):
     nodes_surfaces = {}
@@ -251,7 +258,6 @@ class PinCellMesh(CoarseMesh):
       nodes_surfaces[n_id] = coarse_node.surfaces
     return nodes_surfaces
   
-
 
   def __create_nodes_SquareLattice__deprecated(self, universe):
     map_nodes = []

@@ -11,6 +11,202 @@ import numpy as np
 
 
 
+class SquareGridHexPin(CoarseMesh):
+  """Class to represent  a square grid mesh only used in a hexagonal pin.
+  Each coarse node is a quarter of the hexagonal pin
+
+  
+  Attributes
+  ----------
+
+  Methods
+  -------
+  """
+    
+  def __init__(self, cell):
+    try:
+      assert(isinstance(cell.content, Pin))
+        
+    except AssertionError:
+      print(" ************ Error ************ ")
+      print("SquareGridHexPin only supported for Pin universe")
+      raise SystemExit
+    
+    super().__init__(cell)
+
+    self.type_mesh = ""
+    self.lattice = super().cell.content
+    self.points_mesh = {}
+    self.coarse_nodes_map = []
+    self.coarse_nodes = {}
+    self.num_surfaces = 0
+    self.surfaces = {}
+    self.surface_twins = {}
+
+    self.unique_nodes = []
+    self.equivalent_nodes = {}
+    self.equivalent_regions = {}
+    self.equivalent_surfaces = {}
+    self.symmetry = {}
+
+  def create_coarse_nodes(self):
+    """Class method that created the coarse nodes and the 
+    ids of its surfaces.
+    
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+    from Shynt.api_py.Geometry.surfaces import InfiniteHexagonalCylinderXtype
+    from Shynt.api_py.Mesh.coarse_node import CoarseNodeSquareGridHexPin
+    coarse_nodes = {}
+    surfaces = {}
+    nodes_map = []
+    s_id = 0
+    n_id = 1
+    
+    # check surface
+    pin_universe = super().cell.content
+    pin_cell_wrapper = super().cell.region.surface
+    if isinstance(pin_cell_wrapper, InfiniteHexagonalCylinderXtype):
+      #Hexagonal Pin type X
+      nodes_positions = ["top_left", "top_right", "lower_right", "lower_left"]
+      for p, position in enumerate(nodes_positions):
+        node = CoarseNodeSquareGridHexPin(
+          n_id, 'square_grid_hex_pin', pin_cell_wrapper.half_width,
+          pin_cell_wrapper.radius, position, pin_cell_wrapper.center
+        )
+        node.universe = pin_universe
+        s_id = node.calculate_surfaces(s_id)
+        surfaces.update(node.surfaces)
+        coarse_nodes[p+1] = node
+    else:
+      #Hexagonal Pin type Y
+      raise NotImplementedError
+      
+     
+    self.surfaces = surfaces
+    self.coarse_nodes_map = nodes_map
+    self.coarse_nodes = coarse_nodes
+    self.num_surfaces = s_id
+
+
+  def find_eq_regions(self):
+    """Class method to find the equivalent regions of nodes of the same type
+    with respect to the main node. The criteria is the order in the 
+    fine_mesh.regions dictionary since the regions are declared in the same 
+    order.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    
+    """
+    regions_eq = {}
+
+
+    for n_id, eq_nodes in self.equivalent_nodes.items():
+      # coarse_node_regions = coarse_node.fine_mesh.regions
+      regs_main_node = list(self.coarse_nodes[n_id].fine_mesh.regions.keys())
+      # print(regs_main_node)
+      for reg in regs_main_node:
+        regions_eq[reg] = reg
+      for eq_node in eq_nodes:
+        regions_eq_node = list(
+          self.coarse_nodes[eq_node].fine_mesh.regions.keys()
+        )
+        for r, reg_p in enumerate(regions_eq_node):
+          regions_eq[reg_p] = regs_main_node[r]
+
+    self.equivalent_regions = regions_eq
+
+  def find_eq_surfaces(self):
+    """Class method to find the equivalent regions of nodes of the same type
+    with respect to the main node. The criteria is the order in the dictionary
+    since the surfaces are declared in the same order.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    
+    """
+    surfaces_eq = {}
+
+    for n_id, eq_nodes in self.equivalent_nodes.items():
+      # coarse_node_regions = coarse_node.fine_mesh.regions
+      surfs_main_node = list(self.coarse_nodes[n_id].surfaces)
+      for surf in surfs_main_node:
+        surfaces_eq[surf] = surf
+      for eq_node in eq_nodes:
+        surfs_eq_node = list(
+          self.coarse_nodes[eq_node].surfaces.keys()
+        )
+        for s, s_p in enumerate(surfs_eq_node):
+          surfaces_eq[s_p] = surfs_main_node[s]
+    self.equivalent_surfaces = surfaces_eq
+
+  def __find_surface_twin(self, n_id, points, s_id):
+    """Class method to find the surface twin of one surface. It sweeps all the
+    surfaces and compare the points  in order to determine wether is a twin or
+    not.
+    
+    Parameters
+    ----------
+    n_id : int
+
+    points : tuple
+
+    rings : list
+
+    Returns
+    -------
+    surf_twin : int or None
+    """
+    p1, p2 = points
+    p1 = (round(p1[0], 10), round(p1[1], 10))
+    p2 = (round(p2[0], 10), round(p2[1], 10))
+
+    p1x, p1y = p1
+    p2x, p2y = p2
+
+    # if n_id <= 6: print("surf: ", s_id, p1,p2, "searching -----------")
+    surf_twin = None
+
+    # print(rings)
+    
+    for other_n_id, coarse_node in self.coarse_nodes.items():
+      if n_id == other_n_id: continue      
+      node_surfs = coarse_node.surfaces
+      for s_id_other, points_other in node_surfs.items():
+        p1_other, p2_other = points_other
+        p1_other = (round(p1_other[0], 10), round(p1_other[1], 10))
+        p2_other = (round(p2_other[0], 10), round(p2_other[1], 10)) 
+
+        p1x_o, p1y_o = p1_other
+        p2x_o, p2y_o = p2_other
+        
+        if p1x == p1x_o and p1y == p1y_o and p2x == p2x_o and p2y == p2y_o:
+          return s_id_other
+        
+        if p1x == p2x_o and p1y == p2y_o and p2x == p1x_o and p2y == p1y_o:
+          return s_id_other
+
+  @property
+  def nodes_surfaces(self):
+    nodes_surfaces = {}
+    for n_id, coarse_node in self.coarse_nodes.items():
+      nodes_surfaces[n_id] = coarse_node.surfaces
+    return nodes_surfaces
+  
+
+
 class SquareGridMeshHexAssembly_deprecated(CoarseMesh):
   """#!DO NOT USE
   Deprecated class
@@ -1028,44 +1224,79 @@ class SquareGridMeshHexAssembly(CoarseMesh):
   def __init__(self, cell, offset=0.075):
     super().__init__(cell)
     self.__offset = offset
-    self.__map_pins = []
-    self.__symmetry = {}
-    self.clean_mesh_map = []
+    self.hex_assembly = super().cell.content
+    self.coarse_nodes_map = []
+    self.node_types = {}
+    self.node_quadrants = {}
 
-    self.points_mesh = []
-    self.rectangles = []
-    self.surface_twins = {}
-    self.nodes_surfaces = {}
-    self.num_surfaces = 0
-    self.equivalent_nodes = {}
-    self.corse_nodes_regions = {}
-    self.regions_coarse_node = {}
-    self.coarse_nodes_regions_material = {}
-    self.regions_volume = {}
     self.x_div = []
     self.y_div = []
+    self.points_mesh = []
+    self.rectangles = []
+
+    self.nodes_surfaces = {}
+    self.num_surfaces = 0
+    self.surface_twins = {}
+    
     
     self.coarse_nodes = {}
+
+    self.unique_nodes = []
+    self.equivalent_nodes = {}
+    
+    self.equivalent_regions = {}
+    self.equivalent_surfaces = {}
+    self.symmetry = {}
+
     self.type_mesh = ""
-    self.hex_assembly = super().cell.content
-
-    self.map_nodes = self.__get_node_map()
-    self.clean_map = self.__get_clean_map()
 
     
-    if isinstance(self.hex_assembly, HexagonalLatticeTypeX):
-      self.x_div = self.__get_x_div()
-      self.y_div = self.__get_y_div()
-      self.rectangles = self.get_rectangles_from_mesh_coord(
-        self.x_div, self.y_div
-      )
-      # self.__create_nodes_hex_assem()
-      # Coarse nodes are created by hand hardcoded
-      
-    else:
-      print("Square grid over assembly not implemented")
-      raise NotImplementedError
+  
+
+  def create_coarse_nodes(self):
+    """Class method that created the coarse nodes and the 
+    ids of its surfaces.
     
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+    from Shynt.api_py.Mesh.coarse_node import CoarseNodeSquareGridHexAssembly
+
+    coarse_nodes = {}
+    surfaces = {}
+
+    s_id = 0
+    
+    pin_centers = self.hex_assembly.pin_centers
+    half_pitch = self.hex_assembly.pitch / 2
+    hex_wrapper = super().cell.region.surface
+    for i, row in enumerate(self.coarse_nodes_map):
+      row_node = []
+      for j, n_id in enumerate(row):
+        if n_id == 0: continue
+        node_type = self.node_types[n_id]
+        quadrant = self.node_quadrants[n_id]
+        coarse_node_class = grid_coarse_node_manager(node_type)
+        node = coarse_node_class(
+          n_id, 'pin_cell_mesh', half_pitch, quadrant, hex_wrapper
+        )
+
+        rectangle_points = self.rectangles[n_id-1]
+        s_id = node.calculate_surfaces(s_id, rectangle_points)
+        surfaces.update(node.surfaces)
+        
+        coarse_nodes[n_id] = node
+
+        row_node.append(n_id)
+        n_id += 1
+
+    self.surfaces = surfaces
+    self.coarse_nodes = coarse_nodes
+    self.num_surfaces = s_id
 
   def __get_x_div(self):
     """Class private method that calculate the x-coordinate divisions for the
@@ -1225,57 +1456,6 @@ class SquareGridMeshHexAssembly(CoarseMesh):
 
     return y_div
     
-  def __get_node_map(self):
-    """Class method to generate a map of the coarse nodes,
-    at the same time it calculates the toal number of 
-    coarse nodes.
-
-    #! It uses the array of pins of the hexagonal assembly.
-    #! This needs to be changed because this array was remnoved
-
-    Returns
-    -------
-    map_nodes : list of lists
-      Map of nodes with integers as nodes identifiers
-    
-    """
-    universe = super().cell.content
-    node_counter = 1
-    map_nodes = []
-    for y in range(universe.ny):
-      map_nodes_row = []
-      cell_counter = 0
-      for x in range(universe.nx):
-        pin_cell_id = universe.array[y][x]
-        if pin_cell_id is None:
-          map_nodes_row.append(None)
-        else:
-          map_nodes_row.append(node_counter)
-          node_counter += 1
-      
-      map_nodes.append(map_nodes_row)
-    return map_nodes
-  
-  def __get_clean_map(self):
-    """ Class method to clean the map of nodes from the additional pins 
-    that are needed to complete the hexagonal assembly array.
-
-    Returns
-    -------
-    clean_map : list of lists
-    """
-    universe = super().cell.content
-    clean_map = [
-      [
-        col for col in row if col is not None
-      ] for row in universe.array
-    ]
-    clean_map = [
-      [
-        col for col in row
-      ] for row in clean_map if len(row) != 0
-    ]
-    return clean_map
 
   def get_rectangles_from_mesh_coord(self, x_div, y_div):
     
@@ -1297,883 +1477,718 @@ class SquareGridMeshHexAssembly(CoarseMesh):
         mesh.append(rectangle)
         node_counter += 1
 
-      
       row_x += 1
-    self.coarse_nodes = {nid+1: None for nid in range(node_counter-1)}
+  
     self.rectangles = mesh
-    return mesh
 
-  def fill_nodes_surfaces(self):
-    nodes_surfaces = {}
+  def generate_fine_mesh_regions(self, unique_regions):
+    from Shynt.api_py.Geometry.cells import Cell
+    from Shynt.api_py.Mesh.local_mesh_material import MaterialMesh
     
-    for i, rect_coord in enumerate(self.rectangles):
-      x1, x2 = rect_coord[0]
-      y1, y2 = rect_coord[1]
-      
-      # convention: for the points to define a surface
-      # left --> right
-      # bottom --> top
-      n_surfs = {
-        "top": {"points":((x1,y2),(x2,y2))},
-        "right": {"points":((x2,y1),(x2,y2))},
-        "bottom": {"points":((x1,y1),(x2,y1))},
-        "left": {"points":((x1,y1),(x1,y2))},
-      }
-      nodes_surfaces[i+1] = n_surfs
-      
+    print('creating fine mesh ...')
+    for n_id in  self.unique_nodes:
+      eq_nodes = self.equivalent_nodes[n_id]
+      for neq in eq_nodes:
+        fine_regs = {}
+        for reg in unique_regions[n_id]:
+          new_fine_reg = (Cell(fill=reg['material'], volume=reg['volume'])) 
+          fine_regs[new_fine_reg.id] = new_fine_reg 
+        
+        new_fine_mesh = MaterialMesh(coarse_node=self.coarse_nodes[neq])
+        new_fine_mesh.regions = fine_regs
+        self.coarse_nodes[neq].fine_mesh = new_fine_mesh
+        
+  def find_eq_regions(self):
+    """Class method to find the equivalent regions of nodes of the same type
+    with respect to the main node. The criteria is the order in the 
+    fine_mesh.regions dictionary since the regions are declared in the same 
+    order.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
     
-    self.nodes_surfaces = self.fix_boundaries( # HARDCODED FUNCTION
-      nodes_surfaces
-    )
-
-    # Assign ids to surfaaces --------------------------
-    num_of_surface = 0
-    for n_id, surfs in self.nodes_surfaces.items():
-      for surf_direction, data in surfs.items():
-        if data is not None: 
-          data["s_id"] = num_of_surface
-          num_of_surface += 1
-      
-    self.num_surfaces = num_of_surface
-
-  def fix_boundaries(self, nodes_surfaces):
-    """Fixes the diagonal in the nodes on the boundary that are in the 
-    diagonal of the hexagon 
-    HARDCODED
-    Nodes to fix:
-      top_bottom_corners = [1,20,561,580]
-      sides = [
-        21,43,67,93,121,151,183,217,253,291,329,365,399,431,461,489,515,539,
-        42,66,92,120,150,182,216,252,290,328,364,398,430,460,488,514,538,560
-      ]
-
-    Basically the function calculates from the points of the diagonal surface
     """
+    regions_eq = {}
 
-    n_surf = nodes_surfaces.copy()
-    top_bottom_corners = [
-      1,20,561,580
-    ]
+
+    for n_id, eq_nodes in self.equivalent_nodes.items():
+      # coarse_node_regions = coarse_node.fine_mesh.regions
+      regs_main_node = list(self.coarse_nodes[n_id].fine_mesh.regions.keys())
+      # print(regs_main_node)
+      for reg in regs_main_node:
+        regions_eq[reg] = reg
+      for eq_node in eq_nodes:
+        regions_eq_node = list(
+          self.coarse_nodes[eq_node].fine_mesh.regions.keys()
+        )
+        for r, reg_p in enumerate(regions_eq_node):
+          regions_eq[reg_p] = regs_main_node[r]
+
+    self.equivalent_regions = regions_eq
+
+  def find_eq_surfaces(self):
+    """Class method to find the equivalent regions of nodes of the same type
+    with respect to the main node. The criteria is the order in the dictionary
+    since the surfaces are declared in the same order.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    
+    """
+    surfaces_eq = {}
+
+    for n_id, eq_nodes in self.equivalent_nodes.items():
+      # coarse_node_regions = coarse_node.fine_mesh.regions
+      surfs_main_node = list(self.coarse_nodes[n_id].surfaces)
+      for surf in surfs_main_node:
+        surfaces_eq[surf] = surf
+      for eq_node in eq_nodes:
+        surfs_eq_node = list(
+          self.coarse_nodes[eq_node].surfaces.keys()
+        )
+        for s, s_p in enumerate(surfs_eq_node):
+          surfaces_eq[s_p] = surfs_main_node[s]
+    self.equivalent_surfaces = surfaces_eq
+
+  
+
+def grid_coarse_node_manager(node_type):
+  from Shynt.api_py.Mesh.coarse_node import (
+    CoarseNodeSquareGridHexAssembly_Inside,
+    CoarseNodeSquareGridHexAssembly_TrapezoidCorner,
+    CoarseNodeSquareGridHexAssembly_SideEdge,
+    CoarseNodeSquareGridHexAssembly_TriangleCorner
+  )
+  if node_type == 'trapezoid_corner':
+    return CoarseNodeSquareGridHexAssembly_TrapezoidCorner
+  elif node_type == 'inside':
+    return CoarseNodeSquareGridHexAssembly_Inside
+  elif node_type == 'side_edge':
+    return CoarseNodeSquareGridHexAssembly_SideEdge
+  elif node_type == 'triangle_corner':
+    return CoarseNodeSquareGridHexAssembly_TriangleCorner
+  else:
+    print(f"node type '{node_type}' not implemented")
+    raise NotImplemented
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+
+def fix_boundaries(self, nodes_surfaces):
+  """Fixes the diagonal in the nodes on the boundary that are in the 
+  diagonal of the hexagon 
+  HARDCODED
+  Nodes to fix:
+    top_bottom_corners = [1,20,561,580]
     sides = [
       21,43,67,93,121,151,183,217,253,291,329,365,399,431,461,489,515,539,
       42,66,92,120,150,182,216,252,290,328,364,398,430,460,488,514,538,560
     ]
-    hexagon = super().cell.region.surface
-    
-    # ---------------------------------------------------
-    #                   CORNERS
-    # ---------------------------------------------------
-    x1,y1 = n_surf[1]["top"]["points"][0]
-    x2,y2 = n_surf[1]["top"]["points"][1]
-    x1_new = hexagon.surf_F.useFunction(y1, given="y")
-    n_surf[1]["top"]["points"] = ((x1_new,y1), (x2,y2))
-    x1,y1 = n_surf[1]["left"]["points"][0]
-    x2,y2 = n_surf[1]["left"]["points"][1]
-    n_surf[1]["left"]["points"] = ((x1,y1), (x1_new,y2))
-    # ----------------------------------------------
-    x1,y1 = n_surf[20]["top"]["points"][0]
-    x2,y2 = n_surf[20]["top"]["points"][1]
-    x2_new = hexagon.surf_B.useFunction(y1, given="y")
-    n_surf[20]["top"]["points"] = ((x1,y1), (x2_new,y2))
-    x1,y1 = n_surf[20]["right"]["points"][0]
-    x2,y2 = n_surf[20]["right"]["points"][1]
-    n_surf[20]["right"]["points"] = ((x1,y1), (x2_new,y2))
-    # ----------------------------------------------
-    x1,y1 = n_surf[561]["bottom"]["points"][0]
-    x2,y2 = n_surf[561]["bottom"]["points"][1]
-    x1_new = hexagon.surf_E.useFunction(y1, given="y")
-    n_surf[561]["bottom"]["points"] = ((x1_new,y1), (x2,y2))
-    x1,y1 = n_surf[561]["left"]["points"][0]
-    x2,y2 = n_surf[561]["left"]["points"][1]
-    n_surf[561]["left"]["points"] = ((x1_new,y1), (x2,y2))
-    # ----------------------------------------------
-    x1,y1 = n_surf[580]["bottom"]["points"][0]
-    x2,y2 = n_surf[580]["bottom"]["points"][1]
-    x2_new = hexagon.surf_C.useFunction(y1, given="y")
-    n_surf[580]["bottom"]["points"] = ((x1,y1), (x2_new,y2))
-    x1,y1 = n_surf[580]["right"]["points"][0]
-    x2,y2 = n_surf[580]["right"]["points"][1]
-    n_surf[580]["right"]["points"] = ((x2_new,y1), (x2,y2))
-    
-    # ---------------------------------------------------
-    #                   SIDES
-    # ---------------------------------------------------
-    
-    def get_position_in_hexagon(point):
-      """Mini function to find the place of the node in the hexagon
-      giving a point of the top side of the rectangle
-      """
-      x, y = point
-      if x < 0.0 and y > 0.0: return "upper_left"
-      if x > 0.0 and y > 0.0: return "upper_right"
-      if x < 0.0 and y <= 0.0: return "lower_left"
-      if x > 0.0 and y <= 0.0: return "lower_right"
 
-    surf_to_fix = {
-      "upper_left": "left",
-      "upper_right": "right",
-      "lower_left": "left",
-      "lower_right": "right"    
-    }
-    surf_to_remove = {
-      "upper_left": "top",
-      "upper_right": "top",
-      "lower_left": "bottom",
-      "lower_right": "bottom"    
-    }
-    surf_for_p1 = {
-      "upper_left": "left",
-      "upper_right": "right",
-      "lower_left": "right",
-      "lower_right": "left"    
-    }
-    surf_for_p2 = {
-      "upper_left": "right",
-      "upper_right": "left",
-      "lower_left": "left",
-      "lower_right": "right"    
-    }
+  Basically the function calculates from the points of the diagonal surface
+  """
 
-    for n_id in sides:
-      random_top_point = n_surf[n_id]["top"]["points"][0]
-      position = get_position_in_hexagon(random_top_point)
-      s_fix = surf_to_fix[position]
-      s_rem = surf_to_remove[position]
-      new_p1 = n_surf[n_id][surf_for_p1[position]]["points"][0]
-      new_p2 = n_surf[n_id][surf_for_p2[position]]["points"][1]
-      
-      n_surf[n_id][s_fix]["points"] = (new_p1,new_p2)
-      n_surf[n_id][s_rem] = None
-
-    return n_surf
-
-  def calculate_surfaces_twins(self):
-    """Class method to extract the surface twins of every node. It sweeps all
-    surfaces and then call the method  find_surface_twin()
-
-    Returns
-    -------
-    surface_twins : dict
-
+  n_surf = nodes_surfaces.copy()
+  top_bottom_corners = [
+    1,20,561,580
+  ]
+  sides = [
+    21,43,67,93,121,151,183,217,253,291,329,365,399,431,461,489,515,539,
+    42,66,92,120,150,182,216,252,290,328,364,398,430,460,488,514,538,560
+  ]
+  hexagon = super().cell.region.surface
+  
+  # ---------------------------------------------------
+  #                   CORNERS
+  # ---------------------------------------------------
+  x1,y1 = n_surf[1]["top"]["points"][0]
+  x2,y2 = n_surf[1]["top"]["points"][1]
+  x1_new = hexagon.surf_F.useFunction(y1, given="y")
+  n_surf[1]["top"]["points"] = ((x1_new,y1), (x2,y2))
+  x1,y1 = n_surf[1]["left"]["points"][0]
+  x2,y2 = n_surf[1]["left"]["points"][1]
+  n_surf[1]["left"]["points"] = ((x1,y1), (x1_new,y2))
+  # ----------------------------------------------
+  x1,y1 = n_surf[20]["top"]["points"][0]
+  x2,y2 = n_surf[20]["top"]["points"][1]
+  x2_new = hexagon.surf_B.useFunction(y1, given="y")
+  n_surf[20]["top"]["points"] = ((x1,y1), (x2_new,y2))
+  x1,y1 = n_surf[20]["right"]["points"][0]
+  x2,y2 = n_surf[20]["right"]["points"][1]
+  n_surf[20]["right"]["points"] = ((x1,y1), (x2_new,y2))
+  # ----------------------------------------------
+  x1,y1 = n_surf[561]["bottom"]["points"][0]
+  x2,y2 = n_surf[561]["bottom"]["points"][1]
+  x1_new = hexagon.surf_E.useFunction(y1, given="y")
+  n_surf[561]["bottom"]["points"] = ((x1_new,y1), (x2,y2))
+  x1,y1 = n_surf[561]["left"]["points"][0]
+  x2,y2 = n_surf[561]["left"]["points"][1]
+  n_surf[561]["left"]["points"] = ((x1_new,y1), (x2,y2))
+  # ----------------------------------------------
+  x1,y1 = n_surf[580]["bottom"]["points"][0]
+  x2,y2 = n_surf[580]["bottom"]["points"][1]
+  x2_new = hexagon.surf_C.useFunction(y1, given="y")
+  n_surf[580]["bottom"]["points"] = ((x1,y1), (x2_new,y2))
+  x1,y1 = n_surf[580]["right"]["points"][0]
+  x2,y2 = n_surf[580]["right"]["points"][1]
+  n_surf[580]["right"]["points"] = ((x2_new,y1), (x2,y2))
+  
+  # ---------------------------------------------------
+  #                   SIDES
+  # ---------------------------------------------------
+  
+  def get_position_in_hexagon(point):
+    """Mini function to find the place of the node in the hexagon
+    giving a point of the top side of the rectangle
     """
+    x, y = point
+    if x < 0.0 and y > 0.0: return "upper_left"
+    if x > 0.0 and y > 0.0: return "upper_right"
+    if x < 0.0 and y <= 0.0: return "lower_left"
+    if x > 0.0 and y <= 0.0: return "lower_right"
+
+  surf_to_fix = {
+    "upper_left": "left",
+    "upper_right": "right",
+    "lower_left": "left",
+    "lower_right": "right"    
+  }
+  surf_to_remove = {
+    "upper_left": "top",
+    "upper_right": "top",
+    "lower_left": "bottom",
+    "lower_right": "bottom"    
+  }
+  surf_for_p1 = {
+    "upper_left": "left",
+    "upper_right": "right",
+    "lower_left": "right",
+    "lower_right": "left"    
+  }
+  surf_for_p2 = {
+    "upper_left": "right",
+    "upper_right": "left",
+    "lower_left": "left",
+    "lower_right": "right"    
+  }
+
+  for n_id in sides:
+    random_top_point = n_surf[n_id]["top"]["points"][0]
+    position = get_position_in_hexagon(random_top_point)
+    s_fix = surf_to_fix[position]
+    s_rem = surf_to_remove[position]
+    new_p1 = n_surf[n_id][surf_for_p1[position]]["points"][0]
+    new_p2 = n_surf[n_id][surf_for_p2[position]]["points"][1]
     
+    n_surf[n_id][s_fix]["points"] = (new_p1,new_p2)
+    n_surf[n_id][s_rem] = None
 
-    surf_checked = {s_id: False for s_id in range(0,self.num_surfaces)}
-    surface_twins = {s_id: None for s_id in range(0,self.num_surfaces)}
+  return n_surf
 
-    for n_id, node_surfs in self.nodes_surfaces.items():
-      
-      for dir_, info in node_surfs.items():
-        if info is not None:
-          s_id = info["s_id"]
-          points = info["points"]
-          if surf_checked[s_id]: continue
 
-          twin = self.find_surface_twin(n_id, points)
-          if twin:
-            surface_twins[s_id] = twin
-            surface_twins[twin] = s_id
-            
-            surf_checked[twin] = True
 
-          surf_checked[s_id] = True
+
+def find_equivalent_nodes(self):
+  """Hardcoded function to get the nodes that are similar or equivalent
+
+  """
+  equivalent_nodes = {
+    1: [1,20,561,580],
+    2: list(range(2,19+1)) + list(range(562,579+1)),
+    21: [
+      21,42,43,66,67,92,93,120,121,150,151,182,183,216,217,252,
+      329,364,365,398,399,430,431,460,461,488,489,514,515,538,539,560
+    ],
+    22: [
+      22, 22+19,
+      70, 70+19,
+      126, 126+19,
+      190, 190+19,
+      372, 372+19,
+      436, 436+19,
+      492, 492+19,
+      540, 540+19,
+
+    ],
+    23: [],
+    44: [],
+    45: [
+      45, 45+19,
+      97, 97+19,
+      157, 157+19,
+      225, 225+19,
+      337, 337+19,
+      405, 405+19,
+      465, 465+19,
+      517, 517+19,
+    ],
+    69: [],
+    253: [253,290,291,328],
+    254: [],
+    255: [],
+    262: [262,281,300,319],
+    263: list(range(263,280+1)) + list(range(301,318+1)),
+  }
+
+  # -----------------------------------------------------
+  equivalent_nodes[23] += list(range(23,23+17+1))
+  equivalent_nodes[23] += list(range(46,46+17+1))
+  equivalent_nodes[23] += list(range(71,71+17+1))
+  equivalent_nodes[23] += list(range(98,98+17+1))
+  equivalent_nodes[23] += list(range(127,127+17+1))
+  equivalent_nodes[23] += list(range(158,158+17+1))
+  equivalent_nodes[23] += list(range(191,191+17+1))
+  equivalent_nodes[23] += list(range(226,226+17+1))
+
+  equivalent_nodes[23] += list(range(338,338+17+1))
+  equivalent_nodes[23] += list(range(373,373+17+1))
+  equivalent_nodes[23] += list(range(406,406+17+1))
+  equivalent_nodes[23] += list(range(437,437+17+1))
+  equivalent_nodes[23] += list(range(466,466+17+1))
+  equivalent_nodes[23] += list(range(493,493+17+1))
+  equivalent_nodes[23] += list(range(518,518+17+1))
+  equivalent_nodes[23] += list(range(541,541+17+1))
+  # -----------------------------------------------------
+  equivalent_nodes[44] += [44,65,68,91]
+  equivalent_nodes[44] += list(range(94,96+1,2))
+  equivalent_nodes[44] += list(range(117,119+1,2)) 
+  equivalent_nodes[44] += list(range(122,124+1,2))
+  equivalent_nodes[44] += list(range(147,149+1,2))
+  equivalent_nodes[44] += list(range(152,156+1,2))
+  equivalent_nodes[44] += list(range(177,181+1,2))
+  equivalent_nodes[44] += list(range(184,188+1,2))
+  equivalent_nodes[44] += list(range(211,215+1,2))
+  equivalent_nodes[44] += list(range(218,224+1,2))
+  equivalent_nodes[44] += list(range(245,251+1,2))
+  equivalent_nodes[44] += list(range(330,336+1,2))
+  equivalent_nodes[44] += list(range(357,363+1,2))
+  equivalent_nodes[44] += list(range(366,370+1,2))
+  equivalent_nodes[44] += list(range(393,397+1,2))
+  equivalent_nodes[44] += list(range(400,404+1,2))
+  equivalent_nodes[44] += list(range(425,429+1,2))
+  equivalent_nodes[44] += list(range(432,434+1,2))
+  equivalent_nodes[44] += list(range(457,459+1,2))
+  equivalent_nodes[44] += list(range(462,464+1,2))
+  equivalent_nodes[44] += list(range(485,487+1,2))
+  equivalent_nodes[44] += [490,513,516,537]
+  # -----------------------------------------------------
+  equivalent_nodes[69] += [69,90,95,118]
+  equivalent_nodes[69] += list(range(123,125+1,2))
+  equivalent_nodes[69] += list(range(146,148+1,2))
+  equivalent_nodes[69] += list(range(153,155+1,2))
+  equivalent_nodes[69] += list(range(178,180+1,2))
+  equivalent_nodes[69] += list(range(185,189+1,2))
+  equivalent_nodes[69] += list(range(210,214+1,2))
+  equivalent_nodes[69] += list(range(219,223+1,2))
+  equivalent_nodes[69] += list(range(246,250+1,2))
+
+  equivalent_nodes[69] += list(range(331,335+1,2))
+  equivalent_nodes[69] += list(range(358,362+1,2))
+  equivalent_nodes[69] += list(range(367,371+1,2))
+  equivalent_nodes[69] += list(range(392,396+1,2))
+  equivalent_nodes[69] += list(range(401,403+1,2))
+  equivalent_nodes[69] += list(range(426,428+1,2))
+  equivalent_nodes[69] += list(range(433,435+1,2))
+  equivalent_nodes[69] += list(range(456,458+1,2))
+  equivalent_nodes[69] += [463,486,491,512]
+
+
+  # -----------------------------------------------------
+  equivalent_nodes[254] += list(range(254,260+1,2))
+  equivalent_nodes[254] += list(range(283,289+1,2))
+  equivalent_nodes[254] += list(range(292,298+1,2))
+  equivalent_nodes[254] += list(range(321,327+1,2))
+  # -----------------------------------------------------
+  equivalent_nodes[255] += list(range(255,261+1,2))
+  equivalent_nodes[255] += list(range(282,288+1,2))
+  equivalent_nodes[255] += list(range(293,299+1,2))
+  equivalent_nodes[255] += list(range(320,326+1,2))
+
+  self.equivalent_nodes = equivalent_nodes
+  return equivalent_nodes
+
+
+def find_equivalent_nodes_symmetry(self):
+  """Hardcoded function to get the simmetry relation of the twin
+  nodes
     
-    self.surface_twins = surface_twins
-    return surface_twins
+    1: {
+      1: {"same": ""},
+      2: {"mirror":"right"},
+      3: {"mirror":"right_down"},
+      4: {"mirror":"down"},
+    },
+    ...
+  """
+  symmetry = {
+    n_id: {
+      n_id_eq: {} for n_id_eq in self.equivalent_nodes[n_id]
+    } for n_id in self.equivalent_nodes.keys()
+  }
+  # Symmetry node 1 ---------------------------------------
+  symmetry[1][1] = {"same": ""}
+  symmetry[1][20] = {"mirror": "right"}
+  symmetry[1][580] = {"mirror": "right_down"}
+  symmetry[1][561] = {"mirror": "down"}
+  # Symmetry node 2 ---------------------------------------
+  for n_id_eq in symmetry[2]:
+    symm = {}
+    if n_id_eq < 561: 
+      if n_id_eq % 2 == 0:
+        symm = {"same": ""}
+      else:
+        symm = {"mirror": "right"}
 
-  def find_surface_twin(self, n_id, points):
-    """Class method to find the surface twin of one surface. It sweeps all the
-    surfaces and compare the points  in order to determine wether is a twin or
-    not.
+    elif n_id_eq > 561: 
+      if n_id_eq % 2 == 0:
+        symm = {"mirror": "down"}
+      else:
+        symm = {"mirror": "right_down"}
+    symmetry[2][n_id_eq] = symm
 
-    Returns
-    -------
-    surf_twin : int or None
-    """
-    p1, p2 = points
-    p1 = (round(p1[0], 10), round(p1[1], 10))
-    p2 = (round(p2[0], 10), round(p2[1], 10))
-    surf_twin = None
-
-    for other_n_id, node_surfs in self.nodes_surfaces.items():
-      if n_id == other_n_id: continue
-      for dir_, info in node_surfs.items():
-        if info is not None:
-          p1_other, p2_other = info["points"]
-          p1_other = (round(p1_other[0], 10), round(p1_other[1], 10))
-          p2_other = (round(p2_other[0], 10), round(p2_other[1], 10)) 
-
-          if p1 == p1_other and p2 == p2_other:
-              surf_twin = info["s_id"]
-              return surf_twin
+  # Symmetry 21  --------------------------------------------
+  for idx,n_id_eq in enumerate(self.equivalent_nodes[21]):
+    symm = {}
+    if n_id_eq < 328: 
+      if idx % 2 == 0:
+        symm = {"same": ""}
+      else:
+        symm = {"mirror": "right"}
     
-    return surf_twin
+    elif n_id_eq > 328: 
+      if idx % 2 == 0:
+        symm = {"mirror": "down"}
+      else:
+        symm = {"mirror": "right_down"}
+    symmetry[21][n_id_eq] = symm
+  
+  # Symmetry 22  --------------------------------------------
+  for idx, n_id_eq in enumerate(self.equivalent_nodes[22]):
+    symm = {}
+    if n_id_eq < 371: 
+      if idx % 2 == 0:
+        symm = {"same": ""}
+      else:
+        symm = {"mirror": "right"}
+    
+    elif n_id_eq > 371: 
+      if idx % 2 == 0:
+        symm = {"mirror": "down"}
+      else:
+        symm = {"mirror": "right_down"}
+    symmetry[22][n_id_eq] = symm
 
-  def find_equivalent_nodes(self):
-    """Hardcoded function to get the nodes that are similar or equivalent
+  # Symmetry 23  --------------------------------------------
+  
+  for idx, n_id_eq in enumerate(self.equivalent_nodes[23]):
+    symm = {}
+    if n_id_eq < 336: 
+      if (idx//18)%2 == 0 :
+        if idx % 2 == 0:
+          symm = {"same": ""}
+        else:
+          symm = {"mirror": "right"}
 
-    """
-    equivalent_nodes = {
-      1: [1,20,561,580],
-      2: list(range(2,19+1)) + list(range(562,579+1)),
-      21: [
-        21,42,43,66,67,92,93,120,121,150,151,182,183,216,217,252,
-        329,364,365,398,399,430,431,460,461,488,489,514,515,538,539,560
-      ],
-      22: [
-        22, 22+19,
-        70, 70+19,
-        126, 126+19,
-        190, 190+19,
-        372, 372+19,
-        436, 436+19,
-        492, 492+19,
-        540, 540+19,
+      else:
+        if idx % 2 == 0:
+          symm = {"mirror": "right"}
+        else:
+          symm = {"same": ""}
 
-      ],
-      23: [],
-      44: [],
-      45: [
-        45, 45+19,
-        97, 97+19,
-        157, 157+19,
-        225, 225+19,
-        337, 337+19,
-        405, 405+19,
-        465, 465+19,
-        517, 517+19,
-      ],
-      69: [],
-      253: [253,290,291,328],
-      254: [],
-      255: [],
-      262: [262,281,300,319],
-      263: list(range(263,280+1)) + list(range(301,318+1)),
+    elif n_id_eq > 336: 
+      if (idx//18)%2 == 0:
+        if idx % 2 == 0:
+          symm = {"mirror": "right_down"}
+        else:
+          symm = {"mirror": "down"}
+
+      else:
+        if idx % 2 == 0:
+          symm = {"mirror": "down"}
+        else:
+          symm = {"mirror": "right_down"}
+    symmetry[23][n_id_eq] = symm
+
+  # Symmetry 44  --------------------------------------------
+  for idx, n_id_eq in enumerate(self.equivalent_nodes[44]):
+    symm = {}
+    rectangle = self.rectangles[n_id_eq-1]
+    x1 = rectangle[0][0]
+    if n_id_eq < 329: 
+      if x1 < 0:
+        symm = {"same": ""}
+      else:
+        symm = {"mirror": "right"}
+    
+    elif n_id_eq > 329: 
+      if x1 < 0:
+        symm = {"mirror": "down"}
+      else:
+        symm = {"mirror": "right_down"}
+    symmetry[44][n_id_eq] = symm
+
+  # Symmetry 45  --------------------------------------------
+  for idx, n_id_eq in enumerate(self.equivalent_nodes[45]):
+    symm = {}
+    if n_id_eq < 336: 
+      if idx % 2 == 0:
+        symm = {"same": ""}
+      else:
+        symm = {"mirror": "right"}
+    
+    elif n_id_eq > 336: 
+      if idx % 2 == 0:
+        symm = {"mirror": "down"}
+      else:
+        symm = {"mirror": "right_down"}
+    symmetry[45][n_id_eq] = symm
+
+  # Symmetry 69  --------------------------------------------
+  for idx, n_id_eq in enumerate(self.equivalent_nodes[69]):
+    symm = {}
+    rectangle = self.rectangles[n_id_eq-1]
+    x1 = rectangle[0][0]
+    if n_id_eq < 330: 
+      if x1 < 0:
+        symm = {"same": ""}
+      else:
+        symm = {"mirror": "right"}
+    
+    elif n_id_eq > 330: 
+      if x1 < 0:
+        symm = {"mirror": "down"}
+      else:
+        symm = {"mirror": "right_down"}
+    symmetry[69][n_id_eq] = symm
+  # Symmetry node 253 ---------------------------------------
+  symmetry[253][253] = {"same": ""}
+  symmetry[253][290] = {"mirror": "right"}
+  symmetry[253][291] = {"mirror": "down"}
+  symmetry[253][328] = {"mirror": "right_down"}
+  
+  # Symmetry node 254 ---------------------------------------
+  for idx, n_id_eq in enumerate(self.equivalent_nodes[254]):
+    symm = {}
+    if n_id_eq < 283: 
+        symm = {"same": ""}
+    elif n_id_eq > 260 and n_id_eq < 292: 
+        symm = {"mirror": "right"}
+    elif n_id_eq > 289 and n_id_eq < 320: 
+        symm = {"mirror": "down"}
+    elif n_id_eq > 320: 
+        symm = {"mirror": "right_down"}
+    symmetry[254][n_id_eq] = symm
+
+  # Symmetry node 255 ---------------------------------------
+  for idx, n_id_eq in enumerate(self.equivalent_nodes[255]):
+    symm = {}
+    if n_id_eq < 282: 
+        symm = {"same": ""}
+    elif n_id_eq > 261 and n_id_eq < 293: 
+        symm = {"mirror": "right"}
+    elif n_id_eq > 292 and n_id_eq < 320: 
+        symm = {"mirror": "down"}
+    elif n_id_eq > 319: 
+        symm = {"mirror": "right_down"}
+    symmetry[255][n_id_eq] = symm
+  
+  # Symmetry node 262 ---------------------------------------
+  symmetry[262][262] = {"same": ""}
+  symmetry[262][281] = {"mirror": "right"}
+  symmetry[262][300] = {"mirror": "down"}
+  symmetry[262][319] = {"mirror": "right_down"}
+
+  # Symmetry node 263 ---------------------------------------
+  for idx, n_id_eq in enumerate(self.equivalent_nodes[263]):
+    symm = {}
+    if n_id_eq < 300: 
+      if idx % 2 == 0:
+        symm = {"same": ""}
+      else:
+        symm = {"mirror": "right"}
+    
+    elif n_id_eq > 300: 
+      if idx % 2 == 0:
+        symm = {"mirror": "down"}
+      else:
+        symm = {"mirror": "right_down"}
+    symmetry[263][n_id_eq] = symm
+
+  return symmetry
+
+
+def fill_regions(self):
+  regions_ids = {
+    1: [("fuel", 1),("na_coolant", 2)],
+    2: [("fuel", 1),("na_coolant", 2)],
+    21: [("fuel", 1),("na_coolant", 2)],
+    22: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
+    23: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
+    44: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
+    45: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
+    69: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
+    253: [("fuel", 1),("na_coolant", 2)],
+    254: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
+    255: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
+    262: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
+    263: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
+  }
+  coarse_nodes_regions = {}
+  regions_coarse_node = {}
+  coarse_nodes_regions_material = {}
+
+  for nid, eq_array in self.equivalent_nodes.items():
+
+    for eq_nid in eq_array:
+      coarse_nodes_regions[eq_nid] = []
+
+      for region in regions_ids[nid]:
+        r_id = f"{eq_nid}_{region[1]}"
+        coarse_nodes_regions[eq_nid].append(r_id)
+        coarse_nodes_regions_material[r_id] = region[0]
+        regions_coarse_node[r_id] = eq_nid
+      # print(coarse_nodes_regions[eq_nid])
+  
+  self.coarse_nodes_regions = coarse_nodes_regions
+  self.coarse_nodes_regions_material = coarse_nodes_regions_material
+  self.regions_coarse_node = regions_coarse_node
+  return coarse_nodes_regions
+
+
+def __get_symmetry_hex_assem(self):
+  self.__clean_mesh_map = [
+    [
+      col for col in row if col != 0
+    ] for row in self.coarse_nodes_map
+  ]
+  print("--"*70)
+  print("self.__clean_mesh_map")
+  print_clean_mesh_map = [print(row) for row in self.__clean_mesh_map]
+  print("--"*70)
+  type_1 = self.__clean_mesh_map[0][0]  # 1
+  type_2 = self.__clean_mesh_map[0][1]  # 2
+  type_3 = self.__clean_mesh_map[1][0]  # 5
+  type_4 = self.__clean_mesh_map[1][1]  # 6
+  type_5 = self.__clean_mesh_map[1][2]  # 7
+  
+  symmetry = {
+    type_1: {
+      type_1: {"same": ""},
+      4: {"mirror":"right"},
+      17: {"mirror":"down"},
+      20: {"mirror":"right_down"},
+      # self.__clean_mesh_map[0][-1]: {"same": ""},
+      # self.__clean_mesh_map[-1][0]: {"same": ""},
+      # self.__clean_mesh_map[-1][-1]: {"same": ""},
+    }, 
+    type_2: {
+      type_2: {"same": ""},
+      3: {"mirror":"right"},
+      18: {"mirror":"down"},
+      19: {"mirror":"right_down"}
+    }, 
+    type_3: {
+      type_3: {"same": ""},
+      10: {"mirror":"right"},
+      11: {"mirror":"down"},
+      16: {"mirror":"right_down"},
+    }, 
+    type_4: {
+      type_4: {"same": ""},
+      9: {"mirror":"right"},
+      12: {"mirror":"down"},
+      15: {"mirror":"right_down"}
+    }, 
+    type_5: {
+      type_5: {"same": ""},
+      8: {"mirror":"right"},
+      13: {"mirror":"down"},
+      14: {"mirror":"right_down"}
     }
+  }
 
-    # -----------------------------------------------------
-    equivalent_nodes[23] += list(range(23,23+17+1))
-    equivalent_nodes[23] += list(range(46,46+17+1))
-    equivalent_nodes[23] += list(range(71,71+17+1))
-    equivalent_nodes[23] += list(range(98,98+17+1))
-    equivalent_nodes[23] += list(range(127,127+17+1))
-    equivalent_nodes[23] += list(range(158,158+17+1))
-    equivalent_nodes[23] += list(range(191,191+17+1))
-    equivalent_nodes[23] += list(range(226,226+17+1))
+  return symmetry
 
-    equivalent_nodes[23] += list(range(338,338+17+1))
-    equivalent_nodes[23] += list(range(373,373+17+1))
-    equivalent_nodes[23] += list(range(406,406+17+1))
-    equivalent_nodes[23] += list(range(437,437+17+1))
-    equivalent_nodes[23] += list(range(466,466+17+1))
-    equivalent_nodes[23] += list(range(493,493+17+1))
-    equivalent_nodes[23] += list(range(518,518+17+1))
-    equivalent_nodes[23] += list(range(541,541+17+1))
-    # -----------------------------------------------------
-    equivalent_nodes[44] += [44,65,68,91]
-    equivalent_nodes[44] += list(range(94,96+1,2))
-    equivalent_nodes[44] += list(range(117,119+1,2)) 
-    equivalent_nodes[44] += list(range(122,124+1,2))
-    equivalent_nodes[44] += list(range(147,149+1,2))
-    equivalent_nodes[44] += list(range(152,156+1,2))
-    equivalent_nodes[44] += list(range(177,181+1,2))
-    equivalent_nodes[44] += list(range(184,188+1,2))
-    equivalent_nodes[44] += list(range(211,215+1,2))
-    equivalent_nodes[44] += list(range(218,224+1,2))
-    equivalent_nodes[44] += list(range(245,251+1,2))
-    equivalent_nodes[44] += list(range(330,336+1,2))
-    equivalent_nodes[44] += list(range(357,363+1,2))
-    equivalent_nodes[44] += list(range(366,370+1,2))
-    equivalent_nodes[44] += list(range(393,397+1,2))
-    equivalent_nodes[44] += list(range(400,404+1,2))
-    equivalent_nodes[44] += list(range(425,429+1,2))
-    equivalent_nodes[44] += list(range(432,434+1,2))
-    equivalent_nodes[44] += list(range(457,459+1,2))
-    equivalent_nodes[44] += list(range(462,464+1,2))
-    equivalent_nodes[44] += list(range(485,487+1,2))
-    equivalent_nodes[44] += [490,513,516,537]
-    # -----------------------------------------------------
-    equivalent_nodes[69] += [69,90,95,118]
-    equivalent_nodes[69] += list(range(123,125+1,2))
-    equivalent_nodes[69] += list(range(146,148+1,2))
-    equivalent_nodes[69] += list(range(153,155+1,2))
-    equivalent_nodes[69] += list(range(178,180+1,2))
-    equivalent_nodes[69] += list(range(185,189+1,2))
-    equivalent_nodes[69] += list(range(210,214+1,2))
-    equivalent_nodes[69] += list(range(219,223+1,2))
-    equivalent_nodes[69] += list(range(246,250+1,2))
+
+def __get_map_mesh(self, clean_map):
   
-    equivalent_nodes[69] += list(range(331,335+1,2))
-    equivalent_nodes[69] += list(range(358,362+1,2))
-    equivalent_nodes[69] += list(range(367,371+1,2))
-    equivalent_nodes[69] += list(range(392,396+1,2))
-    equivalent_nodes[69] += list(range(401,403+1,2))
-    equivalent_nodes[69] += list(range(426,428+1,2))
-    equivalent_nodes[69] += list(range(433,435+1,2))
-    equivalent_nodes[69] += list(range(456,458+1,2))
-    equivalent_nodes[69] += [463,486,491,512]
+  map_mesh = []
+  node_counter = 1
+  middle_clean_map = len(clean_map) 
+  for r, row in enumerate(clean_map):
+    map_mesh_row = []
+    for id_, pin in row:
+      if pin == "inside":
+        map_mesh_row.append(node_counter)
+        map_mesh_row.append(node_counter+1)
+        node_counter += 2
+    if len(map_mesh_row) > 0:
+      if r == len(clean_map) // 2:
+        map_mesh.append(map_mesh_row)
+        another_middle_row = []
+        for val_ in map_mesh_row:
+          another_middle_row.append(node_counter)
+          node_counter += 1
+        map_mesh.append(another_middle_row)
+      else:
+        map_mesh.append(map_mesh_row)
+  number_zeros = 1
+  middle = len(map_mesh) // 2
+  idx_up = middle - 1
+  idx_bottom = middle
+  while idx_up >= 0:
+    map_row_bottom = map_mesh[idx_bottom]
+    map_row_up = map_mesh[idx_up]
+    for z in range(number_zeros):
+      map_row_bottom = [0] + map_row_bottom
+      map_row_bottom.append(0)
+      map_row_up = [0] + map_row_up
+      map_row_up.append(0)
+    map_mesh[idx_bottom] = list(map_row_bottom)
+    map_mesh[idx_up] = list(map_row_up)
+    idx_up -= 1
+    idx_bottom += 1
+    number_zeros += 1
 
-
-    # -----------------------------------------------------
-    equivalent_nodes[254] += list(range(254,260+1,2))
-    equivalent_nodes[254] += list(range(283,289+1,2))
-    equivalent_nodes[254] += list(range(292,298+1,2))
-    equivalent_nodes[254] += list(range(321,327+1,2))
-    # -----------------------------------------------------
-    equivalent_nodes[255] += list(range(255,261+1,2))
-    equivalent_nodes[255] += list(range(282,288+1,2))
-    equivalent_nodes[255] += list(range(293,299+1,2))
-    equivalent_nodes[255] += list(range(320,326+1,2))
-
-    self.equivalent_nodes = equivalent_nodes
-    return equivalent_nodes
-
-  def find_equivalent_nodes_symmetry(self):
-    """Hardcoded function to get the simmetry relation of the twin
-    nodes
-      
-      1: {
-        1: {"same": ""},
-        2: {"mirror":"right"},
-        3: {"mirror":"right_down"},
-        4: {"mirror":"down"},
-      },
-      ...
-    """
-    symmetry = {
-      n_id: {
-        n_id_eq: {} for n_id_eq in self.equivalent_nodes[n_id]
-      } for n_id in self.equivalent_nodes.keys()
-    }
-    # Symmetry node 1 ---------------------------------------
-    symmetry[1][1] = {"same": ""}
-    symmetry[1][20] = {"mirror": "right"}
-    symmetry[1][580] = {"mirror": "right_down"}
-    symmetry[1][561] = {"mirror": "down"}
-    # Symmetry node 2 ---------------------------------------
-    for n_id_eq in symmetry[2]:
-      symm = {}
-      if n_id_eq < 561: 
-        if n_id_eq % 2 == 0:
-          symm = {"same": ""}
-        else:
-          symm = {"mirror": "right"}
   
-      elif n_id_eq > 561: 
-        if n_id_eq % 2 == 0:
-          symm = {"mirror": "down"}
-        else:
-          symm = {"mirror": "right_down"}
-      symmetry[2][n_id_eq] = symm
-
-    # Symmetry 21  --------------------------------------------
-    for idx,n_id_eq in enumerate(self.equivalent_nodes[21]):
-      symm = {}
-      if n_id_eq < 328: 
-        if idx % 2 == 0:
-          symm = {"same": ""}
-        else:
-          symm = {"mirror": "right"}
-      
-      elif n_id_eq > 328: 
-        if idx % 2 == 0:
-          symm = {"mirror": "down"}
-        else:
-          symm = {"mirror": "right_down"}
-      symmetry[21][n_id_eq] = symm
-    
-    # Symmetry 22  --------------------------------------------
-    for idx, n_id_eq in enumerate(self.equivalent_nodes[22]):
-      symm = {}
-      if n_id_eq < 371: 
-        if idx % 2 == 0:
-          symm = {"same": ""}
-        else:
-          symm = {"mirror": "right"}
-      
-      elif n_id_eq > 371: 
-        if idx % 2 == 0:
-          symm = {"mirror": "down"}
-        else:
-          symm = {"mirror": "right_down"}
-      symmetry[22][n_id_eq] = symm
-
-    # Symmetry 23  --------------------------------------------
-    
-    for idx, n_id_eq in enumerate(self.equivalent_nodes[23]):
-      symm = {}
-      if n_id_eq < 336: 
-        if (idx//18)%2 == 0 :
-          if idx % 2 == 0:
-            symm = {"same": ""}
-          else:
-            symm = {"mirror": "right"}
-
-        else:
-          if idx % 2 == 0:
-            symm = {"mirror": "right"}
-          else:
-            symm = {"same": ""}
-
-      elif n_id_eq > 336: 
-        if (idx//18)%2 == 0:
-          if idx % 2 == 0:
-            symm = {"mirror": "right_down"}
-          else:
-            symm = {"mirror": "down"}
-
-        else:
-          if idx % 2 == 0:
-            symm = {"mirror": "down"}
-          else:
-            symm = {"mirror": "right_down"}
-      symmetry[23][n_id_eq] = symm
-
-    # Symmetry 44  --------------------------------------------
-    for idx, n_id_eq in enumerate(self.equivalent_nodes[44]):
-      symm = {}
-      rectangle = self.rectangles[n_id_eq-1]
-      x1 = rectangle[0][0]
-      if n_id_eq < 329: 
-        if x1 < 0:
-          symm = {"same": ""}
-        else:
-          symm = {"mirror": "right"}
-      
-      elif n_id_eq > 329: 
-        if x1 < 0:
-          symm = {"mirror": "down"}
-        else:
-          symm = {"mirror": "right_down"}
-      symmetry[44][n_id_eq] = symm
-
-    # Symmetry 45  --------------------------------------------
-    for idx, n_id_eq in enumerate(self.equivalent_nodes[45]):
-      symm = {}
-      if n_id_eq < 336: 
-        if idx % 2 == 0:
-          symm = {"same": ""}
-        else:
-          symm = {"mirror": "right"}
-      
-      elif n_id_eq > 336: 
-        if idx % 2 == 0:
-          symm = {"mirror": "down"}
-        else:
-          symm = {"mirror": "right_down"}
-      symmetry[45][n_id_eq] = symm
-
-    # Symmetry 69  --------------------------------------------
-    for idx, n_id_eq in enumerate(self.equivalent_nodes[69]):
-      symm = {}
-      rectangle = self.rectangles[n_id_eq-1]
-      x1 = rectangle[0][0]
-      if n_id_eq < 330: 
-        if x1 < 0:
-          symm = {"same": ""}
-        else:
-          symm = {"mirror": "right"}
-      
-      elif n_id_eq > 330: 
-        if x1 < 0:
-          symm = {"mirror": "down"}
-        else:
-          symm = {"mirror": "right_down"}
-      symmetry[69][n_id_eq] = symm
-    # Symmetry node 253 ---------------------------------------
-    symmetry[253][253] = {"same": ""}
-    symmetry[253][290] = {"mirror": "right"}
-    symmetry[253][291] = {"mirror": "down"}
-    symmetry[253][328] = {"mirror": "right_down"}
-    
-    # Symmetry node 254 ---------------------------------------
-    for idx, n_id_eq in enumerate(self.equivalent_nodes[254]):
-      symm = {}
-      if n_id_eq < 283: 
-          symm = {"same": ""}
-      elif n_id_eq > 260 and n_id_eq < 292: 
-          symm = {"mirror": "right"}
-      elif n_id_eq > 289 and n_id_eq < 320: 
-          symm = {"mirror": "down"}
-      elif n_id_eq > 320: 
-          symm = {"mirror": "right_down"}
-      symmetry[254][n_id_eq] = symm
-
-    # Symmetry node 255 ---------------------------------------
-    for idx, n_id_eq in enumerate(self.equivalent_nodes[255]):
-      symm = {}
-      if n_id_eq < 282: 
-          symm = {"same": ""}
-      elif n_id_eq > 261 and n_id_eq < 293: 
-          symm = {"mirror": "right"}
-      elif n_id_eq > 292 and n_id_eq < 320: 
-          symm = {"mirror": "down"}
-      elif n_id_eq > 319: 
-          symm = {"mirror": "right_down"}
-      symmetry[255][n_id_eq] = symm
-    
-    # Symmetry node 262 ---------------------------------------
-    symmetry[262][262] = {"same": ""}
-    symmetry[262][281] = {"mirror": "right"}
-    symmetry[262][300] = {"mirror": "down"}
-    symmetry[262][319] = {"mirror": "right_down"}
-
-    # Symmetry node 263 ---------------------------------------
-    for idx, n_id_eq in enumerate(self.equivalent_nodes[263]):
-      symm = {}
-      if n_id_eq < 300: 
-        if idx % 2 == 0:
-          symm = {"same": ""}
-        else:
-          symm = {"mirror": "right"}
-      
-      elif n_id_eq > 300: 
-        if idx % 2 == 0:
-          symm = {"mirror": "down"}
-        else:
-          symm = {"mirror": "right_down"}
-      symmetry[263][n_id_eq] = symm
-
-    return symmetry
-
-  def fill_regions(self):
-    regions_ids = {
-      1: [("fuel", 1),("na_coolant", 2)],
-      2: [("fuel", 1),("na_coolant", 2)],
-      21: [("fuel", 1),("na_coolant", 2)],
-      22: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
-      23: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
-      44: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
-      45: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
-      69: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
-      253: [("fuel", 1),("na_coolant", 2)],
-      254: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
-      255: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
-      262: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
-      263: [("fuel", 1),("fuel", 2),("na_coolant", 3)],
-    }
-    coarse_nodes_regions = {}
-    regions_coarse_node = {}
-    coarse_nodes_regions_material = {}
-
-    for nid, eq_array in self.equivalent_nodes.items():
-
-      for eq_nid in eq_array:
-        coarse_nodes_regions[eq_nid] = []
-
-        for region in regions_ids[nid]:
-          r_id = f"{eq_nid}_{region[1]}"
-          coarse_nodes_regions[eq_nid].append(r_id)
-          coarse_nodes_regions_material[r_id] = region[0]
-          regions_coarse_node[r_id] = eq_nid
-        # print(coarse_nodes_regions[eq_nid])
-    
-    self.coarse_nodes_regions = coarse_nodes_regions
-    self.coarse_nodes_regions_material = coarse_nodes_regions_material
-    self.regions_coarse_node = regions_coarse_node
-    return coarse_nodes_regions
-
-  def get_coarse_node_order(self):
-    return list(self.coarse_nodes.keys())
-
-  def get_all_regions(self):
-    all_regions = []
-    coarse_nodes_order = self.get_coarse_node_order()
-  
-    for nid in coarse_nodes_order:
-      all_regions += self.coarse_nodes_regions[nid]
-    
-    return all_regions
-
-  def get_all_surfaces(self):
-    all_surfaces = []
-    coarse_nodes_order = self.get_coarse_node_order()
-  
-    for nid in coarse_nodes_order:
-      surfaces_in_node = self.nodes_surfaces[nid]
-      for surf_dir, surf_data in surfaces_in_node.items():
-        if surf_data is not None:
-          all_surfaces.append(surf_data["s_id"])
-    
-    return all_surfaces
-
-  def get_surface_rel(self):
-    surface_rel = {}
-    coarse_nodes_order = self.get_coarse_node_order()
-  
-    for nid in coarse_nodes_order:
-      surface_rel[nid] = []
-
-      surfaces_in_node = self.nodes_surfaces[nid]
-      for surf_dir, surf_data in surfaces_in_node.items():
-        if surf_data is not None:
-          surface_rel[nid].append(surf_data["s_id"])
-    
-    return surface_rel
-
-  def get_surfaces_areas(self):
-    surface_areas = {}
-    coarse_nodes_order = self.get_coarse_node_order()
-  
-    for nid in coarse_nodes_order:
-      surfaces_in_node = self.nodes_surfaces[nid]
-      for surf_dir, surf_data in surfaces_in_node.items():
-        if surf_data is not None:
-          p1, p2 = surf_data["points"]
-          area = self.calculate_euclidean_distance(p1, p2)
-          surface_areas[surf_data["s_id"]] = area
-    
-    return surface_areas
-
-  def get_regions_volume(self):
-    volumes_nid = {
-      1:{"1_1": 0.04967677268509912, "1_2": 0.1365163097835546},
-      2: {"2_1": 0.04967677268509912, "2_2": 0.15555925053856645},
-      21: {"21_1": 0.03400674354687507,"21_2": 0.1750400575589632},
-      22: {
-        "22_1": 0.06534237980406016,"22_2": 0.15052185937821516,
-        "22_3": 0.26603838013058806
-      },
-      23: {
-        "23_1": 0.04967677268509912, "23_2": 0.15052185937821516,
-        "23_3": 0.21786877879386252
-      },
-      44: {
-        "44_1": 0.06534237980406016, "44_2": 0.11304191697732255,
-        "44_3": 0.23968215174911753
-      },
-      45: {
-        "45_1": 0.04967677268509912, "45_2": 0.18800149292676388,
-        "45_3": 0.24420927541863738
-      },
-      69: {
-        "69_1": 0.03400674354687507, "69_2": 0.18800149292676388,
-        "69_3": 0.1960718476387713
-      },
-      253: {
-        "253_1": 0.07353508909047735, "253_2": 0.213020654803314
-      },
-      254: {
-        "254_1": 0.12665330526268323, "254_2": 0.11304191697732255,
-        "254_3": 0.2497888447381934
-      },
-      255: {
-        "255_1": 0.07353508909047735, "255_2": 0.18800149292676388,
-        "255_3": 0.22796635541539054
-      },
-      262: {
-        "262_1": 0.12665330526268323, "262_2": 0.15052185937821516,
-        "262_3": 0.2870308230216342
-      },
-      263: {
-        "263_1": 0.10009821052684138, "263_2": 0.15052185937821516,
-        "263_3": 0.23885568303580873
-      }
-    }
-
-    volumes = {}
-    for nid, eq_nodes in self.equivalent_nodes.items():
-      for neq in eq_nodes:
-        for rid_vol, vol in volumes_nid[nid].items():
-          node, reg = rid_vol.split("_")
-          r_id = f"{neq}_{reg}"
-          volumes[r_id] = vol
-
-    self.regions_volume = volumes
-
-    return volumes
-
-  def calculate_euclidean_distance(self, p1, p2):
-    from math import sqrt
-
-    x1, y1 = p1 
-    x2, y2 = p2
-
-    distance = sqrt(
-      (x2-x1) ** 2 + (y2-y1) ** 2
-    )
-
-    return distance
+  return np.array(map_mesh)
 
 
 
-  def __create_nodes_hex_assem(self):
-
-    first_pin_id = self.clean_map[1][1][0]
-    first_pin = self.universe.cells[first_pin_id]
-    self.__hexagon_width = first_pin.region.surface.half_width
-
-    fuel, no_fuel = first_pin.content.find_fuel_cells()
-
-    fuel_mat = fuel[0].content
-    radius_fuel = fuel[0].region.surface.radius
-    coolant_mat = no_fuel[0].content
-    
-    outer_hex = super().cell.region.surface    
-    
-    third_pin_id = self.clean_map[2][1][0]
-    third_pin = self.universe.cells[third_pin_id]
-    # print("----------------------:   ",third_pin.region.surface.center)
-    # x_div, y_div = self.__calculate_square_mesh_coord_hex_assem(outer_hex, clean_map)
-    y_div = [1.4182465, 0.8509479, 0.0, -0.8509479, -1.4182465]
-    x_div = [
-                [-1.146355, -0.491295, 0.0, 0.491295, 1.146355], 
-      [-1.63765, -1.146355, -0.491295, 0.0, 0.491295, 1.146355, 1.63765], 
-      [-1.63765, -1.146355, -0.491295, 0.0, 0.491295, 1.146355, 1.63765], 
-                [-1.146355, -0.491295, 0.0, 0.491295, 1.146355]
-    ]
-    self.points_mesh = self.__get_rectangles_from_mesh_coord(x_div, y_div)#, outer_hex, clean_map)
-    self.coarse_nodes_map = self.__get_map_mesh(self.clean_map)
-    print("self.coarse_nodes_map: ")
-    print(self.coarse_nodes_map)
-    print("--"*70)
-
-    # print(self.coarse_nodes_map)
-    self.__symmetry = self.__get_symmetry_hex_assem()
-    
-    self.coarse_nodes = self.__get_coarse_nodes_hex_assem(fuel_mat, coolant_mat, radius_fuel)
-
-
-  def __get_symmetry_hex_assem(self):
-    self.__clean_mesh_map = [
-      [
-        col for col in row if col != 0
-      ] for row in self.coarse_nodes_map
-    ]
-    print("--"*70)
-    print("self.__clean_mesh_map")
-    print_clean_mesh_map = [print(row) for row in self.__clean_mesh_map]
-    print("--"*70)
-    type_1 = self.__clean_mesh_map[0][0]  # 1
-    type_2 = self.__clean_mesh_map[0][1]  # 2
-    type_3 = self.__clean_mesh_map[1][0]  # 5
-    type_4 = self.__clean_mesh_map[1][1]  # 6
-    type_5 = self.__clean_mesh_map[1][2]  # 7
-    
-    symmetry = {
-      type_1: {
-        type_1: {"same": ""},
-        4: {"mirror":"right"},
-        17: {"mirror":"down"},
-        20: {"mirror":"right_down"},
-        # self.__clean_mesh_map[0][-1]: {"same": ""},
-        # self.__clean_mesh_map[-1][0]: {"same": ""},
-        # self.__clean_mesh_map[-1][-1]: {"same": ""},
-      }, 
-      type_2: {
-        type_2: {"same": ""},
-        3: {"mirror":"right"},
-        18: {"mirror":"down"},
-        19: {"mirror":"right_down"}
-      }, 
-      type_3: {
-        type_3: {"same": ""},
-        10: {"mirror":"right"},
-        11: {"mirror":"down"},
-        16: {"mirror":"right_down"},
-      }, 
-      type_4: {
-        type_4: {"same": ""},
-        9: {"mirror":"right"},
-        12: {"mirror":"down"},
-        15: {"mirror":"right_down"}
-      }, 
-      type_5: {
-        type_5: {"same": ""},
-        8: {"mirror":"right"},
-        13: {"mirror":"down"},
-        14: {"mirror":"right_down"}
-      }
-    }
-
-    return symmetry
-
-  def __get_map_mesh(self, clean_map):
-    
-    map_mesh = []
-    node_counter = 1
-    middle_clean_map = len(clean_map) 
-    for r, row in enumerate(clean_map):
-      map_mesh_row = []
-      for id_, pin in row:
-        if pin == "inside":
-          map_mesh_row.append(node_counter)
-          map_mesh_row.append(node_counter+1)
-          node_counter += 2
-      if len(map_mesh_row) > 0:
-        if r == len(clean_map) // 2:
-          map_mesh.append(map_mesh_row)
-          another_middle_row = []
-          for val_ in map_mesh_row:
-            another_middle_row.append(node_counter)
-            node_counter += 1
-          map_mesh.append(another_middle_row)
-        else:
-          map_mesh.append(map_mesh_row)
-    number_zeros = 1
-    middle = len(map_mesh) // 2
-    idx_up = middle - 1
-    idx_bottom = middle
-    while idx_up >= 0:
-      map_row_bottom = map_mesh[idx_bottom]
-      map_row_up = map_mesh[idx_up]
-      for z in range(number_zeros):
-        map_row_bottom = [0] + map_row_bottom
-        map_row_bottom.append(0)
-        map_row_up = [0] + map_row_up
-        map_row_up.append(0)
-      map_mesh[idx_bottom] = list(map_row_bottom)
-      map_mesh[idx_up] = list(map_row_up)
-      idx_up -= 1
-      idx_bottom += 1
-      number_zeros += 1
-
-    
-    return np.array(map_mesh)
-
-  def __get_coarse_nodes_hex_assem(self, fuel_mat, coolant_mat, radius):
-    coarse_nodes = {}
-    for y, row in enumerate(self.coarse_nodes_map):
-      for x, node_id in enumerate(row):
-        if node_id != 0:
-          # each rectangle corresponds to a cell
-          rectangle = self.points_mesh[node_id]
-          x1, x2 = rectangle[0]
-          y1, y2 = rectangle[1]
-
-          get_cells, type_, node_type_id = self.__type_of_rectangle_cell_switch(row, x ,y)
-          # print(type_, node_type_id)
-          rectangle_cells, geometry_info = get_cells(x1, x2, y1, y2, coolant_mat, fuel_mat, radius)
-          geometry_info["type"] = type_
-          geometry_info["symmetry"] = {
-            node_type_id: self.__symmetry[node_type_id][node_id]
-          }
-          new_guide = change_boundary_guide(
-            geometry_info["surfaces_for_detectors"]["boundary_guide"], geometry_info["symmetry"][node_type_id]
-          )
-          new_guide_inv = {
-            s_id: s_dir for s_dir, s_id in new_guide.items() if s_id is not None
-          }
-          geometry_info["surfaces_for_detectors"]["boundary_guide"] = new_guide
-          geometry_info["surfaces_for_detectors"]["boundary_guide_inv"] = new_guide_inv
-
-
-          print(node_id, geometry_info["surfaces_for_detectors"]["boundary_guide"])
-          print(node_id, geometry_info["surfaces_for_detectors"]["boundary_surfaces_areas"])
-          print()
-          # Now with these cells create a universe 
-          rectangle_universe = Universe(name=f"rectangle_coarse_node_cell_{node_id}")
-          rectangle_universe.cells = rectangle_cells
-          # Fill a rectangular cell with these universe
-          # surf_rectangle = InfiniteRectangleCylinderZ(x1,x2,y1,y2)
-          surf_rectangle = geometry_info["rectangle_surf"]
-          rectangle_cell = Cell(
-              fill=rectangle_universe, 
-              region=-surf_rectangle, 
-              name=f"coarse_node_cell_{node_id}"
-          )
-          coarse_node = HexAssemCoarseNode(rectangle_cell, geometry_info)
-          coarse_node.id = node_id
-          coarse_nodes[node_id] = coarse_node
-    return coarse_nodes
 

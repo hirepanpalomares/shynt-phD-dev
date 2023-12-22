@@ -169,8 +169,9 @@ class Cell:
         vol1 = child1.surface.evaluate_enclosed_volume()
         vol2 = child2.surface.evaluate_enclosed_volume()
         if child1.encloses(child2):
+          print(vol1, vol2)
           return vol1 - vol2
-        elif child2.encloses(child1)                :
+        elif child2.encloses(child1):
           return vol2 - vol1
       except AssertionError:
         raise SystemError             
@@ -218,7 +219,8 @@ class Cell:
       #  Here translate content of the universe
       if isinstance(fill, Pin):
         # declare last cell
-        fill.close_last_level(self.__region)
+        surface = self.__region.surface
+        fill.close_last_level(surface)
       elif isinstance(fill, HexagonalLatticeTypeX):
         x0, y0 = fill.center
         x1, y1 = self.__region.surface.center
@@ -492,9 +494,13 @@ class Cell:
   
   @property
   def volume(self):
-      if self.__volume is None:
-          self.__volume = self.__calculate_volume()
-      return self.__volume
+    if self.__volume is None:
+      self.__volume = self.__calculate_volume()
+    return self.__volume
+
+  @volume.setter
+  def volume(self, vol):
+    self.__volume = vol
 
   @property
   def surface_area_relation(self):

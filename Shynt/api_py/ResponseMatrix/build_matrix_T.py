@@ -138,7 +138,7 @@ def getMatrixT_system_byGroup(mesh_info, energy_g, xs, probabilities):
       xs_node = {r: xs[r] for r in regions}
       mT = build_T(
         xs_node,
-        probabilities[n_id],
+        probabilities,
         regions,
         regions_volume,
         g

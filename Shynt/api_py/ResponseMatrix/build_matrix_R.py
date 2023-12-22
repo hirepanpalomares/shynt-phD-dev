@@ -91,7 +91,7 @@ def getResponseMatrix_byGroup(mesh_info, energy_g, probabilities):
     for n_id in coarse_nodes:
       surfaces = surfaces_rel[n_id]
       rm_n = build_R(
-        probabilities[n_id],
+        probabilities,
         surfaces,
         surface_areas,
         g
