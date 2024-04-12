@@ -85,7 +85,7 @@ def getBlockMatrix(matrixes):
       corner[1] + m_shape[1]
     ) # The final value of the corner gives the Big matrix shape
 
-  bigM = np.zeros(corner)
+  bigM = np.zeros(corner, dtype=np.float64)
   for m in range(numMatrixes):
     matrix = matrixes[m]
     corner = matrix_corners[m]

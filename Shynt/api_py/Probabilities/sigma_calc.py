@@ -47,49 +47,49 @@ def calculate_nonFuel_uncertainties(
 ):
 
   p_nonFuel_uncertainty = {
-      r: {
-          "regions": {
-              rp: None for rp in regions
-          },
-          "surfaces": {
-              s: None for s in surfaces
-          }
-      } for r in nonFuel_regions
+    r: {
+      "regions": {
+        rp: None for rp in regions
+      },
+      "surfaces": {
+        s: None for s in surfaces
+      }
+    } for r in nonFuel_regions
   }
 
   for nfr in nonFuel_regions:
-      total_emmited_from_nonFuel = np.zeros(energy)
-      for rp in regions:
-          total_emmited_from_nonFuel += nonFuel_neutrons[nfr]["regions"][rp]
-      for s in surfaces:
-          total_emmited_from_nonFuel += nonFuel_neutrons[nfr]["surfaces"][s]
+    total_emmited_from_nonFuel = np.zeros(energy)
+    for rp in regions:
+      total_emmited_from_nonFuel += nonFuel_neutrons[nfr]["regions"][rp]
+    for s in surfaces:
+      total_emmited_from_nonFuel += nonFuel_neutrons[nfr]["surfaces"][s]
 
-      # Calculation of uncertainty
-      for r in regions:
-          prob_ = p_nonFuel[nfr]["regions"][r]
-          sqrt_sum = np.zeros(energy)
-          for rs in regions:
-              if rs == r:
-                  sqrt_sum += np.power((np.ones(energy) - prob_), 2) * np.power(nonFuel_errors[nfr]["regions"][rs], 2)
-              else:
-                  sqrt_sum += np.power(prob_, 2) * np.power(nonFuel_errors[nfr]["regions"][rs], 2)
-          for s in surfaces:
-              sqrt_sum += np.power(prob_, 2) * np.power(nonFuel_errors[nfr]["surfaces"][s], 2)
-          uncertainty = np.sqrt(sqrt_sum)/total_emmited_from_nonFuel
-          p_nonFuel_uncertainty[nfr]["regions"][r] = uncertainty
+    # Calculation of uncertainty
+    for r in regions:
+      prob_ = p_nonFuel[nfr]["regions"][r]
+      sqrt_sum = np.zeros(energy)
+      for rs in regions:
+        if rs == r:
+          sqrt_sum += np.power((np.ones(energy) - prob_), 2) * np.power(nonFuel_errors[nfr]["regions"][rs], 2)
+        else:
+          sqrt_sum += np.power(prob_, 2) * np.power(nonFuel_errors[nfr]["regions"][rs], 2)
       for s in surfaces:
-          prob_ = p_nonFuel[nfr]["surfaces"][s]
-          sqrt_sum = np.zeros(energy)
-          for rs in regions:
-              sqrt_sum += np.power(prob_, 2) * np.power(nonFuel_errors[nfr]["regions"][rs], 2)
-          for sp in surfaces:
-              if sp == s:
-                  sqrt_sum += np.power((np.ones(energy) - prob_), 2) * np.power(nonFuel_errors[nfr]["surfaces"][sp], 2)
-              else:
-                  sqrt_sum += np.power(prob_, 2) * np.power(nonFuel_errors[nfr]["surfaces"][sp], 2)
-          uncertainty = np.sqrt(sqrt_sum)/total_emmited_from_nonFuel
-          p_nonFuel_uncertainty[nfr]["surfaces"][s] = uncertainty
-  
+        sqrt_sum += np.power(prob_, 2) * np.power(nonFuel_errors[nfr]["surfaces"][s], 2)
+      uncertainty = np.sqrt(sqrt_sum)/total_emmited_from_nonFuel
+      p_nonFuel_uncertainty[nfr]["regions"][r] = uncertainty
+    for s in surfaces:
+      prob_ = p_nonFuel[nfr]["surfaces"][s]
+      sqrt_sum = np.zeros(energy)
+      for rs in regions:
+        sqrt_sum += np.power(prob_, 2) * np.power(nonFuel_errors[nfr]["regions"][rs], 2)
+      for sp in surfaces:
+        if sp == s:
+          sqrt_sum += np.power((np.ones(energy) - prob_), 2) * np.power(nonFuel_errors[nfr]["surfaces"][sp], 2)
+        else:
+          sqrt_sum += np.power(prob_, 2) * np.power(nonFuel_errors[nfr]["surfaces"][sp], 2)
+      uncertainty = np.sqrt(sqrt_sum)/total_emmited_from_nonFuel
+      p_nonFuel_uncertainty[nfr]["surfaces"][s] = uncertainty
+
   return p_nonFuel, p_nonFuel_uncertainty
 
 

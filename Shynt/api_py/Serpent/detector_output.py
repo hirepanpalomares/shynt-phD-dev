@@ -65,7 +65,7 @@ def read_detectors_data(det_inputs):
     for file_ in inp:
       det_file_name = ""
       if not isinstance(file_, str):
-        det_file_name = file_.name + "_det0.m"
+        det_file_name = file_['name'] + "_det0.m"
       else:
         det_file_name = file_ + "_det0.m"
       data_detector_serp_tools = serpentTools.read(det_file_name)

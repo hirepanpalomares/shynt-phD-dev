@@ -9,7 +9,9 @@ from Shynt.api_py.ResponseMatrix.build_matrix_T import getMatrixT_system_wo_prob
 import numpy as np
 
 
-def propagate_prob_uncertainty(phi_new, mesh_info, energy_g, sourceQ, xs, j_in_sys, prob_sigma):
+def propagate_prob_uncertainty(
+  phi_new, mesh_info, energy_g, sourceQ, xs, j_in_sys, prob_sigma
+):
   all_regions = mesh_info.all_regions_order
   all_surfaces = mesh_info.all_surfaces_order
   numRegions = len(all_regions)
@@ -25,8 +27,6 @@ def propagate_prob_uncertainty(phi_new, mesh_info, energy_g, sourceQ, xs, j_in_s
       j_g.append(j_in_sys[index_jin])
     j_byGroup[g] = np.array(j_g)
 
-  
-  
   phi_sigma = []
   for g in range(energy_g):
     mS_x_jin = mS_byGroup[g] * j_byGroup[g]

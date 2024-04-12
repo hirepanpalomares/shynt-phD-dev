@@ -11,30 +11,55 @@ from Shynt.api_py.Serpent.detector_output import (
 
 import numpy as np
 
-def get_probabilities(det_inputs, root):
-  # model_cell = root.model_cell
+def get_inputs_data(det_inputs):
+  det_inputs_data = {}
+  for nid, files in det_inputs.items():
+    det_inputs_data[nid] = []
+    for serp_file_class in files:
+      data = {
+        'type': serp_file_class.type_of_detectors,
+        'det_relation': serp_file_class.detectors_relation,
+        'name': serp_file_class.name,
+        'region': serp_file_class.detectors_region
+      }
+      det_inputs_data[nid].append(data)
+  return det_inputs_data
+
+def get_probabilities(root, det_inputs_data):
+  # def get_probabilities(root, det_inputs):
   energy_g = root.energy_grid.energy_groups
-  # coarse_nodes = model_cell.global_mesh.coarse_nodes
-  # fine_nodes = model_cell.local_mesh.fine_nodes
   coarse_mesh = root.mesh.coarse_mesh
+
+  
+  # ------------------------------------------------------------------------
+      
+
   # Calculating probabilities
   
-  coarse_node_scores = read_detectors_data(det_inputs)
-  
-  prob_nodes = calculate_probabilities_main_nodes(
+  coarse_node_scores = read_detectors_data(det_inputs_data)
+
+  prob_nodes, prob_nodes_uncertainties = calculate_probabilities_main_nodes(
     coarse_mesh,
-    det_inputs, 
     coarse_node_scores,
-    energy_g
+    energy_g,
+    det_inputs_data 
   )
 
 
+  print(prob_nodes[1]['surfaces'][1].keys())
+  print(prob_nodes_uncertainties[1]['surfaces'][1].keys())
   probs = fill_probabilities(
     prob_nodes, coarse_mesh
   )
+  sigma = fill_probabilities(
+    prob_nodes_uncertainties, coarse_mesh
+  )
 
-  # return probs, probs_sigma
-  return probs
+  
+
+
+  return probs, sigma
+  # return prob_nodes
 
 
 def fill_probabilities(
@@ -59,12 +84,16 @@ def fill_probabilities(
   
   coarse_nodes = coarse_mesh.coarse_nodes
   equivalent_nodes = coarse_mesh.equivalent_nodes
+  print('#'*100)
+  print('Replicating probabilities ...')
+  # print(coarse_mesh.equivalent_surfaces.keys())
   for id_main, eq_node_list in equivalent_nodes.items():
-     
+    # print('node:', id_main)
     for id_eq in eq_node_list:
       regions = coarse_nodes[id_eq].fine_mesh.regions
+      # print(regions.keys())
       surfaces = coarse_nodes[id_eq].surfaces
-
+      # print(surfaces.keys())
       new_prob["regions"].update({
         r: {
           "regions": {},
@@ -107,6 +136,7 @@ def fill_probabilities(
           new_prob["regions"][reg_id]["surfaces"][surf] = prob_surf
 
       for surf in surfaces:
+        # print('surf', surf)
         surf_eq = coarse_mesh.equivalent_surfaces[surf]
         # surface to region
         for r, reg_id in enumerate(regions):
@@ -121,8 +151,6 @@ def fill_probabilities(
           new_prob["surfaces"][surf]["surfaces"][surf_p] = p_surf
 
   return  new_prob
-
-
 
 
 def get_probabilities_new(

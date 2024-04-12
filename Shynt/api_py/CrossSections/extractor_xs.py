@@ -6,8 +6,8 @@ rc['serpentVersion'] = '2.1.32'
 
 
 def get_cross_sections(
-  energy_g, xs_inputs, coarse_nodes, scattering_production
-  ):
+  energy_g, xs_inputs, coarse_nodes, scattering_production, map_regions=False
+):
   """
     Extract XS data  
     An open source library is used
@@ -18,14 +18,22 @@ def get_cross_sections(
   from numpy import flip
 
   varSet = rc.expandVariables()
-  print(sorted(varSet))
-  print(rc['xs.getInfXS'])
+  # print(sorted(varSet))
+  # print(rc['xs.getInfXS'])
   xs = {}
   
+  if map_regions: 
+    # TODO hacer algo para leer XS o solo con proveer las regiones de los nodos de interes
+    pass
+
   for id_coarse, xs_inp in xs_inputs.items():
-    resFile = xs_inp.name + "_res.m"
+    # resFile = xs_inp + "_res.m"
+    print(xs_inp)
+    resFile = xs_inp['name'] + "_res.m"
+
     res = serpentTools.read(resFile)
-    
+    print(id_coarse)
+    print(coarse_nodes[id_coarse])
     node_regions = coarse_nodes[id_coarse].fine_mesh.regions
     
     
@@ -33,7 +41,12 @@ def get_cross_sections(
       cell = region
       if cell.content.name == "void":
         continue
-      gcu_name = xs_inp.xs_gcu[reg_id]
+      gcu_name = ""
+      if map_regions:
+        gcu_name = xs_inp['xs_gcu'][map_regions[id_coarse][reg_id]]
+      else:
+        gcu_name = xs_inp['xs_gcu'][reg_id]
+
       universe = res.getUniv(gcu_name, burnup=0)
 
       xs_total = universe["infTot"]

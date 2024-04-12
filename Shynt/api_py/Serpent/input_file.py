@@ -21,7 +21,7 @@ import sys
 class SerpentInputFile():
 
   def __init__(self, 
-    coarse_node, regions, name, root, xs_generation=False
+    coarse_node, regions, name, root,  xs_generation=False, cell=None
   ):
     # print(name)
     self.coarse_node = coarse_node
@@ -40,13 +40,15 @@ class SerpentInputFile():
     
     self.xs_gcu = {}
     self.type_of_detectors = ""
-
+    self.detectors_relation = {}
+    self.detectors_region = None
+    
     with open(name, "w") as self.__file:
       self.__write_title()
       self.__write_material()
       self.__write_libraries()
       self.__file.write("\n\nset bc 2\n")
-      self.__write_mc_params()
+      self.__write_mc_params(cell)
       self.__write_energy_grid()
       if xs_generation:
         geometry, xs_gcu = self.coarse_node.get_gcu_geometry(
@@ -58,7 +60,7 @@ class SerpentInputFile():
         geometry, detector_surfs = self.coarse_node.get_serpent_geometry()
         self.__file.write(geometry)
         self.detector_surfs = detector_surfs
-      self.__file.write("\n\n plot 3 500 500\n\n")
+      # self.__file.write("\n\n plot 3 500 500\n\n")
         
 
   def write_detectors(self,
@@ -84,6 +86,7 @@ class SerpentInputFile():
 
       self.type_of_detectors = type_
       self.detectors_relation = det_rel
+      self.detectors_region = reg_id
       self.__file.write(det_syntax)
 
   def __write_title(self):
@@ -104,10 +107,21 @@ class SerpentInputFile():
   def __write_libraries(self):
     self.__file.write(self.libraries.serpent_syntax)
 
-  def __write_mc_params(self):
-    self.__file.write("\n")
-    self.__file.write(self.mcparams.serpent_syntax)
-    self.__file.write("\n")
+  def __write_mc_params(self, cell):
+    if cell is None:
+      self.__file.write(self.mcparams.serpent_syntax('criticality'))
+    else:
+      material = cell.content
+      self.__file.write("\n")
+      if material.type_calculation == 'criticality':
+        self.__file.write(self.mcparams.serpent_syntax('criticality'))
+      elif material.type_calculation == 'source':
+        self.__file.write(self.mcparams.serpent_syntax(
+          material.type_calculation,
+          c_id=cell.id,
+          src_name=f'{cell.id}_{material.name}',
+        ))
+      self.__file.write("\n")
 
   def __write_energy_grid(self, syntax="complete"):
     if syntax == "by_bin":

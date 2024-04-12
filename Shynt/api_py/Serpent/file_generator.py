@@ -1,10 +1,6 @@
 from Shynt.api_py.Geometry.regions import Region
 from Shynt.api_py.Serpent.input_file import (
-  SerpentInputFileReferenceFlux,
-  SerpentInputFileDetectorsRegion,
-  SerpentInputFileDetectorsSurface,
-  SerpentInputFileDetectorsXsGeneration,
-  SerpentInputFile,
+  SerpentInputFile
 )
 
 
@@ -15,7 +11,7 @@ from pathlib import Path
 import os
 
 # 
-def generate_serpent_files(root, serp_dir="serpent_files"):
+def generate_serpent_files(root, sdir=''):
   """
 
   Parameters
@@ -23,10 +19,23 @@ def generate_serpent_files(root, serp_dir="serpent_files"):
   root : <class Universe>
     Root universe 
   """
-  
-
   coarse_mesh = root.mesh.coarse_mesh
   coarse_nodes_to_files = coarse_mesh.equivalent_nodes.keys()
+  extra_name = ''
+  for n_id in coarse_nodes_to_files:
+    coarse_node = coarse_mesh.coarse_nodes[n_id]
+    fine_mesh = coarse_node.fine_mesh.regions
+    for reg_id, cell in fine_mesh.items():
+      material = cell.content
+      if material.type_calculation == 'source':
+        extra_name = '_src_calc'
+
+
+  mc = root.mcparams
+  serp_dir = f'serpent_files_{mc.histories}_{mc.active_cycles}_'
+  serp_dir += f'{mc.unactive_cycles}{sdir}{extra_name}'
+  
+
   
 
   # input_file_argument = sys.argv[0]
@@ -60,10 +69,14 @@ def generate_serpent_files(root, serp_dir="serpent_files"):
       material = cell.content
       print(reg_id, material)
       if material.name == "void": continue
-      if material.isFuel: 
-        type_detectors = "region_fuel"
-      else:
-        type_detectors = "region_nonFuel"
+
+      if material.type_calculation == 'source':
+        pass
+      elif material.type_calculation == 'criticality':
+        if material.isFuel: 
+          material.type_detectors = "region_fuel"
+        else:
+          material.type_detectors = "region_nonFuel"
 
       name_file = f"{global_cell_dir}/det_cell_{material.name}_{reg_id}.serp"
       
@@ -72,10 +85,10 @@ def generate_serpent_files(root, serp_dir="serpent_files"):
       # )
       
       serpent_input = SerpentInputFile(
-        coarse_node, fine_mesh, name_file, root
+        coarse_node, fine_mesh, name_file, root, cell=cell
       )
       serpent_input.write_detectors(
-        type_detectors, reg_id=reg_id
+        material.type_detectors, reg_id=reg_id
       )
       det_files[n_id].append(serpent_input)
 

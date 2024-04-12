@@ -1,13 +1,22 @@
 from .extractor_xs import get_cross_sections
 
 def  get_xs_data(
-  eq_regions, root, xs_inputs, transport_correction=False, 
-  scattering_production=False
+  eq_regions, root, 
+  xs_files_data={}, 
+  xs_serpent_files={},
+  mapped_regions={},
+  transport_correction=False, 
+  scattering_production=False, 
 ):
   """ Method to get the XS for all the regions in all nodes
 
   Parameters
   ----------
+
+  xs_files[id_coarse] = {
+    'name': "",
+    'xs_gcu': {}
+  }
 
   Returns
   -------
@@ -16,8 +25,18 @@ def  get_xs_data(
   energy_g = root.energy_grid.energy_groups
   coarse_nodes = root.mesh.coarse_mesh.coarse_nodes
 
+  xs_files_data = {}
+  # Create dictionary to not provide the entire SerpentInputFile class --------
+  if len(xs_files_data) == 0:
+    for id_coarse, xs_inp in xs_serpent_files.items():
+      xs_files_data[id_coarse] = {
+        'name': xs_inp.name,
+        'xs_gcu': xs_inp.xs_gcu
+      }
+  # ---------------------------------------------------------------------------
   xs = get_cross_sections(
-    energy_g, xs_inputs, coarse_nodes, scattering_production
+    energy_g, xs_files_data, coarse_nodes, scattering_production, 
+    map_regions=mapped_regions
   )
 
   print("XS retrieved ------------------")

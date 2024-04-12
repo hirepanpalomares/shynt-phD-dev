@@ -37,13 +37,14 @@ class Material:
     moder="", 
     composition=None, 
     options="", 
-    color=None
+    color=None,
+    type_calculation='criticality'
   ):
     self.__name = name
     if composition is None:
-        self.__composition = {"fractions":[], "type":""}
+      self.__composition = {"fractions":[], "type":""}
     else:
-        self.__composition = composition
+      self.__composition = composition
     self.__isotopes = {}
     self.__fractions = {}
     self.__options = options
@@ -51,9 +52,15 @@ class Material:
     self.__atom_density = atom_density
     self.__moderLibrary = None
     self.color = color
+    self.type_calculation = type_calculation
+    if type_calculation == 'source':
+      self.type_detectors = 'region_fuel'
+    else:
+      self.type_detectors = ''
     if moder != "":
-        self.__moderLibrary = moder
+      self.__moderLibrary = moder
     self.__check_composition()
+
     
   def __check_composition(self):
     array_isos = self.__composition["fractions"]

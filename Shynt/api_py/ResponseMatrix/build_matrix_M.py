@@ -11,17 +11,132 @@ def getM_matrix_easier(mesh_info):
   matrixM_shape = (numSurfaces, numSurfaces)
   matrixM = np.zeros(matrixM_shape)
 
+  
   for s_id in all_surfaces:
-    print(s_id)
+    s_id_idx = surfaces_indexes[s_id]
     twin_surf = surface_twins[s_id]
     if twin_surf is not None:
-      matrixM[s_id-1][twin_surf-1] = 1
-      matrixM[twin_surf-1][s_id-1] = 1
-
+      twin_surf_idx = surfaces_indexes[twin_surf]
+      # matrixM[s_id-1][twin_surf-1] = 1
+      # matrixM[twin_surf-1][s_id-1] = 1
+      matrixM[s_id_idx][twin_surf_idx] = 1
+      matrixM[twin_surf_idx][s_id_idx] = 1
     else:
-      matrixM[s_id-1][s_id-1] = 1
+      # matrixM[s_id-1][s_id-1] = 1
+      matrixM[s_id_idx][s_id_idx] = 1
 
   return matrixM, surface_twins
+
+
+
+def get_mM_system(mesh_info, energy_g):
+  all_coarse_nodes_ids = mesh_info.coarse_order
+  
+  surface_twins = mesh_info.coarse_mesh.surface_twins
+  all_surfaces = mesh_info.all_surfaces_order
+
+  numSurfaces = len(all_surfaces)
+  surfaces_indexes = {all_surfaces[s]: s for s in range(numSurfaces)}
+
+  matrixM_shape = (numSurfaces*energy_g, numSurfaces*energy_g)
+  matrixM = np.zeros(matrixM_shape)
+
+  lookup_surface_to_node = mesh_info.get_lookup_surface_to_node()
+
+  # Building map of indexes:
+  indexes = {}
+  idx = 0
+  for n, nid in enumerate(all_coarse_nodes_ids):
+    node_surfaces = mesh_info.coarse_mesh.coarse_nodes[nid].surfaces
+    indexes[nid] = {}
+    for g in range(energy_g):
+      indexes[nid][g] = {}
+      for sa in node_surfaces.keys():
+        indexes[nid][g][sa] = idx
+        idx += 1
+        
+  for n, nid in enumerate(all_coarse_nodes_ids):
+    node_surfaces = mesh_info.coarse_mesh.coarse_nodes[nid].surfaces
+    for g in range(energy_g):
+      for sa_id in node_surfaces.keys():    
+        sa_twin_id = surface_twins[sa_id]
+        sa_id_index = indexes[nid][g][sa_id]
+        if sa_twin_id is not None:
+          node_twin = lookup_surface_to_node[sa_twin_id]
+          twin_index = indexes[node_twin][g][sa_twin_id]
+          matrixM[sa_id_index][twin_index] = 1
+          matrixM[twin_index][sa_id_index] = 1
+
+        else:
+          matrixM[sa_id_index][sa_id_index] = 1
+
+  return matrixM, indexes
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"""
+  Functions below are not used
+
+"""
+
 
 
 def getM_matrix(global_mesh, mesh_info):

@@ -132,6 +132,9 @@ class Root(Universe):
     self.energy_grid = energy_grid  # Grid type
     self.mcparams = mcparams        # MontecarloParams type
     self.libraries = libraries      # Libraries for Serpent
+    self.detector_files = None
+    self.xs_files = None
+    
     self.add_universe_to_cells()
     self.half_width = 0.0
     reset_surface_counter()
@@ -318,6 +321,7 @@ class Pin(Universe):
         # the last level is infinite and will be closed with the region
         # Closing the last region, normally the coolant:
         last_level_volume = surface.volume - self.__outer_most_surface.volume
+        # print(last_level_volume)
         new_half_space = -surface
         ll_region = super().cells[ll_id].region & new_half_space
         super().cells[ll_id].region = ll_region
@@ -758,13 +762,13 @@ class HexagonalLatticeTypeX(Universe):
     self.__num_rings = num_rings
     self.rings = rings
     self.__pin = pin
+    self.array = []
+
+    self.pitch_square = pitch * math.sqrt(3) / 2
     self.pin_centers = []
     self.pin_cells = []
     self.__create_cells()
     
-
-
-  
   def __create_cells(self):
     """Class method to create the pin cells from a given number of rings
     and a specified pin or the rings themselves. Prioritizing the rings that 
@@ -789,8 +793,13 @@ class HexagonalLatticeTypeX(Universe):
         copy_pin = self.__pin.copy()
         new_center = self.pin_centers[r][p]
         copy_pin.translate_to(new_center)
-
+        closing_hex = InfiniteHexagonalCylinderXtype(
+          new_center[0], new_center[1], half_width=self.__pitch/2
+        )
+        copy_pin.close_last_level(closing_hex)
+        self.__pin = copy_pin
         cells = copy_pin.cells
+        # p = [print(c, cell.content, cell.volume) for c, cell in cells.items()]
         super().add_cells(cells)
         new_ring.append(copy_pin)
       new_rings.append(new_ring)
@@ -902,6 +911,36 @@ class HexagonalLatticeTypeX(Universe):
     new_pin_centers = self.calculate_pin_centers(pitch=pitch)
 
     return new_pin_centers
+
+  def rings_to_array(self):
+    look_up_ordering = {
+      'y_coord': {}
+    }
+    for r in self.rings:
+      for pin in r:
+        cx, cy = pin.center
+        if cy not in look_up_ordering['y_coord']:
+          look_up_ordering["y_coord"][cy] = [pin]
+        else:
+          look_up_ordering["y_coord"][cy].append(pin)
+    
+    y_coord_sorted = sorted(list(look_up_ordering["y_coord"].keys()))[::-1]
+
+    
+    array = []
+    for y_coord in y_coord_sorted:
+
+      pin_array = look_up_ordering["y_coord"][y_coord]
+      #sort pin array in base of cx
+      look_up_sortering = {pin.center[0]: pin for pin in pin_array}
+      x_coord_sorted = sorted(list(look_up_sortering.keys()))
+
+      row = [look_up_sortering[x_coord] for x_coord in x_coord_sorted]
+      
+      array.append(row)
+    
+    self.array = array
+
 
   def __get_different_pins(self):
     types = []
@@ -1046,7 +1085,11 @@ class HexagonalLatticeTypeX(Universe):
   def enclosed_cells(self):
     return self.__enclosed_cells
 
-
+  @property
+  def pin(self):
+    if self.__pin is None:
+      return
+    return self.__pin
 # def translate_universe(universe, trans_vector):
 #   # return super().translate(trans_vector)
 #   surfaces_universe = get_all_surfaces_in_a_universe(universe)

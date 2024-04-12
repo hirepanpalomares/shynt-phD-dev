@@ -1,15 +1,12 @@
-
-
-from Shynt.api_py.Mesh.coarse_mesh_pin_cell import PinCellMesh
-from Shynt.api_py.Mesh.coarse_mesh_triangular import TriangularMesh
-from Shynt.api_py.Mesh.coarse_mesh_square_grid import (
-  SquareGridMeshHexAssembly,
+from Shynt.api_py.Mesh.coarse_mesh import (
+  PinCellMesh,
+  TriangularMesh,
+  SquareGridHexAssembly,
   SquareGridHexPin
-)
+) 
+
 
 from Shynt.api_py.Geometry.cells import Cell
-
-
 
 
 class Mesh():
@@ -69,9 +66,9 @@ class Mesh():
     self.coarse_surface_rel = {}
     self.all_surfaces_area = {}
     self.all_regions_vol = {}
-    
-
-
+    self.__numRegions = None
+    self.__numSurfaces = None
+  
   def create_coarse_mesh(self) -> None:
     """Helper method to create the coarse mesh,
     It chooses between different meshes depending on the attribute 
@@ -90,7 +87,7 @@ class Mesh():
         self.cell
       )
     elif self.global_mesh_type == "square_grid":
-      coarse_mesh =  SquareGridMeshHexAssembly(
+      coarse_mesh =  SquareGridHexAssembly(
         self.cell, offset=self.offset
       )
     elif self.global_mesh_type == "triangular":
@@ -166,6 +163,7 @@ class Mesh():
     for n_id, c_node in self.coarse_mesh.coarse_nodes.items():
       fine_mesh = c_node.fine_mesh
       volumes = fine_mesh.calculate_volumes()
+      
       regions_vol.update(volumes)
     
     self.all_regions_vol = regions_vol
@@ -192,39 +190,23 @@ class Mesh():
     return surfaces
 
 
-
-# def __create_nodes_hex_assem(self):
-
-#     first_pin_id = self.clean_map[1][1][0]
-#     first_pin = self.universe.cells[first_pin_id]
-#     self.__hexagon_width = first_pin.region.surface.half_width
-
-#     fuel, no_fuel = first_pin.content.find_fuel_cells()
-
-#     fuel_mat = fuel[0].content
-#     radius_fuel = fuel[0].region.surface.radius
-#     coolant_mat = no_fuel[0].content
+  def get_lookup_surface_to_node(self):
+    lookup = {}
+    for n_id, c_node in self.coarse_mesh.coarse_nodes.items():
+      surfs_node = c_node.surfaces
+      for sid in surfs_node:
+        lookup[sid] = n_id
     
-#     outer_hex = super().cell.region.surface    
-    
-#     third_pin_id = self.clean_map[2][1][0]
-#     third_pin = self.universe.cells[third_pin_id]
-#     # print("----------------------:   ",third_pin.region.surface.center)
-#     # x_div, y_div = self.__calculate_square_mesh_coord_hex_assem(outer_hex, clean_map)
-#     y_div = [1.4182465, 0.8509479, 0.0, -0.8509479, -1.4182465]
-#     x_div = [
-#       [-1.146355, -0.491295, 0.0, 0.491295, 1.146355], 
-#       [-1.63765, -1.146355, -0.491295, 0.0, 0.491295, 1.146355, 1.63765], 
-#       [-1.63765, -1.146355, -0.491295, 0.0, 0.491295, 1.146355, 1.63765], 
-#       [-1.146355, -0.491295, 0.0, 0.491295, 1.146355]
-#     ]
-#     self.points_mesh = self.__get_rectangles_from_mesh_coord(x_div, y_div)#, outer_hex, clean_map)
-#     self.coarse_nodes_map = self.__get_map_mesh(clean_map)
-#     print("self.coarse_nodes_map: ")
-#     print(self.coarse_nodes_map)
-#     print("--"*70)
+    return lookup
+  
+  @property
+  def numRegions(self):
+    if self.__numRegions is None:
+      return len(self.all_regions_order)
+    return self.__numRegions
 
-#     # print(self.coarse_nodes_map)
-#     self.__symmetry = self.__get_symmetry_hex_assem()
-    
-#     self.coarse_nodes = self.__get_coarse_nodes_hex_assem(fuel_mat, coolant_mat, radius_fuel)
+  @property
+  def numSurfaces(self):
+    if self.__numSurfaces is None:
+      return len(self.all_surfaces_order)
+    return self.__numSurfaces

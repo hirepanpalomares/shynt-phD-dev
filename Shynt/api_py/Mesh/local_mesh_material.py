@@ -20,7 +20,7 @@ class MaterialMesh(FineMesh):
   
   """
   def __init__(
-    self, coarse_node=None, type_coarse_mesh='', is_hex_lattice=False
+    self, coarse_node=None, type_coarse_mesh=None, is_hex_lattice=False
   ):
     super().__init__(coarse_node)
     self.__type_coarse_mesh = type_coarse_mesh
@@ -34,7 +34,8 @@ class MaterialMesh(FineMesh):
       self.__create_regions_square_grid_hex_pin()
     elif type_coarse_mesh == 'square_grid':
       # Square grid applied to hexagonal lattices
-      self.__create_regions_square_grid_hex_assem()
+      # self.__create_regions_square_grid_hex_assem()
+      pass
     elif type_coarse_mesh == 'triangular':
       self.__create_regions_triangular_mesh()
     else:
@@ -101,14 +102,57 @@ class MaterialMesh(FineMesh):
 
     
     """
+    
     try:
       assert(self.__is_hex_lattice)
-      num_surfaces = self.coarse_node.surfaces.keys()
-      # print(num_surfaces)
-      # pin_levels = 
-      # print(self.coarse_node.type_coarse_node)
-      print(super().coarse_node.universe)
-      # ! GET PIN FROM THE HEXAGONAL LATTICE
+      
+      hex_assembly = super().coarse_node.hex_assembly
+      
+      pin_from_assembly = hex_assembly.pin
+      regions = {}
+      
+      regions_pin = pin_from_assembly.pin_levels
+      type_coarse_node = self.coarse_node.type_coarse_node
+      
+      sum_volumes = 0.0
+      for l in range(len(regions_pin)-1):
+        level = regions_pin[l]
+        cell = pin_from_assembly.cells[level.cell_id]
+        vol_cell = cell.volume
+
+        # vol_new_region = vol_cell/fuel_divider[type_coarse_node]
+        
+        if type_coarse_node == "inner_triangle":
+          sum_volumes += vol_cell/2
+          new_fine_region1 = Cell(fill=cell.content, volume=vol_cell/6)
+          new_fine_region2 = Cell(fill=cell.content, volume=vol_cell/6)
+          new_fine_region3 = Cell(fill=cell.content, volume=vol_cell/6)
+          regions[new_fine_region1.id] = new_fine_region1
+          regions[new_fine_region2.id] = new_fine_region2
+          regions[new_fine_region3.id] = new_fine_region3
+        elif type_coarse_node == "square_side":
+          sum_volumes += vol_cell/2
+          new_fine_region1 = Cell(fill=cell.content, volume=vol_cell/4)
+          new_fine_region2 = Cell(fill=cell.content, volume=vol_cell/4)
+          regions[new_fine_region1.id] = new_fine_region1
+          regions[new_fine_region2.id] = new_fine_region2
+        elif type_coarse_node == "corner_triangle":
+          sum_volumes += vol_cell/12
+          new_fine_region = Cell(fill=cell.content, volume=vol_cell/12)
+          regions[new_fine_region.id] = new_fine_region
+
+
+      # Last level: typically coolant ---------------------
+      last_level = regions_pin[-1]
+      cell = pin_from_assembly.cells[last_level.cell_id]
+      vol_node = self.coarse_node.calculate_node_volume()
+      vol_coolant = vol_node - sum_volumes
+      # print(vol_coolant)
+      # print(cell.content, vol_coolant)
+      new_fine_region = Cell(fill=cell.content, volume=vol_coolant)
+      regions[new_fine_region.id] = new_fine_region
+
+      self.regions = regions
     except AssertionError:
       print('triangular mesh not valid')
       raise SystemExit
@@ -122,6 +166,10 @@ class MaterialMesh(FineMesh):
       # print("222")
       volumes = self.__calculate_volumes_pin_cell_mesh()
     elif self.__type_coarse_mesh == "square_grid_hex_pin":
+      volumes = {r_id: cell.volume for r_id, cell in self.regions.items()}
+    elif self.__type_coarse_mesh == "square_grid":
+      volumes = {r_id: cell.volume for r_id, cell in self.regions.items()}
+    elif self.__type_coarse_mesh == "triangular":
       volumes = {r_id: cell.volume for r_id, cell in self.regions.items()}
     self.regions_volume = volumes
     return volumes

@@ -99,24 +99,50 @@ class PlotLattice:
 
     return transformed_points
 
-  def plot_mesh(self, lw=2, type_mesh=""):
-    num_coarse_nodes = len(self.__mesh)
-    print(f"plotting {num_coarse_nodes} coarse_nodes ...")
-    points = []
-    for nid, node_points in self.__mesh.items():
-      print(nid, end=",")
-      if nid % 20 == 0: print()
-      
-      if type_mesh == "square_grid":
-        points = self.__get_square_points(node_points)
-      else:
-        points = self.__transform_points(node_points)
+  def plot_rectangles(self, rectangles, lw=2):
 
-      # print(points)
+    for rectangle in rectangles:
+      points = self.__get_square_points(rectangle)
+      print(points)
       self.__img = draw_polygon(points, self.__img, width=lw)
 
-      xc, yc = self.__calc_centroid(points)
-      self.__img =  write_text((xc,yc), f"{nid}", self.__img)
+      # xc, yc = self.__calc_centroid(points)
+      # self.__img =  write_text((xc,yc), f"{nid}", self.__img)
+    
+
+  def plot_mesh(self, nodes_surfaces, lw=10,):
+    num_coarse_nodes = len(nodes_surfaces)
+    print(f"plotting {num_coarse_nodes} coarse_nodes ...")
+    points = []
+    for nid, surfaces in nodes_surfaces.items():
+      print(nid, end=",")
+      
+      if nid % 20 == 0: print()
+      # print(surfaces.values())
+      
+      node_surfs = list(surfaces.values())
+      node_points = [surf[0] for surf in node_surfs]
+      node_points_transformed = self.__transform_points(node_points)
+      node_centroid = self.__calc_centroid(node_points_transformed)
+
+      self.__img =  write_text(
+        node_centroid, f"{nid}", self.__img, font_size=50
+      )
+      for s_id, surf_points in surfaces.items():
+        points = self.__transform_points(surf_points)
+        self.__img = draw_polygon(points, self.__img, width=lw)
+
+        # xc, yc = self.__calc_centroid(points)
+        surf_centroid = self.__calc_centroid(points)
+
+        start_writing_s_id = self.__calc_centroid(
+          (node_centroid, surf_centroid)
+        )
+
+        self.__img =  write_text(
+          start_writing_s_id, f"{s_id}", self.__img, font_size=50, 
+          fill=(250,0,0)
+        )
     print()
 
   def plot_surface_numbers(self, nodes_surfaces, fill=""):
@@ -125,7 +151,7 @@ class PlotLattice:
     for n__id, node_points in self.__mesh.items():
       print(n__id, end=",")
       if n__id % 20 == 0: print()
-      
+      print(node_points)
       points = self.__transform_points(node_points)
       
 

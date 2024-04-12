@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 
 from Shynt.api_py.ResponseMatrix.matrix_utilities import getBlockMatrix
@@ -74,7 +73,7 @@ class SourceQ:
       
   def __buildFissionMatrix(self):
     """
-    Builds the fission matrix by node and by region in the node
+    Builds the fission matrix by region
     The fission matrix is expressed as follows:
     
     [
@@ -108,14 +107,14 @@ class SourceQ:
   
   def __buildScatteringMatrix(self):
     """
-    Builds the scattering matrix by node and by region in the node
+    Builds the scattering matrix by region
     The fission matrix is expressed as follows:
     
     [
-      [Scatt_1_1, Scatt_2_1, ..., Scatt_G_1],
-      [Scatt_1_2, Scatt_2_2, ..., Scatt_G_2],
+      [Scatt_1->1, Scatt_2->1, ..., Scatt_G->1],
+      [Scatt_1->2, Scatt_2->2, ..., Scatt_G->2],
       [    :    ,     :    , ...,     :    ],
-      [Scatt_1_G, Scatt_2_G, ..., Scatt_G_G],
+      [Scatt_1->G, Scatt_2->G, ..., Scatt_G->G],
     ]
 
     Parameters
@@ -280,6 +279,95 @@ class SourceQ:
         _Q[g][r] = _Q[g][r] # / (pi*4)
     return _Q
 
+  def build_big_scatt_matrix(self, mesh):
+    numRegions = mesh.numRegions
+
+    big_scatt = np.zeros((
+      numRegions*self.__energyG, numRegions*self.__energyG
+    ))
+  
+    regions = mesh.all_regions_order
+  
+    for r, r_id in enumerate(regions):
+      
+      scatt_matrix = self.__scatteringMatrix[r_id]
+      for g in range(self.__energyG):
+        col_index = g*numRegions + r
+        for gp in range(self.__energyG):
+          row_index = gp*numRegions + r
+          big_scatt[row_index][col_index] = scatt_matrix[g][gp]
+        
+    return big_scatt
+  
+  def build_big_scatt_matrix_blocks(self, mesh):
+
+    
+    coarse_nodes = mesh.coarse_order
+    coarse_nodes_regions = mesh.coarse_region_rel
+   
+
+    matrixes_Z_system = []
+    for n_id in coarse_nodes:
+      regions = coarse_nodes_regions[n_id]
+      numRegions = len(regions)
+      mZ_n_shape = (numRegions*self.__energyG, numRegions*self.__energyG)
+      mZ_n = np.zeros(mZ_n_shape)
+      for r, r_id in enumerate(regions):
+        scatt_matrix = self.__scatteringMatrix[r_id]
+        for g in range(self.__energyG):
+          col_index = g*numRegions + r
+          for gp in range(self.__energyG):
+            row_index = gp*numRegions + r
+            mZ_n[row_index][col_index] = scatt_matrix[g][gp]
+      
+      matrixes_Z_system.append(mZ_n)
+
+    big_scatt = getBlockMatrix(matrixes_Z_system)
+    return big_scatt
+  
+  def build_big_fission_matrix(self, mesh):
+    numRegions = mesh.numRegions
+
+    big_fiss = np.zeros((
+      numRegions*self.__energyG, numRegions*self.__energyG
+    ))
+
+    regions = mesh.all_regions_order
+    for r, r_id in enumerate(regions):
+      
+      fission_matrix = self.__fissionMatrix[r_id]
+      for g in range(self.__energyG):
+        col_index = g*numRegions + r
+        for gp in range(self.__energyG):
+          row_index = gp*numRegions + r
+          big_fiss[row_index][col_index] = fission_matrix[g][gp]
+        
+    return big_fiss
+
+  def build_big_fission_matrix_blocks(self, mesh):
+    coarse_nodes = mesh.coarse_order
+    coarse_nodes_regions = mesh.coarse_region_rel
+   
+    matrixes_F_system = []
+    for n_id in coarse_nodes:
+      regions = coarse_nodes_regions[n_id]
+      numRegions = len(regions)
+      mF_n_shape = (numRegions*self.__energyG, numRegions*self.__energyG)
+      mF_n = np.zeros(mF_n_shape)
+
+      for r, r_id in enumerate(regions):
+        fission_matrix = self.__fissionMatrix[r_id]
+        for g in range(self.__energyG):
+          col_index = g*numRegions + r
+          for gp in range(self.__energyG):
+            row_index = gp*numRegions + r
+            mF_n[row_index][col_index] = fission_matrix[g][gp]
+          
+      matrixes_F_system.append(mF_n)
+    
+    big_fiss = getBlockMatrix(matrixes_F_system)
+    return big_fiss
+  
 
   @property
   def fissionMatrix(self):
