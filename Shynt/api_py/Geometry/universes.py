@@ -32,7 +32,12 @@ class Universe:
       cell.universe = self.__name
 
   def add_cell(self, cell):
-    self.__cells[cell.id] = cell
+    # print(cell)
+    if isinstance(cell.content, Universe):
+      self.__cells[cell.id] = cell
+      self.add_cells(cell.content.cells)
+    else:
+      self.__cells[cell.id] = cell
   
   def add_cells(self, cells):
     self.__cells.update(cells)
@@ -132,8 +137,8 @@ class Root(Universe):
     self.energy_grid = energy_grid  # Grid type
     self.mcparams = mcparams        # MontecarloParams type
     self.libraries = libraries      # Libraries for Serpent
-    self.detector_files = None
-    self.xs_files = None
+    self.detector_files = {}
+    self.xs_files = {}
     
     self.add_universe_to_cells()
     self.half_width = 0.0
@@ -190,40 +195,40 @@ class Pin(Universe):
       If restored fix the bug!!!!
     """
     if mat and radius: # both are not None
-        # single level is declared
-        if isinstance(mat, Material) and (isinstance(radius, float) or isinstance(radius, int)):
-            # a single level is declared
-            self.add_level(mat, radius)
-            if surroundings:
-                self.add_level(surroundings)
-        else:
-            try:
-                assert(isinstance(mat, list) and isinstance(radius, list))
-                if len(mat) != len(radius):
-                    print(f"*** Error while difining either materials or radius for pin '{self.name}'")
-                    print("material and radius arrays must have the same length")
-                    raise SystemExit
-                for m in range(len(mat)):
-                    self.add_level(mat[m], radius[m])
-                if surroundings:
-                    self.add_level(surroundings)
-            except AssertionError:
-                print(f"*** Error while difining either materials or radius for pin '{self.name}'")
-                print("material and radius must be introduced in an array")
-                raise SystemExit
-        # print("--- Warning --- Do not forget to declare the levels for the pin")
+      # single level is declared
+      if isinstance(mat, Material) and (isinstance(radius, float) or isinstance(radius, int)):
+        # a single level is declared
+        self.add_level(mat, radius)
+        if surroundings:
+          self.add_level(surroundings)
+      else:
+        try:
+          assert(isinstance(mat, list) and isinstance(radius, list))
+          if len(mat) != len(radius):
+            print(f"*** Error while difining either materials or radius for pin '{self.name}'")
+            print("material and radius arrays must have the same length")
+            raise SystemExit
+          for m in range(len(mat)):
+            self.add_level(mat[m], radius[m])
+          if surroundings:
+            self.add_level(surroundings)
+        except AssertionError:
+          print(f"*** Error while difining either materials or radius for pin '{self.name}'")
+          print("material and radius must be introduced in an array")
+          raise SystemExit
+      # print("--- Warning --- Do not forget to declare the levels for the pin")
     elif mat is None and radius is None:
-        if surroundings is not None:
-            # Empty Pin declared
-            # surroundings is a material
-            self.add_level(surroundings) # Adding a material as a level for a void Pin
-        else:
-            print(f"*** Warning *** Remember to declare materials for the pin '{self.name}'")
+      if surroundings is not None:
+        # Empty Pin declared
+        # surroundings is a material
+        self.add_level(surroundings) # Adding a material as a level for a void Pin
+      else:
+        print(f"*** Warning *** Remember to declare materials for the pin '{self.name}'")
     else:
-        print(f"*** Error while difining either materials or radius for pin '{self.name}'")
-        print("material and radius must be introduced either both or none")
-        # Error: material and radius have to be declared either both or none
-        raise SystemExit
+      print(f"*** Error while difining either materials or radius for pin '{self.name}'")
+      print("material and radius must be introduced either both or none")
+      # Error: material and radius have to be declared either both or none
+      raise SystemExit
           
   def add_level(self, material, radius=None):
     """
@@ -327,7 +332,6 @@ class Pin(Universe):
         super().cells[ll_id].region = ll_region
         super().cells[ll_id].volume = last_level_volume
 
-  
   def add_pin_levels(self, materials, radius, clone=False):
     """
       Setter method for attribute self.__pin_levels
@@ -377,7 +381,8 @@ class Pin(Universe):
     first_level = self.__pin_levels[0]
     cell = super().cells[first_level.cell_id]
     if first_level.radius is None: # Void pin
-      pin_copy = Pin(self.name, surroundings=cell.content)
+      pin_copy = Pin(self.name)
+      pin_copy.add_pin_levels([cell.content], [None])
       return pin_copy
     else:
       for level in self.__pin_levels:
@@ -735,13 +740,13 @@ class SquareLattice(Universe):
     return super().cells
 
 
-class HexagonalLatticeTypeX(Universe):
-  """
-    Hexagonal Lattice Type X composed by an array of pins, Example:
 
-  """
+class HexagonalLattice(Universe):
 
-  def __init__(self, name, center, pitch, num_rings=0, rings=[], pin=None):
+  def __init__(self, 
+    name, center, pitch, num_rings=0, rings=[], element=None,
+    plot_closing_hex=None
+  ):
     """
       Init method of the class
 
@@ -757,18 +762,30 @@ class HexagonalLatticeTypeX(Universe):
       ----------------------------------------------------------------
     """
     super().__init__(name)
-    self.__center_x, self.__center_y = center
-    self.__pitch = pitch
-    self.__num_rings = num_rings
+    self.__center = (np.float64(center[0]), np.float64(center[1]))
+    self.__pitch = np.float64(pitch)
+    if len(rings) == 0:
+      self.__num_rings = num_rings
+    else:
+      self.__num_rings = len(rings)
+
     self.rings = rings
-    self.__pin = pin
+    self.__element = element
+    self.closing_hexagon = None
+    self.plot_closing_hex = plot_closing_hex
+
     self.array = []
 
-    self.pitch_square = pitch * math.sqrt(3) / 2
-    self.pin_centers = []
-    self.pin_cells = []
+    self.pitch_square = self.__pitch * np.sqrt(3) / 2
+    self.element_centers = []
+    self.element_cells = []
+
+    self.element_numbering_position = {}
+
     self.__create_cells()
-    
+
+  
+
   def __create_cells(self):
     """Class method to create the pin cells from a given number of rings
     and a specified pin or the rings themselves. Prioritizing the rings that 
@@ -780,31 +797,51 @@ class HexagonalLatticeTypeX(Universe):
     if len(self.rings) == 0: 
       # Assembly with only one pin type
       self.create_rings()
-      self.pin_centers = self.calculate_pin_centers()
-    else:
-      pass
+    
+    
+    self.element_centers = self.calculate_element_centers()
+    
     
     new_rings = []
     for r in range(self.__num_rings):
       new_ring = []
       ring = self.rings[r]
-      num_pins_in_ring = len(ring)
-      for p in range(num_pins_in_ring):
-        copy_pin = self.__pin.copy()
-        new_center = self.pin_centers[r][p]
-        copy_pin.translate_to(new_center)
+      num_elements_in_ring = len(ring)
+      for p in range(num_elements_in_ring):
+        element = ring[p]
+        copy_element = element.copy()
+        new_center = self.element_centers[r][p]
+        copy_element.translate_to(new_center)
         closing_hex = InfiniteHexagonalCylinderXtype(
           new_center[0], new_center[1], half_width=self.__pitch/2
         )
-        copy_pin.close_last_level(closing_hex)
-        self.__pin = copy_pin
-        cells = copy_pin.cells
-        # p = [print(c, cell.content, cell.volume) for c, cell in cells.items()]
-        super().add_cells(cells)
-        new_ring.append(copy_pin)
+        if isinstance(copy_element, Pin):
+          copy_element.close_last_level(closing_hex)
+        elif isinstance(copy_element, HexagonalLatticeTypeX):
+          # not close hexagonal lattice until the creation of the mesh
+          closing_hex = InfiniteHexagonalCylinderYtype(
+            new_center[0], new_center[1], half_width=self.__pitch/2
+          )
+          copy_element.closing_hexagon = closing_hex
+          pass
+        elif isinstance(copy_element, HexagonalLatticeTypeY):
+          # not close hexagonal lattice until the creation of the mesh
+          closing_hex = InfiniteHexagonalCylinderXtype(
+            new_center[0], new_center[1], half_width=self.__pitch/2
+          )
+          copy_element.closing_hexagon = closing_hex
+          pass
+        super().add_cells(copy_element.cells)
+
+        
+        new_ring.append(copy_element)
       new_rings.append(new_ring)
-    self.rings = new_rings
     
+    
+
+
+    self.rings = new_rings
+
   def create_rings(self):
     """ Class method to obtain the rings of the hexagonal assembly
 
@@ -814,161 +851,80 @@ class HexagonalLatticeTypeX(Universe):
 
     """
 
-    rings = [[self.__pin]]
-    num_pins_next_ring = 6
+    assert self.__element is not None
+    
+    rings = [[self.__element]]
+    num_elements_next_ring = 6
 
     for i in range(self.__num_rings-1): # Ring sweep
-      ring = [self.__pin]*num_pins_next_ring
+      ring = [self.__element]*num_elements_next_ring
 
       rings.append(ring)
-      num_pins_next_ring += 6
+      num_elements_next_ring += 6
     self.rings = rings
     return rings
-
-  def calculate_pin_centers(self, pitch=None):
-    """Class method to calculate the centers of all the pins in the hexagonal
-    assembly. They are calculated as follows. I starts in the center and then 
-    moves to the outer ring by applying a dx to the left and start calculating
-    the centers of that ring by applying dx and dy deppending on the side of 
-    the imaginary hexagon that the pin is on.
-
-    Returns
-    -------
-
-    pin_centers : list of lists
-    
-    """
-    pin_centers = [[(self.__center_x, self.__center_y)]]
-    start = (self.__center_x, self.__center_y)
-    if pitch is None: pitch = self.__pitch
-
-    sides_dxdy = {
-      'A': {
-        'dx': pitch,
-        'dy': 0
-      },
-      'B': {
-        'dx': pitch / 2,
-        'dy': -((pitch ** 2 - (pitch / 2)**2)**0.5)
-      },
-      'C': {
-        'dx': -pitch / 2,
-        'dy': -((pitch ** 2 - (pitch / 2)**2)**0.5)
-      },
-      'D': {
-        'dx': -pitch,
-        'dy': 0
-      },
-      'E': {
-        'dx': -pitch / 2,
-        'dy': (pitch ** 2 - (pitch / 2)**2)**0.5
-      },
-      'F': {
-        'dx': pitch / 2,
-        'dy': (pitch ** 2 - (pitch / 2)**2)**0.5
-      }
-    }
-    hexagon_sides =  ['F','A','B','C','D','E']
-    
-    for r in range(1,self.__num_rings): # Ring sweep
-      
-      ring = self.rings[r]
-      start = (start[0]-pitch, start[1])
-
-      side_legth = round(self.__center_x - start[0], 8)
-
-      distance = 0.0
-      side_idx = 0
-      new_center = start
-      centers = [new_center]
-      pins_in_ring = len(ring)
-      for p in range(1,pins_in_ring):
-        side = hexagon_sides[side_idx]
-        dx = round(sides_dxdy[side]['dx'], 8)
-        dy = round(sides_dxdy[side]['dy'], 8)
   
-        ncx = round(new_center[0]+dx, 8)
-        ncy = round(new_center[1]+dy, 8)
-
-        new_center = (ncx, ncy)
-        centers.append(new_center)
-        distance += pitch
-        if round(distance,8) == side_legth:
-          side_idx += 1
-          distance = 0.0
-        
-      pin_centers.append(centers)
-
-    return pin_centers
-
-  def recalculate_pin_centers(self, scale_f):
-    """Class method to recalculate the pin centers with a scale factor. It acts
-    over the pitch, this is used mainly for plotting.
-
-    """
-    pitch = self.__pitch * scale_f
-
-    new_pin_centers = self.calculate_pin_centers(pitch=pitch)
-
-    return new_pin_centers
-
-  def rings_to_array(self):
-    look_up_ordering = {
-      'y_coord': {}
-    }
-    for r in self.rings:
-      for pin in r:
-        cx, cy = pin.center
-        if cy not in look_up_ordering['y_coord']:
-          look_up_ordering["y_coord"][cy] = [pin]
-        else:
-          look_up_ordering["y_coord"][cy].append(pin)
-    
-    y_coord_sorted = sorted(list(look_up_ordering["y_coord"].keys()))[::-1]
-
-    
-    array = []
-    for y_coord in y_coord_sorted:
-
-      pin_array = look_up_ordering["y_coord"][y_coord]
-      #sort pin array in base of cx
-      look_up_sortering = {pin.center[0]: pin for pin in pin_array}
-      x_coord_sorted = sorted(list(look_up_sortering.keys()))
-
-      row = [look_up_sortering[x_coord] for x_coord in x_coord_sorted]
-      
-      array.append(row)
-    
-    self.array = array
-
-
-  def __get_different_pins(self):
+  def __get_different_elements(self):
     types = []
     for row in self.__array:
-      for pin in row:
-        if pin.name not in types:
-          types.append(pin.name)
+      for element in row:
+        if element.name not in types:
+          types.append(element.name)
     return types
-  
-  def get_fuel_pins_centers(self):
-    pins_centers = []
-    for row in self.__array:
-      row_centers = []
-      for pin in row:
-        if pin is None: continue
-        p_id, where = pin
-        if where == "inside":
-          center = super().cells[p_id].center
-          row_centers.append(center)
-      if len(row_centers) != 0: pins_centers.append(row_centers)
-    return pins_centers
+
+  def copy(self):
+    """
+    It makes a copy of the lattice
     
+    """
+    name = self.name
+    center = self.__center
+    pitch = self.__pitch
+    rings = self.rings
+    
+
+    copy_lattice = HexagonalLatticeTypeX(
+      name, center, pitch, rings=rings
+    )
+
+    return copy_lattice
+
+  def translate_to(self, point):
+    new_x, new_y = point
+    cx, cy = self.__center
+    trans_vector = (
+      new_x - cx,
+      new_y - cy
+    )
+    self.translate(trans_vector)
+
   def translate(self, trans_vector):
-    cells = super().cells
-    surfs_translated = []
-    # print(trans_vector)
-    for c_id, cell in cells.items():
-      surfs_translated = cell.translate(trans_vector, surfs_translated)
+
+    # Recalculate element centers -----------------------------
+    dx, dy = trans_vector
+    cx, cy = self.__center
+
+    self.__center  = (cx + dx, cy + dy)
+
+    if self.plot_closing_hex is not None:
+      self.plot_closing_hex.translate(trans_vector)
+    
+    new_centers = self.recalculate_element_centers(
+      scale_f=1.0, center=(cx, cy)
+    )
+    
+
+    self.element_centers = new_centers
+
+    # Translate the content of the lattice --------------------
+
+    for ring in self.rings:
+      for element in ring:
+        # print(element)
+        if isinstance(element, HexagonalLatticeTypeX):
+          element.translate(trans_vector)
+        elif isinstance(element, Pin):
+          element.translate(trans_vector)
 
   def expand(self, scale_f):
     """
@@ -983,6 +939,7 @@ class HexagonalLatticeTypeX(Universe):
 
 
 
+    self.plot_closing_hex.expand(scale_f)
 
     lattice_cells = super().cells
 
@@ -1061,6 +1018,20 @@ class HexagonalLatticeTypeX(Universe):
           continue
       a = 0
 
+  def get_fuel_elements_centers(self):
+    elements_centers = []
+    for row in self.__array:
+      row_centers = []
+      for element in row:
+        if element is None: continue
+        p_id, where = element
+        if where == "inside":
+          center = super().cells[p_id].center
+          row_centers.append(center)
+      if len(row_centers) != 0: elements_centers.append(row_centers)
+      
+    return elements_centers
+  
   @property
   def num_rings(self):
     return self.__num_rings
@@ -1071,7 +1042,7 @@ class HexagonalLatticeTypeX(Universe):
 
   @property
   def center(self):
-    return (self.__center_x, self.__center_y)
+    return self.__center
 
   @property
   def cells(self):
@@ -1079,22 +1050,556 @@ class HexagonalLatticeTypeX(Universe):
   
   @property
   def centers(self):
-    return self.pin_centers
+    return self.element_centers
   
   @property
   def enclosed_cells(self):
     return self.__enclosed_cells
 
   @property
-  def pin(self):
-    if self.__pin is None:
-      return
-    return self.__pin
-# def translate_universe(universe, trans_vector):
-#   # return super().translate(trans_vector)
-#   surfaces_universe = get_all_surfaces_in_a_universe(universe)
-#   for id_, surf in surfaces_universe.items():
-#     surf.translate(trans_vector)
+  def element(self):
+    return self.__element
+
+
+
+
+class HexagonalLatticeTypeX(HexagonalLattice):
+  """
+    Hexagonal Lattice Type X composed by an array of pins, Example:
+
+  """
+
+  def __init__(self, 
+    name, center, pitch, num_rings=0, rings=[], element=None,
+    plot_closing_hex=None
+  ):
+    super().__init__(
+      name, center, pitch, num_rings, rings, element, plot_closing_hex
+    )
+
+  def recalculate_element_centers(self, scale_f, center):
+    """Class method to recalculate the element centers with a scale factor. 
+    It acts
+    over the pitch, this is used mainly for plotting.
+
+    """
+    pitch = self.pitch * scale_f
+
+    new_element_centers = self.calculate_element_centers(
+      pitch=pitch,
+      center=center
+    )
+
+    return new_element_centers
+
+  def calculate_element_centers(self, pitch=None, center=None):
+    """Class method to calculate the centers of all the elements in the hexagonal
+    assembly. They are calculated as follows. I starts in the center and then 
+    moves to the outer ring by applying a dx to the left and start calculating
+    the centers of that ring by applying dx and dy deppending on the side of 
+    the imaginary hexagon that the element is on.
+
+    Returns
+    -------
+
+    element_centers : list of lists
+    
+    """
+    if center is None:
+      cx, cy = self.center
+    else:
+      cx, cy = center
+    element_centers = [[(cx, cy)]]
+    start = (cx, cy)
+    if pitch is None: 
+      pitch = self.pitch
+
+    square_pitch = pitch * np.sqrt(3) / 2
+    
+
+    sides_dxdy = {
+      'A': {
+        'dx': pitch,
+        'dy': 0
+      },
+      'B': {
+        'dx': pitch / 2,
+        'dy': -square_pitch
+      },
+      'C': {
+        'dx': -pitch / 2,
+        'dy': -square_pitch
+      },
+      'D': {
+        'dx': -pitch,
+        'dy': 0
+      },
+      'E': {
+        'dx': -pitch / 2,
+        'dy': square_pitch
+      },
+      'F': {
+        'dx': pitch / 2,
+        'dy': square_pitch
+      }
+    }
+    hexagon_sides =  ['F','A','B','C','D','E']
+    
+    for r in range(1,self.num_rings): # Ring sweep
+      
+      ring = self.rings[r]
+
+      start = (start[0]-pitch, start[1])
+
+      side_legth = cx - start[0]
+
+      distance = 0.0
+      side_idx = 0
+      new_center = start
+      centers = [new_center]
+      elements_in_ring = len(ring)
+      for p in range(1,elements_in_ring):
+        side = hexagon_sides[side_idx]
+        dx = sides_dxdy[side]['dx']
+        dy = sides_dxdy[side]['dy']
+  
+        ncx = new_center[0]+dx
+        ncy = new_center[1]+dy
+
+        new_center = (ncx, ncy)
+        centers.append(new_center)
+        distance += pitch
+        if abs(distance - side_legth) <= 1e-6:
+          side_idx += 1
+          distance = 0.0
+        
+      element_centers.append(centers)
+
+    return element_centers
+  
+  def generate_array_from_rings(self):
+    look_up_ordering = {
+      'y_coord': {}
+    }
+    for r in self.rings:
+      for element in r:
+        cx, cy = element.center
+        if cy not in look_up_ordering['y_coord']:
+          look_up_ordering["y_coord"][cy] = [element]
+        else:
+          look_up_ordering["y_coord"][cy].append(element)
+    
+    y_coord_sorted = sorted(list(look_up_ordering["y_coord"].keys()))[::-1]
+
+    
+    array = []
+    for y_coord in y_coord_sorted:
+
+      element_array = look_up_ordering["y_coord"][y_coord]
+      #sort element array in base of cx
+      look_up_sortering = {element.center[0]: element for element in element_array}
+      x_coord_sorted = sorted(list(look_up_sortering.keys()))
+
+      row = [look_up_sortering[x_coord] for x_coord in x_coord_sorted]
+      
+      array.append(row)
+    
+    self.array = array
+  
+  
+
+class HexagonalLatticeTypeY(HexagonalLattice):
+  """
+    Hexagonal Lattice Type Y composed by an array of pins, Example:
+
+  """
+
+
+  def __init__(self, 
+    name, center, pitch, num_rings=0, rings=[], element=None,
+    plot_closing_hex=None
+  ):
+    super().__init__(
+      name, center, pitch, num_rings, rings, element, plot_closing_hex
+    )
+
+    centers_indexes_in_rings = {} # key: center, value: (num_ring, idx)
+    
+
+  def recalculate_element_centers(self, scale_f, center):
+    """Class method to recalculate the element centers with a scale factor. 
+    It acts
+    over the pitch, this is used mainly for plotting.
+
+    """
+    pitch = self.pitch * scale_f
+
+    new_element_centers = self.calculate_element_centers(
+      pitch=pitch,
+      center=center
+    )
+
+    return new_element_centers
+
+  def calculate_element_centers(self, pitch=None, center=None):
+    """Class method to calculate the centers of all the elements in the 
+    hexagonal
+    assembly. They are calculated as follows. I starts in the center and then 
+    moves to the outer ring by applying a dx to the left and start calculating
+    the centers of that ring by applying dx and dy deppending on the side of 
+    the imaginary hexagon that the element is on.
+
+    Returns
+    -------
+
+    element_centers : list of lists
+    
+    """
+    if center is None:
+      cx, cy = self.center
+    else:
+      cx, cy = center
+
+    
+    element_centers = [[(cx, cy)]]
+    self.element_numbering_position[0] = (0,0)
+    start = (cx, cy)
+    # centers_idxs_rings = {
+    #   f'{cx},{cy}': (0.0,0.0)
+    # }
+    if pitch is None: 
+      pitch = self.pitch
+    x_pitch = pitch * np.sqrt(3) / 2
+    sides_dxdy_to_travel = {
+      'F': {
+        'dx': x_pitch,
+        'dy': pitch/2
+      },
+      'A': {
+        'dx': x_pitch,
+        'dy': -pitch/2
+      },
+      'B': {
+        'dx': 0.0,
+        'dy': -pitch
+      },
+      'C': {
+        'dx': -x_pitch,
+        'dy': -pitch/2
+      },
+      'D': {
+        'dx': -x_pitch,
+        'dy': pitch/2
+      },
+      'E': {
+        'dx': 0.0,
+        'dy': pitch
+      },
+    }
+    hexagon_sides =  ['F','A','B','C','D','E']
+    el_number = 1
+    for r in range(1,self.num_rings): # Sweep from second ring
+      
+      ring = self.rings[r]
+      concentric_hexagon = InfiniteHexagonalCylinderXtype(
+        cx, cy, r*x_pitch
+      )
+      cchex_vertexes = concentric_hexagon.vertex_points
+
+      
+      cchex_side = concentric_hexagon.radius
+      centers = [
+        cchex_vertexes[5]
+      ]
+      elements_in_ring = len(ring)
+      new_center = centers[0]
+      traveled_distance = 0.0
+      side_idx = 0
+      for p in range(0,elements_in_ring):
+        side = hexagon_sides[side_idx]
+        dx = sides_dxdy_to_travel[side]['dx']
+        dy = sides_dxdy_to_travel[side]['dy']
+        # ----------------------------------------------------
+        ncx = new_center[0]+dx
+        ncy = new_center[1]+dy
+        new_center = (ncx, ncy)
+        # ----------------------------------------------------
+        self.element_numbering_position[el_number] = (r,p)
+        el_number += 1
+        
+        # centers_idxs_rings[f'{ncx},{ncy}'] = (r,p)
+        centers.append(new_center)
+        traveled_distance += pitch
+        if abs(traveled_distance - cchex_side) <= 1e-8:
+          side_idx += 1
+          traveled_distance = 0.0
+        
+      element_centers.append(centers)
+      
+    # self.centers_indexes_in_rings = centers_idxs_rings
+    return element_centers
+  
+  def calculate_lattice_map(self):
+    def get_ring_index(index):
+      if index == 0:
+        return 0
+      n = 1
+      while index > 3 * n * (n + 1):
+        n += 1
+      return n
+
+    def get_ring_start(num_ring):
+      if num_ring == 0:
+        return 0
+      elif num_ring == 1:
+        return 1
+      else: 
+        return 3 * (num_ring - 1) * num_ring + 1
+      
+    def get_corner_idxs(num_ring):
+
+      if num_ring == 0: return [0]
+      elif num_ring == 1: return [0,1,2,3,4,5]
+      else: 
+        increment = num_ring
+        indexes = list(range(0,num_ring*6,increment))
+
+        return indexes
+
+    def get_num_elements_ring(num_ring):
+      if num_ring == 0:
+        return 1
+      else:
+        return num_ring * 6
+
+    def get_neighbors(index):
+      if index == 0:
+        # All elements in the first ring
+        return list(range(1, 7))
+    
+      # Ring of the element at index ------------------
+      n = get_ring_index(index)
+      # Position within the current ring --------------
+      start = get_ring_start(n)
+      end = get_ring_start(n + 1) - 1
+      pos = index - start
+      # Neighbors within the same ring ----------------
+      neighbors = [
+        start + (pos - 1) % (6 * n),  # Previous element in the ring
+        start + (pos + 1) % (6 * n),  # Next element in the ring
+      ]
+      
+      # Is it in a corner?
+      currentR_corner_idxs = get_corner_idxs(n)
+      prevR_corner_idxs = get_corner_idxs(n-1)
+      nextR_corner_idxs = get_corner_idxs(n+1)
+
+      is_corner = pos in currentR_corner_idxs
+
+      prev_ring_start = get_ring_start(n-1)
+      next_ring_start = get_ring_start(n+1)
+
+      if is_corner:
+        # get number of corner
+        num_corner = currentR_corner_idxs.index(pos)
+        # get position of that corner in prev
+        if n-1 == 0:
+          pos_corner_prev = 0
+        else:
+          pos_corner_prev = get_corner_idxs(n-1)[num_corner] # this is index
+
+        # get position of that corner in next
+        pos_corner_next = get_corner_idxs(n+1)[num_corner] # this is index
+
+        # append previous ring --------
+        neighbors.append(prev_ring_start+pos_corner_prev)
+        # append next ring --------
+        neighbors.append(next_ring_start+pos_corner_next)
+
+        # append adjacent position to corner in next ring
+        neighbors.append(next_ring_start+pos_corner_next+1)
+        if pos_corner_next == 0:
+          num_elements_ring = get_num_elements_ring(n+1)
+          neighbors.append(next_ring_start+num_elements_ring-1)
+        else:
+          neighbors.append(next_ring_start+pos_corner_next-1)
+
+      else:
+        # Calculate last corner:
+        last_corner_idx = None
+        for i, corner_idx in enumerate(currentR_corner_idxs):
+          if pos < corner_idx:
+            last_corner_idx = i - 1
+            break
+        if last_corner_idx is None:
+          last_corner_idx = len(currentR_corner_idxs)-1
+        # Calculate Distance to previous corner:
+
+        dist_to_corner = pos - currentR_corner_idxs[last_corner_idx]
+
+        corner_idx_prev = prevR_corner_idxs[last_corner_idx]
+        corner_idx_next = nextR_corner_idxs[last_corner_idx]
+
+        corner_pos_prev = prev_ring_start + corner_idx_prev
+        corner_pos_next = next_ring_start + corner_idx_next
+
+        neighbors.append(corner_pos_prev + dist_to_corner - 1)
+        if corner_idx_prev + (dist_to_corner - 1) + 1 >= get_num_elements_ring(n-1):
+          neighbors.append(prev_ring_start)
+        else:
+          neighbors.append(corner_pos_prev + dist_to_corner)
+
+        neighbors.append(corner_pos_next + dist_to_corner)
+        neighbors.append(corner_pos_next + dist_to_corner+1)
+        
+      return neighbors
+  
+
+    map_lattice = [ ]
+
+    elem_num = 0
+    for r in range(self.num_rings):
+      num_of_elements = len(self.rings[r])
+      ring = []
+      for e in range(num_of_elements):
+        element = []
+        neighbors = get_neighbors(elem_num)
+        for ne in neighbors:
+          try:
+            element.append(self.element_numbering_position[ne])
+          except KeyError:
+            # out of boundary furtheremore, key does not exist
+            pass
+        ring.append(element)
+        elem_num += 1
+      map_lattice.append(ring)
+
+    return map_lattice
+
+  def calculate_lattice_map_DEPRECATED(self):
+    map_lattice = [ # rings
+      [[(1,0),(1,1),(1,2),(1,3),(1,4),(1,5),]], # list of six of the ring 1 (only one element on the ring)
+    ]
+
+    cx, cy = self.center
+    pitch = self.pitch
+    pitch_square = round(pitch * math.sqrt(3) / 2, 8)
+    half_pitch = round(pitch/2,8)
+    
+    for r in range(1,self.num_rings): # Sweep from second ring
+      
+      map_ring = []
+      ring = self.rings[r]
+      concentric_hexagon = InfiniteHexagonalCylinderXtype(
+        cx, cy, r*pitch_square
+      )
+      cchex_vertexes = concentric_hexagon.vertex_points
+
+      
+      cchex_side = concentric_hexagon.radius
+      centers = [
+        cchex_vertexes[0]
+      ]
+
+      elements_in_ring = len(ring)
+      elements_in_ring_prev = len(self.rings[r-1])
+      elements_in_ring_next = 0
+      if r < self.num_rings-1:
+        elements_in_ring_next = len(self.rings[r+1])
+
+
+      new_center = centers[0]
+      traveled_distance = 0.0
+      side_idx = 0
+      for p in range(elements_in_ring):
+        list_of_idxs = []
+        center = self.element_centers[r][p]
+
+        cx, cy = center
+        # new_x = cx-pitch_square    
+        # if f'{new_x}' == '-0.0':
+        #   new_x = 0.0
+        el1_center = (
+          round(cx-pitch_square, 8),
+          round(cy+half_pitch, 8),
+        )
+        el2_center = (
+          round(cx, 8),
+          round(cy+pitch, 8),
+        )
+        el3_center = (
+          round(cx+pitch_square, 8),
+          round(cy+half_pitch, 8),
+        )
+        el4_center = (
+          round(cx+pitch_square, 8),
+          round(cy-half_pitch, 8),
+        )
+        el5_center = (
+          round(cx, 8),
+          round(cy-pitch, 8),
+        )
+        el6_center = (
+          round(cx-pitch_square, 8),
+          round(cy-half_pitch, 8),
+        )
+        surrounding_elements = [
+          el1_center, el2_center, el3_center, el4_center, el5_center, el6_center
+        ]
+        # ----------------------------------------------------
+        
+        # print('surrounding: ', surrounding_elements)
+        for e in range(elements_in_ring):
+          center_to_compare = self.element_centers[r][e]
+          if center_to_compare in surrounding_elements:
+            list_of_idxs.append((r,e))
+        for e in range(elements_in_ring_prev):
+          center_to_compare = self.element_centers[r-1][e]
+          if center_to_compare in surrounding_elements:
+            list_of_idxs.append((r-1,e))
+        for e in range(elements_in_ring_next):
+          center_to_compare = self.element_centers[r+1][e]
+          if center_to_compare in surrounding_elements:
+            list_of_idxs.append((r+1,e))
+
+        map_ring.append(list_of_idxs)
+      map_lattice.append(map_ring)
+
+
+    return map_lattice
+
+
+  def generate_array_from_rings(self):
+    look_up_ordering = {
+      'y_coord': {}
+    }
+    for r in self.rings:
+      for element in r:
+        cx, cy = element.center
+        if cy not in look_up_ordering['y_coord']:
+          look_up_ordering["y_coord"][cy] = [element]
+        else:
+          look_up_ordering["y_coord"][cy].append(element)
+    
+    y_coord_sorted = sorted(list(look_up_ordering["y_coord"].keys()))[::-1]
+
+    
+    array = []
+    for y_coord in y_coord_sorted:
+
+      element_array = look_up_ordering["y_coord"][y_coord]
+      #sort element array in base of cx
+      look_up_sortering = {element.center[0]: element for element in element_array}
+      x_coord_sorted = sorted(list(look_up_sortering.keys()))
+
+      row = [look_up_sortering[x_coord] for x_coord in x_coord_sorted]
+      
+      array.append(row)
+    
+    self.array = array
+
+
+
 
 if __name__=='__main__':
   hex_lat = HexagonalLatticeTypeX('test', (0,0), 30.0, num_rings=18)

@@ -1388,17 +1388,25 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
 
   def __init__(self, center_x, center_y, half_width, name="", boundary=None, isClone=False):
     super().__init__(name=name, type_surface="inf hex_x", isClone=isClone)
-    self.__center_x = center_x
-    self.__center_y = center_y
-    self.__half_width = half_width
+    self.__center_x = np.float64(center_x)
+    self.__center_y = np.float64(center_y)
+    self.__half_width = np.float64(half_width)
     self.__boundary = boundary
     self.__isClone = isClone
 
-    self.__radius = round(2 * self.__half_width / math.sqrt(3),8)
+    self.__radius = round(2 * self.__half_width / np.sqrt(3),8)
 
     # self.volume = 3 * math.sqrt(3) * self.__radius * self.__radius / 2
     self.__side = self.__radius
-    self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()
+    (
+      self.__surf_A, 
+      self.__surf_B, 
+      self.__surf_C, 
+      self.__surf_D, 
+      self.__surf_E, 
+      self.__surf_F
+    ) = self.__generate_surfaces()
+
 
   def __generate_surfaces(self):
     """
@@ -1459,6 +1467,13 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
 
       return 1
   
+  def expand(self, scale_f):
+     
+    surf = InfiniteHexagonalCylinderXtype(
+      self.center_x, self.center_y, half_width=self.__half_width*scale_f
+    )
+    return surf
+  
   def scale(self, scale_f):
     new_half_width = self.__half_width * scale_f
     plane_move = new_half_width - self.__half_width
@@ -1472,6 +1487,58 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
 
     self.__half_width = new_half_width
     self.__radius *= scale_f
+
+
+  def isPointOverHexantLine(self, point):
+    vertexes = self.vertex_points
+    hexants = { # In vector pairs
+      1: [(self.center, vertexes[0]), (self.center, vertexes[1])],
+      2: [(self.center, vertexes[1]), (self.center, vertexes[2])],
+      3: [(self.center, vertexes[2]), (self.center, vertexes[3])],
+      4: [(self.center, vertexes[3]), (self.center, vertexes[4])],
+      5: [(self.center, vertexes[4]), (self.center, vertexes[5])],
+      6: [(self.center, vertexes[5]), (self.center, vertexes[0])],
+    }  
+    def is_point_on_line(point, line_point, direction_vector):
+      """
+      Determine if a point lies on the line defined by a vector.
+      
+      :param point: Tuple (x, y) coordinates of the point to check
+      :param line_point: Tuple (x1, y1) coordinates of a point on the line
+      :param direction_vector: Tuple (dx, dy) direction vector of the line
+      :return: Boolean indicating whether the point lies on the line
+      """
+      x, y = point
+      x1, y1 = line_point
+      dx, dy = direction_vector
+      # Handle special cases
+      if dx == 0 and dy == 0:
+          return x == x1 and y == y1  # The line is actually a single point
+      if dx == 0:  # Vertical line
+          return x == x1
+      if dy == 0:  # Horizontal line
+          return y == y1
+      
+      # Calculate t values
+      t_x = (x - x1) / dx
+      t_y = (y - y1) / dy
+      
+      # Check if t values are equal
+      return t_x == t_y
+
+    isOnHexantLine = False
+    for i, vector_pair in hexants.items():
+      v1 = vector_pair[0]
+      direction_vector = (
+        v1[1][0] - v1[0][0], # dx
+        v1[1][1] - v1[0][1], # dy
+      )
+    #   print(point, i, v1, direction_vector)
+      isOnHexantLine = is_point_on_line(point, v1[0], direction_vector)
+      if isOnHexantLine:
+        return True, i
+    return isOnHexantLine, None
+    
 
   def isPointNegativeSide(self, point):
     x, y = point
@@ -1628,7 +1695,7 @@ class InfiniteHexagonalCylinderXtype(Hexagon):
   def center_y(self):
     return self.__center_y
   
-
+  
   @property
   def center(self):
     return (self.__center_x, self.__center_y)
@@ -1657,14 +1724,14 @@ class InfiniteHexagonalCylinderYtype(Hexagon):
 
   def __init__(self, center_x, center_y, half_width, name="", boundary=None, isClone=False):
       super().__init__(name=name, type_surface="inf hex_x", isClone=isClone)
-      self.__center_x = center_x
-      self.__center_y = center_y
-      self.__half_width = half_width
+      self.__center_x = np.float64(center_x)
+      self.__center_y = np.float64(center_y)
+      self.__half_width = np.float64(half_width)
       self.__boundary = boundary
       self.__isClone = isClone
 
       # self.__side = 2 * self.__half_width * math.tan(math.radians(30))
-      self.__radius = 2 * self.__half_width / math.sqrt(3)
+      self.__radius = 2 * self.__half_width / np.sqrt(3)
       self.__side = self.__radius
       # self.__radius = self.__half_width * math.sqrt(5) / 2
       self.__surf_A, self.__surf_B, self.__surf_C, self.__surf_D, self.__surf_E, self.__surf_F = self.__generate_surfaces()

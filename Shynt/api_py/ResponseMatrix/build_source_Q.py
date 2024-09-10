@@ -62,9 +62,14 @@ class SourceQ:
     xs : dict
       Cross sections of every region
     """
-    self.__coarseNodes = mesh.coarse_mesh.coarse_nodes
+    self.__main_nidx = list(mesh.coarse_mesh.equivalent_nodes.keys())
+    self.__mainCoarseNodes = {
+      nid: mesh.coarse_mesh.coarse_nodes[nid] for nid in self.__main_nidx
+    }
+    self.mesh = mesh
     self.__energyG = energy_g
     self.__xs = xs
+    self.nuSigFiss = {}
 
     self.__fissionMatrix = self.__buildFissionMatrix() 
     self.__scatteringMatrix = self.__buildScatteringMatrix()
@@ -93,16 +98,17 @@ class SourceQ:
     """
     fission = {}
    
-    for n_id in self.__coarseNodes:
-      regions = self.__coarseNodes[n_id].fine_mesh.regions
+    for n_id in self.__mainCoarseNodes:
+      regions = self.__mainCoarseNodes[n_id].fine_mesh.regions
       for r in regions.keys():
         fission[r] = np.zeros((self.__energyG, self.__energyG))
         nuFiss_xs = self.__xs[r]["nuSigFission"]
+        self.nuSigFiss[r] = nuFiss_xs
         chi_xs = self.__xs[r]["chi"]
         for g in range(self.__energyG):
           chi_g = chi_xs[g]
           for gp in range(self.__energyG):
-            fission[r][g][gp] = chi_g * nuFiss_xs[gp]
+            fission[r][g][gp] = chi_g * nuFiss_xs[gp] 
     return fission
   
   def __buildScatteringMatrix(self):
@@ -129,8 +135,8 @@ class SourceQ:
     """
 
     scattering = {}
-    for n_id in self.__coarseNodes:
-      regions = self.__coarseNodes[n_id].fine_mesh.regions
+    for n_id in self.__mainCoarseNodes:
+      regions = self.__mainCoarseNodes[n_id].fine_mesh.regions
       for r in regions.keys():
         scattMatrix = self.__xs[r]["scatter"]
         scattering[r] = scattMatrix
@@ -196,14 +202,23 @@ class SourceQ:
 
     coarse_nodes_ids = mesh.coarse_order
     regions_vol = mesh.all_regions_vol
+    eq_nodes = mesh.coarse_mesh.equivalent_nodes_rel
+    eq_regions = mesh.coarse_mesh.equivalent_regions
+    eq_surfaces = mesh.coarse_mesh.equivalent_surfaces
+
+
     array_of_matrixes = []
     for n_id in coarse_nodes_ids:
+      eq_node = eq_nodes[n_id]
+
       regions = list(self.__coarseNodes[n_id].fine_mesh.regions.keys())
       numRegions = len(regions)
       mF = np.zeros((numRegions*self.__energyG,numRegions*self.__energyG))
       for i in range(numRegions): 
         # "i" is  the region where the neutrons will go after fission 
         reg_i = regions[i]
+        eq_rid =  eq_regions[reg_i]
+
         for g in range(self.__energyG): 
           # For each energy group in the region "i"
           row_matrix = np.array([]) # row of the block
@@ -211,9 +226,11 @@ class SourceQ:
             # Region "j" is from the region the neutrons were emmited
             # Loop to concatenate the vector of the block
             reg_j = regions[j]
+            eq_rjd =  eq_regions[reg_j]
+
             vol_j = regions_vol[reg_j]
-            prob = probabilities["regions"][reg_j]["regions"][reg_i][g]
-            array = self.__fissionMatrix[reg_j][g] * vol_j * prob
+            prob = probabilities[eq_node]["regions"][eq_rjd]["regions"][eq_rid][g]
+            array = self.__fissionMatrix[reg_j][g] * vol_j * prob /(4*3.141529)
             row_matrix = np.concatenate((row_matrix, array), axis=0)
           index_mF_row = i * self.__energyG  + g
           mF[index_mF_row] = row_matrix
@@ -255,17 +272,20 @@ class SourceQ:
     """
     from math import pi
     
+    # print(self.__scatteringMatrix.keys())
     if not fluxOrdered_bg:
       flux = self.__orderFlux(flux, total_regions)
 
     _Q = {g : np.zeros(numRegions) for g in range(self.__energyG)}
 
+    # print(numRegions)
     for g in range(self.__energyG):
       for r in range(numRegions):
         r_id = total_regions[r]
-
-        scatt_matrix = self.__scatteringMatrix[r_id]
-        fiss_matrix = self.__fissionMatrix[r_id]
+        rid_eq = self.mesh.coarse_mesh.equivalent_regions[r_id]
+        # print(r_id)
+        scatt_matrix = self.__scatteringMatrix[rid_eq]
+        fiss_matrix = self.__fissionMatrix[rid_eq]
 
         scatt_term = 0.0
         fission_term = 0.0
@@ -278,6 +298,51 @@ class SourceQ:
         _Q[g][r] = scatt_term + fission_term / keff
         _Q[g][r] = _Q[g][r] # / (pi*4)
     return _Q
+
+  def calculate_Qvector_node(self, 
+    keff, flux, node_regions, g, nid
+  ):
+    """
+    
+    Parameters
+    ----------
+    keff : float
+      Neutron multiplication factor
+    flux : dict
+      Neutron scalar flux of the node
+ 
+    Returns
+    -------
+    _Q : dict
+      Source vectors, with energy groups as keys
+
+    """
+    from math import pi
+    
+    numRegions = len(node_regions)
+    regions_ids = list(node_regions.keys())
+    _Q = np.zeros(numRegions) 
+
+    for r in range(numRegions):
+      rid = regions_ids[r]
+      rid_eq = self.mesh.coarse_mesh.equivalent_regions[rid]
+
+      scatt_matrix = self.__scatteringMatrix[rid_eq]
+      fiss_matrix = self.__fissionMatrix[rid_eq]
+
+      scatt_term = 0.0
+      fission_term = 0.0
+      for gp in range(self.__energyG):
+        # scattering --------------------
+        scatt_term += scatt_matrix[g][gp] * flux[gp][nid][r] 
+        # fission -----------------------
+        fission_term += fiss_matrix[g][gp] * flux[gp][nid][r]
+
+      _Q[r] = scatt_term + fission_term / keff
+      _Q[r] = _Q[r] # / (pi*4)
+    return _Q
+
+  
 
   def build_big_scatt_matrix(self, mesh):
     numRegions = mesh.numRegions

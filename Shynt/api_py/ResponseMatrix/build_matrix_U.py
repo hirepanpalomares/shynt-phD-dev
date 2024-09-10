@@ -1,11 +1,13 @@
 
 import numpy as np
+import scipy.sparse as sparse
 
 from Shynt.api_py.ResponseMatrix.matrix_utilities import getBlockMatrix
 
 
 
-def getMatrixU_system_byGroup(mesh_info, energy_g, probabilities):
+
+def getMatrixU_system_byGroup(mesh_info, energy_g, probabilities, store_sparse=False):
   """
   Calculates the Matrix U of the system by energy group
 
@@ -43,29 +45,151 @@ def getMatrixU_system_byGroup(mesh_info, energy_g, probabilities):
   surface_areas = mesh_info.all_surfaces_area
   regions_volume = mesh_info.all_regions_vol
 
+  eq_nodes = mesh_info.coarse_mesh.equivalent_nodes_rel
+  eq_regions = mesh_info.coarse_mesh.equivalent_regions
+  eq_surfaces = mesh_info.coarse_mesh.equivalent_surfaces
+
+  shape_mU = (
+    len(mesh_info.all_surfaces_order), len(mesh_info.all_regions_order)
+  )
   matrixU_system_byGroup = { }
   for g in range(energy_g):
-      systemMatrixes = []
-      for n_id in coarse_nodes:
-          regions = coarse_nodes_regions[n_id]
-          surfaces_n = coarse_nodes_surfaces[n_id]
+    systemMatrixes = []
 
-          mat_u_n = build_U(
-              probabilities,
-              surfaces_n,
-              surface_areas,
-              regions,
-              regions_volume,
-              g,
-          )
-          systemMatrixes.append(mat_u_n)
-      big_matrix_U = getBlockMatrix(systemMatrixes)
-      matrixU_system_byGroup[g] = big_matrix_U
+    sparse_row = []
+    sparse_col = []
+    sparse_val = []
+    idx_row = 0
+    idx_col = 0
+    for n_id in coarse_nodes:
+      surfaces = coarse_nodes_surfaces[n_id]
+      regions = coarse_nodes_regions[n_id]
+
+      numSurf = len(surfaces)      
+      numReg = len(regions)
+      mU = build_U(
+        probabilities,
+        surfaces,
+        surface_areas,
+        regions,
+        regions_volume,
+        n_id,
+        eq_nodes,
+        eq_regions,
+        eq_surfaces,
+        g,
+      )
+     
+      if store_sparse:
+        for r in range(numSurf):
+          for c in range(numReg):
+            sparse_row.append(idx_row)
+
+            sparse_col.append(idx_col + c)
+            # print(r,c, idx_row, idx_col+c)
+            sparse_val.append(mU[r][c])
+          idx_row += 1
+        idx_col += numReg  
+      else:
+        systemMatrixes.append(mU)
+
+    if store_sparse:
+      # mUg = sparse.csc_matrix(
+      #   (sparse_val, (sparse_row, sparse_col)), shape=shape_mU, dtype=np.double
+      # )
+      mUg =  (
+        np.array(sparse_row), 
+        np.array(sparse_col), 
+        np.array(sparse_val)
+      )
+    else:
+      mUg = getBlockMatrix(systemMatrixes)
+    
+    # print(mUg)
+    # print(sparse_row[:50])
+    # print(sparse_col[:50])
+    # print(sparse_val[:50])
+
+    # raise SystemExit
+    matrixU_system_byGroup[g] = mUg
+    # big_matrix_U = getBlockMatrix(systemMatrixes)
+
+    # if store_sparse:
+    #   sparse_mUg = sparse.csc_matrix(big_matrix_U)
+    #   matrixU_system_byGroup[g] = sparse_mUg
+    # else:
+    #   matrixU_system_byGroup[g] = big_matrix_U
+
           
   return matrixU_system_byGroup
 
 
-def build_U(probabilities, surfaces, surface_areas, regions, regions_volume, g):
+
+def getMatrixU_mainNodes(mesh_info, energy_g, probabilities):
+  """
+
+  Parameters
+  ----------
+  mesh_info : MeshInfo
+
+  energy_g : int
+  Number of energy groups
+  xs : dict
+
+  probabilities : dict
+
+  Returns
+  -------
+  matrix_U_system_byGroup : dict
+
+  """
+  coarse_nodes = mesh_info.coarse_order
+  coarse_nodes_regions = mesh_info.coarse_region_rel
+  coarse_nodes_surfaces = mesh_info.coarse_surface_rel
+  surface_areas = mesh_info.all_surfaces_area
+  regions_volume = mesh_info.all_regions_vol
+
+  eq_nodes = mesh_info.coarse_mesh.equivalent_nodes
+  eq_nodes_rel = mesh_info.coarse_mesh.equivalent_nodes_rel
+
+  eq_regions = mesh_info.coarse_mesh.equivalent_regions
+  eq_surfaces = mesh_info.coarse_mesh.equivalent_surfaces
+
+ 
+  matrixU_bg_mainNodes = { }
+  for g in range(energy_g):
+    matrixU_bg_mainNodes[g] = {}
+
+    for n_id in eq_nodes.keys():
+      surfaces = coarse_nodes_surfaces[n_id]
+      regions = coarse_nodes_regions[n_id]
+
+      mU = build_U(
+        probabilities,
+        surfaces,
+        surface_areas,
+        regions,
+        regions_volume,
+        n_id,
+        eq_nodes_rel,
+        eq_regions,
+        eq_surfaces,
+        g,
+      )
+
+      matrixU_bg_mainNodes[g][n_id] = mU
+  
+
+          
+  return matrixU_bg_mainNodes
+
+
+
+
+def build_U(
+  probabilities, surfaces, surface_areas, regions, regions_volume,
+  node, eq_nodes, eq_regions, eq_surfaces, g
+):
   """
   Builds the matrix U for a coarse node
 
@@ -107,17 +231,24 @@ def build_U(probabilities, surfaces, surface_areas, regions, regions_volume, g):
   """
   numReg = len(regions)
   numSurf = len(surfaces)
+  eq_node = eq_nodes[node]
   
   mU_shape = (numSurf, numReg)
   mU = np.zeros(mU_shape)
 
   for a in range(numSurf):
     surf_id = surfaces[a]
+    eq_sa_id = eq_surfaces[surf_id]
+
     area_a = surface_areas[surf_id]
     for i in range(numReg):
       region_id = regions[i]
+      eq_ri_id =  eq_regions[region_id]
+
       vol_i = regions_volume[region_id]
-      p_i_a = probabilities["regions"][region_id]["surfaces"][surf_id][g]
+      # p_i_a = probabilities["regions"][region_id]["surfaces"][surf_id][g]
+      p_i_a = probabilities[eq_node]["regions"][eq_ri_id]["surfaces"][eq_sa_id][g]
+
       mU[a][i] =  vol_i * p_i_a / area_a
   return mU
 

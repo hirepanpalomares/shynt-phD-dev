@@ -1,8 +1,10 @@
-import serpentTools
-from serpentTools.settings import rc
-rc['serpentVersion'] = '2.1.32'
+# import serpentTools
+# from serpentTools.settings import rc
+# rc['serpentVersion'] = '2.1.32'
 
+import numpy as np
 
+from Shynt.api_py.Serpent.output_reader import read_res_file
 
 
 def get_cross_sections(
@@ -17,21 +19,19 @@ def get_cross_sections(
   """
   from numpy import flip
 
-  varSet = rc.expandVariables()
+  # varSet = rc.expandVariables()
   # print(sorted(varSet))
   # print(rc['xs.getInfXS'])
   xs = {}
   
-  if map_regions: 
-    # TODO hacer algo para leer XS o solo con proveer las regiones de los nodos de interes
-    pass
-
+ 
   for id_coarse, xs_inp in xs_inputs.items():
     # resFile = xs_inp + "_res.m"
     print(xs_inp)
     resFile = xs_inp['name'] + "_res.m"
 
-    res = serpentTools.read(resFile)
+    # res = serpentTools.read(resFile)
+    res = read_res_file(resFile)
     print(id_coarse)
     print(coarse_nodes[id_coarse])
     node_regions = coarse_nodes[id_coarse].fine_mesh.regions
@@ -47,36 +47,55 @@ def get_cross_sections(
       else:
         gcu_name = xs_inp['xs_gcu'][reg_id]
 
-      universe = res.getUniv(gcu_name, burnup=0)
+      # universe = res.getUniv(gcu_name, burnup=0)
+      universe = res[gcu_name]
 
-      xs_total = universe["infTot"]
-      xs_nuFiss = universe["infNsf"]
-      xs_fiss = universe["infFiss"]
-      xs_gamma = universe["infCapt"]
-      xs_abs = universe["infAbs"]
-      xs_chi = universe["infChit"]
+      xs_total = universe['INF_TOT']#["infTot"]
+      xs_nuFiss = universe['INF_NSF']#["infNsf"]
+      xs_fiss = universe['INF_FISS']#["infFiss"]
+      xs_gamma = universe['INF_CAPT']#["infCapt"]
+      xs_abs = universe['INF_ABS']#["infAbs"]
+      xs_chi = universe['INF_CHIT']#["infChit"]
       # print(xs_total)
       # print(xs_nuFiss)
-      if scattering_production: 
-        scatter_data_p0 = universe["infSp0"]
-        scatter_data_p1 = universe["infSp1"]
-      else:
-        scatter_data_p0 = universe["infS0"]
-        scatter_data_p1 = universe["infS1"]
-
-      xs_scatterMatrix_p0 = scatter_data_p0.reshape((energy_g, energy_g))
-      xs_scatterMatrix_p1 = scatter_data_p1.reshape((energy_g, energy_g))
-
       xs[cell.id] = {
         "total": xs_total,
-        "capture": xs_gamma,
-        "nuSigFission": xs_nuFiss,
-        "fission": xs_fiss,
-        "absorption": xs_abs,
-        "chi": xs_chi,
-        "scatter_p0": xs_scatterMatrix_p0.T,
-        "scatter_p1": xs_scatterMatrix_p1.T
+        "capture": xs_gamma.tolist(),
+        "nuSigFission": xs_nuFiss.tolist(),
+        "fission": xs_fiss.tolist(),
+        "chi": xs_chi.tolist(),
       }   
+
+      if scattering_production:
+        scatter_data_prod_p0 = universe['INF_SP0']
+        scatter_data_prod_p1 = universe['INF_SP1']
+        xs_scatterMatrix_p0 = scatter_data_prod_p0.reshape((energy_g, energy_g))
+        xs_scatterMatrix_p1 = scatter_data_prod_p1.reshape((energy_g, energy_g))
+        xs[cell.id]['scatter_p0'] = xs_scatterMatrix_p0.T
+        xs[cell.id]['scatter_p1'] = xs_scatterMatrix_p1.T
+      
+        for g in range(energy_g):
+          xs_abs[g] = xs_total[g] - np.sum(xs_scatterMatrix_p0[g])
+          
+
+
+
+        xs[cell.id]["absorption"] =  xs_abs.tolist()
+      else:
+        scatter_data_p0 = universe['INF_S0']#["infS0"]
+        scatter_data_p1 = universe['INF_S1']#["infS1"]
+        xs_scatterMatrix_p0 = scatter_data_p0.reshape((energy_g, energy_g))
+        xs_scatterMatrix_p1 = scatter_data_p1.reshape((energy_g, energy_g))
+        xs[cell.id]['scatter_p0'] = xs_scatterMatrix_p0.T
+        xs[cell.id]['scatter_p1'] = xs_scatterMatrix_p1.T
+        xs[cell.id]["absorption"] =  xs_abs.tolist()
+
+
+
+      
+
+
+
   
   return xs
 

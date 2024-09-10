@@ -1,7 +1,8 @@
 import numpy as np
+import scipy.sparse as sparse
 
 
-def getM_matrix_easier(mesh_info):
+def getM_matrix_easier(mesh_info, store_sparse=False):
   surface_twins = mesh_info.coarse_mesh.surface_twins
   all_surfaces = mesh_info.all_surfaces_order
 
@@ -9,23 +10,55 @@ def getM_matrix_easier(mesh_info):
   surfaces_indexes = {all_surfaces[s]: s for s in range(numSurfaces)}
 
   matrixM_shape = (numSurfaces, numSurfaces)
-  matrixM = np.zeros(matrixM_shape)
 
-  
+  matrixM = []
+
+  sparse_row = []
+  sparse_col = []
+  sparse_val = []
+  idx_row = 0
+  idx_col = 0
+
+  if not store_sparse:
+    matrixM = np.zeros(matrixM_shape)
+
   for s_id in all_surfaces:
     s_id_idx = surfaces_indexes[s_id]
-    twin_surf = surface_twins[s_id]
+    twin_surf, nid = surface_twins[s_id]
     if twin_surf is not None:
       twin_surf_idx = surfaces_indexes[twin_surf]
-      # matrixM[s_id-1][twin_surf-1] = 1
-      # matrixM[twin_surf-1][s_id-1] = 1
-      matrixM[s_id_idx][twin_surf_idx] = 1
-      matrixM[twin_surf_idx][s_id_idx] = 1
+      # print(s_id_idx, twin_surf_idx)
+      if store_sparse:
+        sparse_row.append(s_id_idx)
+        sparse_col.append(twin_surf_idx)
+        sparse_val.append(1.0)
+        
+      else:      
+        matrixM[s_id_idx][twin_surf_idx] = 1
+        matrixM[twin_surf_idx][s_id_idx] = 1
     else:
-      # matrixM[s_id-1][s_id-1] = 1
-      matrixM[s_id_idx][s_id_idx] = 1
+      if store_sparse:
+        sparse_row.append(s_id_idx)
+        sparse_col.append(s_id_idx)
+        sparse_val.append(1.0)
+      else:
+        matrixM[s_id_idx][s_id_idx] = 1
 
-  return matrixM, surface_twins
+  if store_sparse:
+    # sparse_mM = sparse.csc_matrix(
+    #   (sparse_val, (sparse_row, sparse_col)), 
+    #   shape=matrixM_shape,
+    #   dtype=np.double
+      
+    # )
+    sparse_mM = (
+      np.array(sparse_row, dtype=np.int64),
+      np.array(sparse_col, dtype=np.int64),
+      np.array(sparse_val),    
+    )
+    return sparse_mM, surface_twins
+  else:
+    return matrixM, surface_twins
 
 
 

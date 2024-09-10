@@ -762,23 +762,40 @@ class CoarseNodeHexagonalPinCell(CoarseNode):
     return det_syntax, det_relation
   
 
-class CoarseNodeTriangularMesh(CoarseNode):
+class CoarseNodeTriangleHexPin(
+  CoarseNode
+):
+  
+  def __init__(self, id_, type_coarse_mesh, pin, pincell_wrapper, surface_points):
+    super().__init__(id_, type_coarse_mesh)
+    self.pin_universe = pin
+    self.wrapper = pincell_wrapper
+    self.half_width = pincell_wrapper.half_width
+    self.center = pincell_wrapper.center
 
-  def __init__(self, id_, hex_assembly, surface_points):
-    super().__init__(id_, 'triangular')
-    self.hex_assembly = hex_assembly # Hexagonal assembly that they belong to
-    self.pitch = hex_assembly.pitch
     self.surf_points = surface_points
     self.surfaces = {}
+    self.regions_surfaces = {}
+    self.cylinders = {}
     self.detectors_surfaces = {}
   
   def calculate_surfaces(self, s_id):
     """
-    This methode calculates the surfaces for a node in the triangular mesh,
-    regardless of wether it is a inner triangle, a square subchannel or a
-    corner triangle.
+    
+  
+    
+    Parameters
+    ----------
+    s_id : int
+      Surface identifier from where the numbering for this node will start 
+      counting
+    
+    Returns
+    -------
+    s_id : int
 
-
+  
+    
     """
     
     surfaces = {}
@@ -789,6 +806,7 @@ class CoarseNodeTriangularMesh(CoarseNode):
       p2 = self.surf_points[i+1]
       
       surf = (p1,p2)
+      
       surfaces[s_id+1] = surf
       s_id += 1
 
@@ -801,23 +819,9 @@ class CoarseNodeTriangularMesh(CoarseNode):
     
     self.surfaces = surfaces
 
-    return surfaces, s_id
-
-  def calculate_node_volume(self):
-    import scipy.spatial as ss
-
-    volume = ss.ConvexHull(self.surf_points).volume 
-    return volume
-
-
-class CoarseNodeTriangularMesh_InnerTriangle(
-  CoarseNodeTriangularMesh
-):
+    return s_id
   
-  def __init__(self, id_, hex_assembly, surface_points):
-    self.type_coarse_node = "inner_triangle"
-    super().__init__(id_, hex_assembly, surface_points)
-
+  
   def get_serpent_geometry(self):
     serpent_syntax, regions = self.get_surfaces_serpent_syntax()
     self.regions_surfaces = regions
@@ -843,12 +847,12 @@ class CoarseNodeTriangularMesh_InnerTriangle(
     serpent_syntax += f"cell root_out 0 outside closing_square\n"
     boundary_ids = list(self.surfaces.keys()) 
 
-    pitch_square = self.hex_assembly.pitch_square
-    pitch = self.hex_assembly.pitch
+    
 
-    serpent_syntax += f"plot 3 {int(500*pitch/pitch_square)} 500 "
+    serpent_syntax += f"plot 3 500 500 "
     serpent_syntax += "\n\n% ----- Surface for detectors --------\n"
 
+    hex_wrap_half_width = self.wrapper.half_width
     detectors_surfaces = {
       boundary_ids[0]: {
         "syntax": f"surf {boundary_ids[0]}_det px 0.0\n",
@@ -856,7 +860,7 @@ class CoarseNodeTriangularMesh_InnerTriangle(
         "trans": True
       },
       boundary_ids[1]: {
-        "syntax": f"surf {boundary_ids[1]}_det py {pitch_square}\n",
+        "syntax": f"surf {boundary_ids[1]}_det py {hex_wrap_half_width}\n",
         "j_in_dir": -1,
         "trans": False
       },
@@ -932,11 +936,9 @@ class CoarseNodeTriangularMesh_InnerTriangle(
     serpent_syntax = ""
 
     try:
-      pin_levels = self.hex_assembly.pin.pin_levels
+      pin_levels = self.pin_universe.pin_levels
       
       assert len(pin_levels) > 1
-
-      
 
       pads = {}
       regions = {}
@@ -944,14 +946,12 @@ class CoarseNodeTriangularMesh_InnerTriangle(
       num_surf = 1
 
       fine_mesh_regs_ids = list(self.fine_mesh.regions.keys())
-      print(fine_mesh_regs_ids)
-      # raise SystemExit
+      print(fine_mesh_regs_ids, 'sasasa')
+      
       # surfaces ---------------------------------------
-      # TODO build the three pads for the fuel
-      pitch = self.hex_assembly.pitch
-      pitch_square = self.hex_assembly.pitch_square
-      centers = [(0.0,0.0), (-pitch/2, pitch_square), (pitch/2, pitch_square)]
-      pad_angles = [(240,300), (0,60), (120,180)]
+      
+      centers = [(0.0,0.0)]
+      pad_angles = [(240,300)]
 
       print(pin_levels)
       num_levels = len(pin_levels)
@@ -992,29 +992,27 @@ class CoarseNodeTriangularMesh_InnerTriangle(
         "surf(-)": [
           "closing_square",  "tt", "tr"
         ],
-        "surf(+)": ["last_cyl1", "last_cyl2", "last_cyl3", "tl"]
+        "surf(+)": ["last_cyl1", "tl"]
       }
       
       last_cyl1 = f"surf last_cyl1 cyl 0.0000 0.0000 {prev_radius}\n\n\n"
-      last_cyl2 = f"surf last_cyl2 cyl -{pitch/2} {pitch_square} {prev_radius}\n\n\n"
-      last_cyl3 = f"surf last_cyl3 cyl  {pitch/2} {pitch_square} {prev_radius}\n\n\n"
       tl_surf = f"surf tl px 0.0\n trans s tl 0.0 0.0 0.0 0.0 0.0 -30\n"
       tr_surf = f"surf tr px 0.0\n trans s tr 0.0 0.0 0.0 0.0 0.0 30\n"
-      tt_surf = f"surf tt py {pitch_square}\n"
+      tt_surf = f"surf tt py {self.half_width}\n"
 
 
       serpent_syntax += "\n\n\n"
       for pad_syntax in pads.values():
         serpent_syntax += pad_syntax
 
+      hex_wrap_radius = self.wrapper.radius
       closing_square = f"surf closing_square "
-      closing_square += f"rect -{pitch/2} {pitch/2} 0.0000 {pitch_square}\n\n"
+      closing_square += f"rect -{hex_wrap_radius/2} {hex_wrap_radius/2} "
+      closing_square +=  f"0.0000 {self.half_width}\n\n"
 
 
       serpent_syntax += closing_square
       serpent_syntax += last_cyl1
-      serpent_syntax += last_cyl2
-      serpent_syntax += last_cyl3
       serpent_syntax += tl_surf
       serpent_syntax += tr_surf
       serpent_syntax += tt_surf
@@ -1154,6 +1152,540 @@ class CoarseNodeTriangularMesh_InnerTriangle(
         det_syntax += f"dfl {s_flag} 0 \n"
         det_relation["surface_to_region"][s_id][r_id] = det_name
       for s_id_p in self.detectors_surfaces.keys():
+        if s_id_p == s_id: continue
+        # Detector surface to surface ---------------------
+        jout_sidp = self.detectors_surfaces[s_id_p]["j_in_dir"] * -1
+        det_name = f"surface_{s_id}_to_surface{s_id_p}"
+        det_syntax += f"det {det_name} de {ene} "
+        det_syntax += f"ds {s_id_p}_det {jout_sidp} "
+        det_syntax += f"dfl {s_flag} 2  dfl {s_flag} 0 \n"
+        det_relation["surface_to_surface"][s_id][s_id_p] = det_name
+
+    # print(det_syntax)
+    return det_syntax, det_relation
+
+
+
+class CoarseNodeTriangularMesh(CoarseNode):
+
+  def __init__(self, id_, hex_assembly, surface_points):
+    super().__init__(id_, 'triangular')
+    self.hex_assembly = hex_assembly # Hexagonal assembly that they belong to
+    self.surf_points = surface_points
+    self.surfaces = {}
+    self.detectors_surfaces = {}
+    self.node_volume = None
+  
+  def calculate_surfaces(self, s_id):
+    """
+    This methode calculates the surfaces for a node in the triangular mesh,
+    regardless of wether it is a inner triangle, a square subchannel or a
+    corner triangle.
+
+
+    """
+    
+    surfaces = {}
+
+    num_p = len(self.surf_points)
+    for i in range(num_p-1):
+      p1 = self.surf_points[i]
+      p2 = self.surf_points[i+1]
+      
+      surf = (p1,p2)
+      surfaces[s_id+1] = surf
+      s_id += 1
+
+    
+    last_point = self.surf_points[-1]
+    first_point = self.surf_points[0]
+    last_surf = (last_point, first_point)
+    surfaces[s_id + 1] = last_surf
+    s_id += 1
+    
+    self.surfaces = surfaces
+
+    return surfaces, s_id
+
+  def calculate_node_volume(self):
+    import scipy.spatial as ss
+    
+
+    volume = ss.ConvexHull(self.surf_points).volume 
+    self.node_volume = volume
+    return volume
+
+
+class CoarseNodeTriangularMesh_InnerTriangle(
+  CoarseNodeTriangularMesh
+):
+  
+  def __init__(
+    self, id_, hex_assembly, surface_points, no_void, node_pin_levels, 
+    type_triangle, center
+  ):
+    self.type_coarse_node = "inner_triangle"
+    self.no_void = no_void
+    self.node_pin_levels = node_pin_levels
+    self.type_triangle = type_triangle
+    self.center = center
+    self.regions_points_relation = {}
+    self.pins_in_node = []
+    # print(node_pin_levels)
+    super().__init__(id_, hex_assembly, surface_points)
+
+  def get_serpent_geometry(self):
+    serpent_syntax, regions = self.get_surfaces_serpent_syntax()
+    self.regions_surfaces = regions
+
+    # cells ---------------------------------------
+    for r_id, reg_info in regions.items():
+      # print(r_id, reg_info)
+      serpent_syntax += f"cell {r_id} pin_fuel{self.id} {reg_info['material']} "
+      
+      for sss in reg_info['surf(-)']:
+        serpent_syntax += f"-{sss} "
+      for sss in reg_info['surf(+)']:
+        serpent_syntax += f"{sss} "
+      serpent_syntax += "\n"
+    
+    if self.no_void:
+      pass
+    else:
+      serpent_syntax += f"cell void1 pin_fuel{self.id} void tr"
+      serpent_syntax += f" -closing_square\n"
+      serpent_syntax += f"cell void2 pin_fuel{self.id} void -tl"
+      serpent_syntax += f" -closing_square\n"
+
+
+    serpent_syntax += f"cell root_in 0 fill pin_fuel{self.id} "
+    serpent_syntax += f"-closing_square\n"
+
+    serpent_syntax += f"cell root_out 0 outside closing_square\n"
+    boundary_ids = list(self.surfaces.keys()) 
+
+    pitch_square = self.hex_assembly.pitch_square
+    pitch = self.hex_assembly.pitch
+
+    serpent_syntax += f"plot 3 {int(500*pitch/pitch_square)} 500 "
+    serpent_syntax += "\n\n% ----- Surface for detectors --------\n"
+
+    detectors_surfaces = {
+      boundary_ids[0]: {
+        "syntax": f"surf {boundary_ids[0]}_det px 0.0\n",
+        "j_in_dir": 1,
+        "trans": True
+      },
+      boundary_ids[1]: {
+        "syntax": f"surf {boundary_ids[1]}_det py {pitch_square}\n",
+        "j_in_dir": -1,
+        "trans": False
+      },
+      boundary_ids[2]: {
+        "syntax": f"surf {boundary_ids[2]}_det px 0.0\n",
+        "j_in_dir": -1,
+        "trans": True
+      },
+    }
+    b0 = boundary_ids[0]
+    detectors_surfaces[b0]['syntax'] += f'trans s {b0}_det 0.0 0.0 0.0 0 0 -30\n'
+    b2 = boundary_ids[2]
+    detectors_surfaces[b2]['syntax'] += f'trans s {b2}_det 0.0 0.0 0.0 0 0 30\n'
+
+
+    for surf_serpent in detectors_surfaces.values():
+      serpent_syntax += surf_serpent["syntax"]
+
+    self.detectors_surfaces = detectors_surfaces
+
+    return serpent_syntax, detectors_surfaces
+    
+  def get_gcu_geometry(self, ene):
+    
+    serpent_syntax, regions = self.get_surfaces_serpent_syntax()
+    
+    # cells ---------------------------------------
+    xs_gcu = {}
+    u4gcu = []
+    gcu_id = 1
+   
+
+    for r_id, reg_info in regions.items():
+      serpent_syntax += f"cell {r_id+1000}  u4gcu{gcu_id} "
+      serpent_syntax += f"{reg_info['material']} "
+      for sss in reg_info['surf(-)']:
+        serpent_syntax += f"-{sss} "
+      for sss in reg_info['surf(+)']:
+        serpent_syntax += f"{sss} "
+      serpent_syntax += "\n"
+      
+      serpent_syntax += f"cell {r_id+2000} pin_fuel{self.id} "
+      serpent_syntax += f"fill u4gcu{gcu_id} "
+      for sss in reg_info['surf(-)']:
+        serpent_syntax += f"-{sss} "
+      for sss in reg_info['surf(+)']:
+        serpent_syntax += f"{sss} "
+      serpent_syntax += "\n"
+      
+      u4gcu.append(f"u4gcu{gcu_id}")
+      xs_gcu[r_id] = f"u4gcu{gcu_id}"
+      gcu_id += 1
+
+    if self.no_void:
+      pass
+    else:
+      serpent_syntax += f"cell void1 pin_fuel{self.id} void tr"
+      serpent_syntax += f" -closing_square\n"
+      serpent_syntax += f"cell void2 pin_fuel{self.id} void -tl"
+      serpent_syntax += f" -closing_square\n"
+
+    serpent_syntax += f"cell root_in 0 fill pin_fuel{self.id} "
+    serpent_syntax += f"-closing_square\n"
+
+    serpent_syntax += f"cell root_out 0 outside closing_square\n\n"
+    
+    
+    serpent_syntax += f"set gcu "
+    for gcu in u4gcu:
+      serpent_syntax += f"{gcu} "
+    serpent_syntax += f"\n\nplot 3 500 500\nset nfg {ene}\n\n"
+    
+    return serpent_syntax, xs_gcu
+    
+  def get_surfaces_serpent_syntax(self):
+    serpent_syntax = ""
+
+    pads = {}
+    regions = {}
+    
+    num_surf = 1
+
+    fine_mesh_regs_ids = list(self.fine_mesh.regions.keys())
+    # print(fine_mesh_regs_ids)
+    # raise SystemExit
+    # surfaces ---------------------------------------
+    
+    pitch = self.hex_assembly.pitch
+    pitch_square = self.hex_assembly.pitch_square
+    centers = [(0.0,0.0), (-pitch/2, pitch_square), (pitch/2, pitch_square)]
+    pad_angles = [(240,300), (0,60), (120,180)]
+
+
+    # creating regions -------------------------------
+    # print(pin_levels)
+
+    pin_levels = self.node_pin_levels[0] # Assuming that all the pins are the same
+    
+    num_reg_idx = 0
+    num_levels = len(pin_levels)
+    prev_radius = 0.0
+    for l in range(num_levels-1):
+      level = pin_levels[l]
+      # print(level)
+      for pin in range(3):      
+
+        num_cell = fine_mesh_regs_ids[num_reg_idx]
+        cx, cy = centers[pin]
+        th1, th2 = pad_angles[pin]
+        r1 = prev_radius
+        r2 = level.radius
+
+        pads[f"{num_surf}_geom"] = f"surf {num_surf}_geom pad {cx} {cy} "
+        pads[f"{num_surf}_geom"] += f"{r1} {r2} {th1} {th2}\n"
+        regions[num_cell] = {
+          "material": level.material.name,
+          "surf(-)": [f"{num_surf}_geom"],
+          "surf(+)": [],
+          "r1": r1,
+          "r2": r2,
+          "th1": th1,
+          "th2": th2,
+          "cx": cx,
+          "cy": cy
+        }
+        num_reg_idx += 1
+        if l >= 1:
+          regions[num_cell]["surf(+)"] = [f"{num_surf-1}_geom"]
+        
+        
+        num_surf += 1
+      prev_radius = level.radius
+    
+    # -----------------------------------------------------------
+
+    # is surroundings of pin
+    surroundings_pin_id = fine_mesh_regs_ids[-1]
+    regions[surroundings_pin_id] = {
+      "material": pin_levels[-1].material.name,
+      "surf(-)": [
+        "closing_square",  "tt", "tr"
+      ],
+    }
+    if len(pin_levels) > 1:
+      regions[surroundings_pin_id]["surf(+)"] = [
+        "last_cyl1", "last_cyl2", "last_cyl3", "tl"
+      ]
+    else:
+      regions[surroundings_pin_id]["surf(+)"] = ["tl"]
+
+    if self.no_void:
+      # create regions to fill void
+      prev_radius = 0.0
+      centers = [        
+        (0.0,0.0), 
+        (-pitch/2, pitch_square), 
+        (pitch/2, pitch_square),
+        (0.0,0.0),
+      ]
+      pad_angles = [
+        
+        (180,240),
+        (60,90), 
+        (90,120),
+        (300,360)
+      ]
+      num_levels = len(pin_levels)
+      num_cell_fill_void = 10000
+      for l in range(num_levels-1):
+        level = pin_levels[l]
+        
+        for center, angles in zip(centers, pad_angles):
+          # loop for the three corners of the pin
+          
+          cx, cy = center
+          th1, th2 = angles
+          r1 = prev_radius
+          r2 = level.radius
+
+          pads[f"{num_surf}_geom"] = f"surf {num_surf}_geom pad {cx} {cy} "
+          pads[f"{num_surf}_geom"] += f"{r1} {r2} {th1} {th2}\n"
+          regions[num_cell_fill_void] = {
+            "material": level.material.name,
+            "surf(-)": [f"{num_surf}_geom"],
+            "surf(+)": [],
+            "r1": r1,
+            "r2": r2,
+            "th1": th1,
+            "th2": th2,
+            "cx": cx,
+            "cy": cy
+          }
+          if l >= 1:
+            regions[num_cell_fill_void]["surf(+)"] = [f"{num_surf-1}_geom"]
+          num_cell_fill_void += 1
+          num_surf += 1
+        prev_radius = level.radius
+        
+      # is surroundings of pin (coolant to the right)
+      surroundings_pin_id = fine_mesh_regs_ids[-1]
+
+      regions[num_cell_fill_void] = {
+        "material": pin_levels[-1].material.name,
+        "surf(-)": [
+          "closing_square", "tl"
+        ],
+      }
+      # is surroundings of pin (coolant to the left)
+      regions[num_cell_fill_void+1] = {
+        "material": pin_levels[-1].material.name,
+        "surf(-)": [
+          "closing_square",
+        ],
+      }
+      if len(pin_levels) > 1:
+        regions[num_cell_fill_void]['surf(+)'] = ["last_cyl1", "last_cyl2"]
+        regions[num_cell_fill_void+1]['surf(+)'] = ["last_cyl1", "last_cyl3", 'tr']
+      else:
+        regions[num_cell_fill_void]['surf(+)'] = []
+        regions[num_cell_fill_void+1]['surf(+)'] = ['tr']
+
+    # -----------------------------------------------------------------------
+    last_cyl1 = f"surf last_cyl1 cyl 0.0000 0.0000 {prev_radius}\n\n\n"
+    last_cyl2 = f"surf last_cyl2 cyl -{pitch/2} {pitch_square} {prev_radius}\n\n\n"
+    last_cyl3 = f"surf last_cyl3 cyl  {pitch/2} {pitch_square} {prev_radius}\n\n\n"
+    tl_surf = f"surf tl px 0.0\n trans s tl 0.0 0.0 0.0 0.0 0.0 -30\n"
+    tr_surf = f"surf tr px 0.0\n trans s tr 0.0 0.0 0.0 0.0 0.0 30\n"
+    tt_surf = f"surf tt py {pitch_square}\n"
+
+
+    serpent_syntax += "\n\n\n"
+    for pad_syntax in pads.values():
+      serpent_syntax += pad_syntax
+
+    closing_square = f"surf closing_square "
+    closing_square += f"rect -{pitch/2} {pitch/2} 0.0000 {pitch_square}\n\n"
+
+
+    serpent_syntax += closing_square
+    serpent_syntax += tl_surf
+    serpent_syntax += tr_surf
+    serpent_syntax += tt_surf
+    if len(pin_levels) > 1:
+      serpent_syntax += last_cyl1
+      serpent_syntax += last_cyl2
+      serpent_syntax += last_cyl3
+    
+
+    return serpent_syntax, regions
+    
+  def get_serpent_detectors_fuel_region(self, c_id, ene):
+    det_syntax = ""
+    det_relation = { 
+      "total_rate": "",
+      "j_in_fuel": "",
+      "j_out_fuel": "",
+      "all_to_fuel": "",
+      "region_to_region": {},
+      "region_to_surface": {}
+    }
+
+    # Additional surface for the fuel 
+    cell = self.fine_mesh.regions[c_id]
+    if len(self.fine_mesh.regions) > 1:
+
+      # print(f'cell {cell.id} {c_id} {cell} ')
+      # print(f'{self.regions_surfaces[c_id]}')
+
+      r1 = self.regions_surfaces[c_id]["r1"]
+      r2 = self.regions_surfaces[c_id]["r2"]
+
+      th1 = self.regions_surfaces[c_id]["th1"]
+      th2 = self.regions_surfaces[c_id]["th2"]
+      cx = self.regions_surfaces[c_id]["cx"]
+      cy = self.regions_surfaces[c_id]["cy"]
+
+      det_syntax += f"surf fuel_surf pad {cx} {cy} {r1} {r2} {th1} {th2}\n\n\n"
+    
+    else:
+      pitch_square = self.hex_assembly.pitch_square
+      f1 = f"surf fuel_surf1 px 0.0\n trans s fuel_surf1 0.0 0.0 0.0 0.0 0.0 -30\n"
+      f2 = f"surf fuel_surf2 px 0.0\n trans s fuel_surf2 0.0 0.0 0.0 0.0 0.0 30\n"
+      f3 = f"surf fuel_surf3 py {pitch_square}\n"
+      det_syntax += f1
+      det_syntax += f2
+      det_syntax += f3
+      
+    regions = self.fine_mesh.regions
+    main_cell = regions[c_id]
+
+    det_syntax += "% Detectors ------------------------------------\n"
+    # Detector total_rate ------------
+    det_syntax += f"det total_rate_reg{c_id} de {ene} dr -1 "
+    det_syntax += f"{main_cell.content.name} dc {c_id} \n"
+    det_relation["total_rate"] = f"total_rate_reg{c_id}"
+    if len(self.fine_mesh.regions) > 1:
+      # Detector  Jin fuel ------------
+      det_syntax += f"det j_in_reg{c_id}  ds {'fuel_surf'} -1 "
+      det_syntax += f"de {ene} dfl 1 1\n"
+      det_relation["j_in_fuel"] = f"j_in_reg{c_id}"
+      # Detector  Jout fuel ------------
+      det_syntax += f"det j_out_reg{c_id} ds {'fuel_surf'}  1 "
+      det_syntax += f"de {ene} dfl 1 3  dfl 2 1\n"
+      det_relation["j_out_fuel"] = f"j_out_reg{c_id}"
+    else:
+      # Detector  Jin fuel ------------
+      det_syntax += f"det j_in1_reg{c_id} ds fuel_surf1  1 de {ene} dfl 1 1\n"
+      det_syntax += f"det j_in2_reg{c_id} ds fuel_surf2 -1 de {ene} dfl 1 1\n"
+      det_syntax += f"det j_in3_reg{c_id} ds fuel_surf3 -1 de {ene} dfl 1 1\n"
+      det_relation["j_in_fuel"] = f"j_in_reg{c_id}"
+
+      # Detector  Jout fuel ------------
+      det_syntax += f"det j_out1_reg{c_id} ds fuel_surf1 -1 de {ene} dfl 1 3  dfl 2 1\n"
+      det_syntax += f"det j_out2_reg{c_id} ds fuel_surf2  1 de {ene} dfl 1 3  dfl 2 1\n"
+      det_syntax += f"det j_out3_reg{c_id} ds fuel_surf3  1 de {ene} dfl 1 3  dfl 2 1\n"
+
+    # Detector All to fuel ------------
+    det_syntax += f"det all_to_reg_{c_id} dr -1 {main_cell.content.name} "
+    det_syntax += f"dc {c_id} de {ene}  dfl 1 2  dfl 1 0\n"
+    det_relation["all_to_fuel"] = f"all_to_reg_{c_id}"
+    for r_id, cell in regions.items():
+      if r_id == c_id: continue
+      # Detector  fuel region to other region (r_id)------------
+      det_syntax += f"det reg{c_id}_to_reg{r_id} de {ene} dr -1 "
+      det_syntax += f"{cell.content.name} dc {r_id}    dfl 2 2  dfl 2 0\n"
+      det_relation["region_to_region"][r_id] = f"reg{c_id}_to_reg{r_id}"
+    for s_id in self.detectors_surfaces.keys():
+      j_out_dir = self.detectors_surfaces[s_id]["j_in_dir"] * -1
+      det_syntax += f"det reg{c_id}_to_surface{s_id} de {ene} ds {s_id}_det "
+      det_syntax += f"{j_out_dir}  dfl 2 2  dfl 2 0\n"
+      det_relation["region_to_surface"][s_id] = f"reg{c_id}_to_surface{s_id}"
+
+    return det_syntax, det_relation
+
+  def get_serpent_detectors_nonFuel_region(self, c_id, ene):
+    det_syntax = "\n\n\n"
+    det_relation = { 
+      "total_rate": "",
+      "same_region": "",
+      "region_to_region": {},
+      "region_to_surface": {}
+    }
+
+    det_syntax += "% Detectors ------------------------------------\n"
+    regions = self.fine_mesh.regions
+    main_cell = regions[c_id]
+    # Detector region to same region ------------
+    det_syntax += f"det reg{c_id}_to_reg{c_id} de {ene} dr -1 "
+    det_syntax += f"{main_cell.content.name} dc {c_id}   "
+    det_syntax += "dfl 1 2  dfl 1 0  dfl 1 1\n"
+    det_relation["same_region"] = f"reg{c_id}_to_reg{c_id}"
+    # Detector total_rate ------------
+    det_syntax += f"det total_rate_reg{c_id} de {ene} dr -1 "
+    det_syntax += f"{main_cell.content.name} dc {c_id}    dfl 1 1\n"
+    det_relation["total_rate"] = f"total_rate_reg{c_id}"
+
+    for r_id, cell in regions.items():
+      if r_id == c_id: continue
+      det_syntax += f"det reg{c_id}_to_reg{r_id} de {ene} dr -1 "
+      det_syntax += f"{cell.content.name} dc {r_id}    dfl 1 2  dfl 1 0\n"
+      det_relation["region_to_region"][r_id] = f"reg{c_id}_to_reg{r_id}"
+
+    for s_id in self.detectors_surfaces.keys():
+      j_out_dir = self.detectors_surfaces[s_id]["j_in_dir"] * -1
+      det_syntax += f"det reg{c_id}_to_surface{s_id} de {ene} ds {s_id}_det "
+      det_syntax += f"{j_out_dir}  dfl 1 2  dfl 1 0\n"
+      det_relation["region_to_surface"][s_id] = f"reg{c_id}_to_surface{s_id}"
+
+    return det_syntax, det_relation
+
+  def get_serpent_detectors_surfaces(self, ene):
+    det_syntax = "\n\n\n"
+    det_syntax += "% Detectors ------------------------------------\n"
+    det_relation = { 
+      "surface_to_region": {},
+      "surface_to_surface": {}
+    }
+
+    surface_flags = {}
+    flag = 1
+    for s_id in self.detectors_surfaces.keys():
+      surface_flags[s_id] = flag
+      flag += 1
+    
+    boundary_ids = list(self.detectors_surfaces.keys()) 
+
+    
+    # J_in detectors through the surfaces just to flag the neutrons ----------
+    for s_id in self.detectors_surfaces.keys():
+      j_in_dir = self.detectors_surfaces[s_id]["j_in_dir"]
+      det_syntax += f"det surface_{s_id}_jin ds {s_id}_det {j_in_dir} de {ene} "
+      det_syntax += f"dfl {surface_flags[s_id]} {1}\n"
+      
+    
+    regions = self.fine_mesh.regions
+    for s_id in self.detectors_surfaces.keys():
+      det_relation["surface_to_region"][s_id] = {}
+      det_relation["surface_to_surface"][s_id] = {}
+
+      s_flag = surface_flags[s_id]
+      for r_id, cell in regions.items():
+        # Detector surface to region ---------------------
+        det_name = f"surface_{s_id}_to_reg{r_id}"
+        det_syntax += f"det {det_name} de {ene} dr -1"
+        det_syntax += f" {cell.content.name} dc {r_id} dfl {s_flag} 2 "
+        det_syntax += f"dfl {s_flag} 0 \n"
+        det_relation["surface_to_region"][s_id][r_id] = det_name
+      for s_id_p in self.detectors_surfaces.keys():
         # Detector surface to surface ---------------------
         jout_sidp = self.detectors_surfaces[s_id_p]["j_in_dir"] * -1
         det_name = f"surface_{s_id}_to_surface{s_id_p}"
@@ -1176,6 +1708,8 @@ class CoarseNodeTriangularMesh_SquareSubChanell(
     self.height_rectangle = calculate_euclidean_distance(
       self.surf_points[0], self.surf_points[1]
     )
+    self.regions_points_relation = {}
+    self.pins_in_node = []
 
   def get_serpent_geometry(self):
     serpent_syntax, regions = self.get_surfaces_serpent_syntax()
@@ -1287,91 +1821,89 @@ class CoarseNodeTriangularMesh_SquareSubChanell(
   def get_surfaces_serpent_syntax(self):
     serpent_syntax = ""
 
-    try:
-      pin_levels = self.hex_assembly.pin.pin_levels
-      
-      assert len(pin_levels) > 1
+    
+    # Next line is assuming there is only a type of pin in the assembly
+    pin_levels = self.hex_assembly.rings[0][0].pin_levels
+  
+    pads = {}
+    regions = {}
+    prev_radius = 0.0
+    num_surf = 1
 
-      
+    fine_mesh_regs_ids = list(self.fine_mesh.regions.keys())
+    # print(fine_mesh_regs_ids)
+    
+    
+    pitch = self.hex_assembly.pitch
+    pitch_square = self.hex_assembly.pitch_square
+    centers = [(0.0,0.0), (pitch, 0.0)]
+    pad_angles = [(270,360), (180,270)]
 
-      pads = {}
-      regions = {}
-      prev_radius = 0.0
-      num_surf = 1
+    # print(pin_levels)
+    num_levels = len(pin_levels)
+    num_reg_idx = 0
+    for l in range(num_levels-1):
+      level = pin_levels[l]
+      for center, angles in zip(centers, pad_angles):
+        # loop for the two corners of the square with fuel
+        num_cell = fine_mesh_regs_ids[num_reg_idx]
+        cx, cy = center
+        th1, th2 = angles
+        r1 = prev_radius
+        r2 = level.radius
 
-      fine_mesh_regs_ids = list(self.fine_mesh.regions.keys())
-      print(fine_mesh_regs_ids)
-      # raise SystemExit
-      # surfaces ---------------------------------------
-      # TODO build the three pads for the fuel
-      pitch = self.hex_assembly.pitch
-      pitch_square = self.hex_assembly.pitch_square
-      centers = [(0.0,0.0), (pitch, 0.0)]
-      pad_angles = [(270,360), (180,270)]
+        pads[f"{num_surf}_geom"] = f"surf {num_surf}_geom pad {cx} {cy} "
+        pads[f"{num_surf}_geom"] += f"{r1} {r2} {th1} {th2}\n"
+        regions[num_cell] = {
+          "material": level.material.name,
+          "surf(-)": [f"{num_surf}_geom"],
+          "surf(+)": [],
+          "r1": r1,
+          "r2": r2,
+          "th1": th1,
+          "th2": th2,
+          "cx": cx,
+          "cy": cy
+        }
+        if l >= 1:
+          regions[num_cell]["surf(+)"] = [f"{num_surf-1}_geom"]
+        num_reg_idx += 1
+        num_surf += 1
+      prev_radius = level.radius
 
-      print(pin_levels)
-      num_levels = len(pin_levels)
-      num_reg_idx = 0
-      for l in range(num_levels-1):
-        level = pin_levels[l]
-        for center, angles in zip(centers, pad_angles):
-          # loop for the two corners of the square with fuel
-          num_cell = fine_mesh_regs_ids[num_reg_idx]
-          cx, cy = center
-          th1, th2 = angles
-          r1 = prev_radius
-          r2 = level.radius
+    # is surroundings of pin
+    surroundings_pin_id = fine_mesh_regs_ids[-1]
+    regions[surroundings_pin_id] = {
+      "material": pin_levels[-1].material.name,
+      "surf(-)": [
+        "closing_square"
+      ],
+      "surf(+)": []
+    }
+    if len(pin_levels) > 1:
+      regions[surroundings_pin_id]["surf(+)"] = ["last_cyl1", "last_cyl2"]
 
-          pads[f"{num_surf}_geom"] = f"surf {num_surf}_geom pad {cx} {cy} "
-          pads[f"{num_surf}_geom"] += f"{r1} {r2} {th1} {th2}\n"
-          regions[num_cell] = {
-            "material": level.material.name,
-            "surf(-)": [f"{num_surf}_geom"],
-            "surf(+)": [],
-            "r1": r1,
-            "r2": r2,
-            "th1": th1,
-            "th2": th2,
-            "cx": cx,
-            "cy": cy
-          }
-          if l >= 1:
-            regions[num_cell]["surf(+)"] = [f"{num_surf-1}_geom"]
-          num_reg_idx += 1
-          num_surf += 1
-        prev_radius = level.radius
-
-      # is surroundings of pin
-      surroundings_pin_id = fine_mesh_regs_ids[-1]
-      regions[surroundings_pin_id] = {
-        "material": pin_levels[-1].material.name,
-        "surf(-)": [
-          "closing_square"
-        ],
-        "surf(+)": ["last_cyl1", "last_cyl2"]
-      }
-      
-      last_cyl1 = f"surf last_cyl1 cyl 0.0000 0.0000 {prev_radius}\n"
-      last_cyl2 = f"surf last_cyl2 cyl {pitch} 0.0000 {prev_radius}\n"
-
-
-      serpent_syntax += "\n\n\n"
-      for pad_syntax in pads.values():
-        serpent_syntax += pad_syntax
-
-      
-      closing_square = f"surf closing_square "
-      closing_square += f"rect 0.0 {pitch} 0.0000 {self.height_rectangle}\n\n"
+    
+    last_cyl1 = f"surf last_cyl1 cyl 0.0000 0.0000 {prev_radius}\n"
+    last_cyl2 = f"surf last_cyl2 cyl {pitch} 0.0000 {prev_radius}\n"
 
 
-      serpent_syntax += closing_square
+    serpent_syntax += "\n\n\n"
+    for pad_syntax in pads.values():
+      serpent_syntax += pad_syntax
+
+    
+    closing_square = f"surf closing_square "
+    closing_square += f"rect 0.0 {pitch} 0.0000 {self.height_rectangle}\n\n"
+
+
+    serpent_syntax += closing_square
+
+    if len(pin_levels) > 1:
       serpent_syntax += last_cyl1
       serpent_syntax += last_cyl2
-      
-
-      return serpent_syntax, regions
-    except AssertionError:
-      raise NotImplementedError
+  
+    return serpent_syntax, regions
        
   def get_serpent_detectors_fuel_region(self, c_id, ene):
     det_syntax = ""
@@ -1386,15 +1918,22 @@ class CoarseNodeTriangularMesh_SquareSubChanell(
 
     # Additional surface for the fuel 
     cell = self.fine_mesh.regions[c_id]
-    r1 = self.regions_surfaces[c_id]["r1"]
-    r2 = self.regions_surfaces[c_id]["r2"]
+    if len(self.fine_mesh.regions) > 1:
 
-    th1 = self.regions_surfaces[c_id]["th1"]
-    th2 = self.regions_surfaces[c_id]["th2"]
-    cx = self.regions_surfaces[c_id]["cx"]
-    cy = self.regions_surfaces[c_id]["cy"]
+      r1 = self.regions_surfaces[c_id]["r1"]
+      r2 = self.regions_surfaces[c_id]["r2"]
 
-    det_syntax += f"surf fuel_surf pad {cx} {cy} {r1} {r2} {th1} {th2}\n\n\n"
+      th1 = self.regions_surfaces[c_id]["th1"]
+      th2 = self.regions_surfaces[c_id]["th2"]
+      cx = self.regions_surfaces[c_id]["cx"]
+      cy = self.regions_surfaces[c_id]["cy"]
+
+      det_syntax += f"surf fuel_surf pad {cx} {cy} {r1} {r2} {th1} {th2}\n\n\n"
+    else:
+      pitch = self.hex_assembly.pitch
+      closing_square = f"surf fuel_surf1 "
+      closing_square += f"rect 0.0 {pitch} 0.0000 {self.height_rectangle}\n\n"
+      det_syntax += closing_square
     
     regions = self.fine_mesh.regions
     main_cell = regions[c_id]
@@ -1519,9 +2058,14 @@ class CoarseNodeTriangularMesh_SquareSubChanell(
 class CoarseNodeTriangularMesh_TriangleCorner(
   CoarseNodeTriangularMesh
 ):
-  def __init__(self, id_, hex_assembly, surface_points):
-    self.type_coarse_node = "corner_triangle"
+  def __init__(self, id_, hex_assembly, surface_points, no_void, node_pin_levels):
     super().__init__(id_, hex_assembly, surface_points)
+    self.type_coarse_node = "corner_triangle"
+    self.no_void = no_void
+    self.node_pin_levels = node_pin_levels
+    self.regions_points_relation = {}
+    self.pins_in_node = []
+    
 
     self.height_triangle = calculate_euclidean_distance(
       surface_points[1], surface_points[2]
@@ -1544,9 +2088,12 @@ class CoarseNodeTriangularMesh_TriangleCorner(
       for sss in reg_info['surf(+)']:
         serpent_syntax += f"{sss} "
       serpent_syntax += "\n"
-    serpent_syntax += f"cell void1 pin_fuel{self.id} void "
-    serpent_syntax += f"closing_diagonal -closing_square\n"
-
+    
+    if self.no_void:
+      pass
+    else:
+      serpent_syntax += f"cell void1 pin_fuel{self.id} void "
+      serpent_syntax += f"closing_diagonal -closing_square\n"
 
     serpent_syntax += f"cell root_in 0 fill pin_fuel{self.id} "
     serpent_syntax += f"-closing_square\n"
@@ -1618,8 +2165,11 @@ class CoarseNodeTriangularMesh_TriangleCorner(
       xs_gcu[r_id] = f"u4gcu{gcu_id}"
       gcu_id += 1
 
-    serpent_syntax += f"cell void1 pin_fuel{self.id} void "
-    serpent_syntax += f"closing_diagonal -closing_square\n"
+    if self.no_void:
+      pass
+    else:
+      serpent_syntax += f"cell void1 pin_fuel{self.id} void "
+      serpent_syntax += f"closing_diagonal -closing_square\n"
 
     serpent_syntax += f"cell root_in 0 fill pin_fuel{self.id} "
     serpent_syntax += f"-closing_square\n"
@@ -1637,35 +2187,84 @@ class CoarseNodeTriangularMesh_TriangleCorner(
   def get_surfaces_serpent_syntax(self):
     serpent_syntax = ""
 
-    try:
-      pin_levels = self.hex_assembly.pin.pin_levels
-      
-      assert len(pin_levels) > 1
+    pin_levels = self.node_pin_levels[0]
 
-      
+    pads = {}
+    regions = {}
+    prev_radius = 0.0
+    num_surf = 1
 
-      pads = {}
-      regions = {}
+    fine_mesh_regs_ids = list(self.fine_mesh.regions.keys())
+    
+    # surfaces ---------------------------------------
+    
+    centers = [(0.0, 0.0)]
+    pad_angles = [(180,210)]
+    # print(pin_levels)
+    num_levels = len(pin_levels)
+    num_reg_idx = 0
+    for l in range(num_levels-1):
+      level = pin_levels[l]
+      for center, angles in zip(centers, pad_angles):
+        # loop for the three corners of the pin
+        num_cell = fine_mesh_regs_ids[num_reg_idx]
+        cx, cy = center
+        th1, th2 = angles
+        r1 = prev_radius
+        r2 = level.radius
+
+        pads[f"{num_surf}_geom"] = f"surf {num_surf}_geom pad {cx} {cy} "
+        pads[f"{num_surf}_geom"] += f"{r1} {r2} {th1} {th2}\n"
+        regions[num_cell] = {
+          "material": level.material.name,
+          "surf(-)": [f"{num_surf}_geom"],
+          "surf(+)": [],
+          "r1": r1,
+          "r2": r2,
+          "th1": th1,
+          "th2": th2,
+          "cx": cx,
+          "cy": cy
+        }
+        if l >= 1:
+          regions[num_cell]["surf(+)"] = [f"{num_surf-1}_geom"]
+        num_reg_idx += 1
+        num_surf += 1
+      prev_radius = level.radius
+
+    # is surroundings of pin
+    surroundings_pin_id = fine_mesh_regs_ids[-1]
+    regions[surroundings_pin_id] = {
+      "material": pin_levels[-1].material.name,
+      "surf(-)": [
+        "closing_square",  "closing_diagonal"
+      ],
+      "surf(+)": []
+    }
+    
+    if len(pin_levels) > 1:
+      regions[surroundings_pin_id]["surf(+)"] = ["last_cyl1"]
+
+
+
+
+    if self.no_void:
+      # create regions to fill void
       prev_radius = 0.0
-      num_surf = 1
-
-      fine_mesh_regs_ids = list(self.fine_mesh.regions.keys())
-      
-      
-      # surfaces ---------------------------------------
-      # TODO build the three pads for the fuel
-      
-      
-      centers = [(0.0, 0.0)]
-      pad_angles = [(180,210)]
-      print(pin_levels)
+      centers = [
+        (0.0,0.0)
+      ]
+      pad_angles = [
+        (210,270)
+      ]
       num_levels = len(pin_levels)
-      num_reg_idx = 0
+      num_cell_fill_void = 10000
       for l in range(num_levels-1):
         level = pin_levels[l]
+        
         for center, angles in zip(centers, pad_angles):
           # loop for the three corners of the pin
-          num_cell = fine_mesh_regs_ids[num_reg_idx]
+          
           cx, cy = center
           th1, th2 = angles
           r1 = prev_radius
@@ -1673,7 +2272,7 @@ class CoarseNodeTriangularMesh_TriangleCorner(
 
           pads[f"{num_surf}_geom"] = f"surf {num_surf}_geom pad {cx} {cy} "
           pads[f"{num_surf}_geom"] += f"{r1} {r2} {th1} {th2}\n"
-          regions[num_cell] = {
+          regions[num_cell_fill_void] = {
             "material": level.material.name,
             "surf(-)": [f"{num_surf}_geom"],
             "surf(+)": [],
@@ -1685,43 +2284,48 @@ class CoarseNodeTriangularMesh_TriangleCorner(
             "cy": cy
           }
           if l >= 1:
-            regions[num_cell]["surf(+)"] = [f"{num_surf-1}_geom"]
-          num_reg_idx += 1
+            regions[num_cell_fill_void]["surf(+)"] = [f"{num_surf-1}_geom"]
+          num_cell_fill_void += 1
           num_surf += 1
         prev_radius = level.radius
-
-      # is surroundings of pin
+        
+      # is surroundings of pin (coolant to the right)
       surroundings_pin_id = fine_mesh_regs_ids[-1]
-      regions[surroundings_pin_id] = {
+      regions[num_cell_fill_void] = {
         "material": pin_levels[-1].material.name,
         "surf(-)": [
-          "closing_square",  "closing_diagonal"
+          "closing_square"
         ],
-        "surf(+)": ["last_cyl1"]
+        "surf(+)": []
       }
-      
-      last_cyl1 = f"surf last_cyl1 cyl 0.0 0.0 {prev_radius}\n"
-      diag_surf = f"surf closing_diagonal px 0.0\n"
-      diag_surf += f" trans s closing_diagonal 0.0 0.0 0.0 0.0 0.0 -60\n"
-      
+      if len(pin_levels) > 1:
+        regions[num_cell_fill_void]["surf(+)"] = [
+          "closing_diagonal", "last_cyl1"
+        ]
+      else:
+        regions[num_cell_fill_void]["surf(+)"] = ["closing_diagonal"]
+
+    last_cyl1 = f"surf last_cyl1 cyl 0.0 0.0 {prev_radius}\n"
+    diag_surf = f"surf closing_diagonal px 0.0\n"
+    diag_surf += f" trans s closing_diagonal 0.0 0.0 0.0 0.0 0.0 -60\n"
+    
 
 
-      serpent_syntax += "\n\n"
-      for pad_syntax in pads.values():
-        serpent_syntax += pad_syntax
+    serpent_syntax += "\n\n"
+    for pad_syntax in pads.values():
+      serpent_syntax += pad_syntax
 
-      closing_square = f"surf closing_square "
-      closing_square += f"rect -{self.base_triangle} 0.0 0.0 {self.height_triangle}\n\n"
+    closing_square = f"surf closing_square "
+    closing_square += f"rect -{self.base_triangle} 0.0 0.0 {self.height_triangle}\n\n"
 
 
-      serpent_syntax += closing_square
+    serpent_syntax += closing_square
+    serpent_syntax += diag_surf
+    if len(pin_levels) > 1:
       serpent_syntax += last_cyl1
-      serpent_syntax += diag_surf
 
-      return serpent_syntax, regions
-    except AssertionError:
-      raise NotImplementedError
-       
+    return serpent_syntax, regions   
+
   def get_serpent_detectors_fuel_region(self, c_id, ene):
     det_syntax = ""
     det_relation = { 
@@ -1734,16 +2338,27 @@ class CoarseNodeTriangularMesh_TriangleCorner(
     }
     # Additional surface for the fuel 
     cell = self.fine_mesh.regions[c_id]
-    r1 = self.regions_surfaces[c_id]["r1"]
-    r2 = self.regions_surfaces[c_id]["r2"]
+    if len(self.fine_mesh.regions) > 1:
 
-    th1 = self.regions_surfaces[c_id]["th1"]
-    th2 = self.regions_surfaces[c_id]["th2"]
-    cx = self.regions_surfaces[c_id]["cx"]
-    cy = self.regions_surfaces[c_id]["cy"]
+      r1 = self.regions_surfaces[c_id]["r1"]
+      r2 = self.regions_surfaces[c_id]["r2"]
 
-    det_syntax += f"surf fuel_surf pad {cx} {cy} {r1} {r2} {th1} {th2}\n\n\n"
-    
+      th1 = self.regions_surfaces[c_id]["th1"]
+      th2 = self.regions_surfaces[c_id]["th2"]
+      cx = self.regions_surfaces[c_id]["cx"]
+      cy = self.regions_surfaces[c_id]["cy"]
+
+      det_syntax += f"surf fuel_surf pad {cx} {cy} {r1} {r2} {th1} {th2}\n\n\n"
+    else:
+      pitch_square = self.hex_assembly.pitch_square
+      diag_surf = f"surf fuel_surf1 px 0.0\n"
+      diag_surf += f" trans s fuel_surf1 0.0 0.0 0.0 0.0 0.0 -60\n"
+      closing_square = f"surf fuel_surf2 "
+      closing_square += f"rect -{self.base_triangle} 0.0 0.0 {self.height_triangle}\n\n"
+      
+      det_syntax += diag_surf
+      det_syntax += closing_square
+
     regions = self.fine_mesh.regions
     main_cell = regions[c_id]
 
@@ -1752,14 +2367,24 @@ class CoarseNodeTriangularMesh_TriangleCorner(
     det_syntax += f"det total_rate_reg{c_id} de {ene} dr -1 "
     det_syntax += f"{main_cell.content.name} dc {c_id} \n"
     det_relation["total_rate"] = f"total_rate_reg{c_id}"
-    # Detector  Jin fuel ------------
-    det_syntax += f"det j_in_reg{c_id}  ds {'fuel_surf'} -1 "
-    det_syntax += f"de {ene} dfl 1 1\n"
-    det_relation["j_in_fuel"] = f"j_in_reg{c_id}"
-    # Detector  Jout fuel ------------
-    det_syntax += f"det j_out_reg{c_id} ds {'fuel_surf'}  1 "
-    det_syntax += f"de {ene} dfl 1 3  dfl 2 1\n"
-    det_relation["j_out_fuel"] = f"j_out_reg{c_id}"
+    if len(self.fine_mesh.regions) > 1:
+      # Detector  Jin fuel ------------
+      det_syntax += f"det j_in_reg{c_id}  ds {'fuel_surf'} -1 "
+      det_syntax += f"de {ene} dfl 1 1\n"
+      det_relation["j_in_fuel"] = f"j_in_reg{c_id}"
+      # Detector  Jout fuel ------------
+      det_syntax += f"det j_out_reg{c_id} ds {'fuel_surf'}  1 "
+      det_syntax += f"de {ene} dfl 1 3  dfl 2 1\n"
+      det_relation["j_out_fuel"] = f"j_out_reg{c_id}"
+    else:
+      # Detector  Jin fuel ------------
+      det_syntax += f"det j_in1_reg{c_id} ds fuel_surf1 -1 de {ene} dfl 1 1\n"
+      det_syntax += f"det j_in2_reg{c_id} ds fuel_surf2 -1 de {ene} dfl 1 1\n"
+      det_relation["j_in_fuel"] = f"j_in_reg{c_id}"
+      # Detector  Jout fuel ------------
+      det_syntax += f"det j_out1_reg{c_id} ds fuel_surf1  1 de {ene} dfl 1 3  dfl 2 1\n"
+      det_syntax += f"det j_out2_reg{c_id} ds fuel_surf2  1 de {ene} dfl 1 3  dfl 2 1\n"
+
     # Detector All to fuel ------------
     det_syntax += f"det all_to_reg_{c_id} dr -1 {main_cell.content.name} "
     det_syntax += f"dc {c_id} de {ene}  dfl 1 2  dfl 1 0\n"

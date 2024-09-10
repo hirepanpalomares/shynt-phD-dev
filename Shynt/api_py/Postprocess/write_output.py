@@ -2,20 +2,14 @@ import sys
 import os
 import sys
 from pathlib import Path
+import numpy as np
 
-from Shynt.api_py.Probabilities.probability_writer import write_excel
-
-import serpentTools
-
+from Shynt.api_py.Serpent.output_reader import read_res_file_metadata
 
 class OutputFile:
-
+  
   def __init__(self, 
-    root, 
-    xs,
-    probabilities,
-    solution_data,
-    nameOut
+    root, xs, probabilities, solution_data, nameOut
   ):
     self.root = root
     self.xs = xs
@@ -23,17 +17,25 @@ class OutputFile:
     self.keff_array = solution_data["keff"]
     self.flux = solution_data["phi"]
     self.flux_sigma = solution_data["phi_sigma"]
+    self.jin = solution_data['jin']
+    self.jout = solution_data['jout']
+
     self.convergence_keff = solution_data["keff_convergence"]
-    self.convergence_flux = solution_data["flux_convergence"]
+    self.convergence_flux = solution_data["phi_convergence"]
     self.iterations = solution_data["iterations"]
+    self.transport_iterations = solution_data["transport_iterations"]
     self.phi_src = solution_data["phi_source"]
+    self.time_matrixes = solution_data['time_matrixes']
+    self.time_iter = solution_data['time_iterations']
+    self.omp = solution_data['omp']
 
     self.mesh = root.mesh
     self.nameOut = nameOut
     self.probs = probabilities
 
+    self.cpu_tot = 0.0
     
-
+    print("Printing output ....")
     input_file_dir = os.getcwd() + '/'
     self.output_dir = input_file_dir + "output_RMM_" + nameOut
     try:
@@ -41,6 +43,7 @@ class OutputFile:
     except AssertionError:
       os.mkdir(self.output_dir)
     self.__write()
+    print("Done")
   
   def calculate_computing_time(self):
     message = ""
@@ -48,21 +51,19 @@ class OutputFile:
     total_wall_time = 0
     for nid, data_files in self.root.detector_files.items():
       for dfl in data_files:
-        # print(res.metadata.keys())
-        # print(res.resdata.keys())
         message += '++++++++++++++++++\n'
         name = '/'.join(dfl['name'].split('/')[-3:])
         message += f"{name}\n"
         
         resFile = dfl['name'] + "_res.m"
-        res = serpentTools.read(resFile)
-        message += f"CPU:\t {res.metadata['cpuType']}\n"
-        message += f"CPU time [min]:\t {res.resdata['totCpuTime']}\n"
-        message += f"Wall-clock time [min]:\t {res.resdata['runningTime']}\n"
-        message += f"OMP threads:\t {res.metadata['ompThreads']}\n"
-        message += f"MPI tasks:\t {res.metadata['mpiTasks']}\n"
-        total_cputime += res.resdata['totCpuTime'][0]
-        total_wall_time += res.resdata['runningTime'][0]
+        metadata = read_res_file_metadata(resFile)
+        message += f"CPU:\t {metadata['CPU_TYPE']}\n"
+        message += f"CPU time [min]:\t {metadata['TOT_CPU_TIME']}\n"
+        message += f"Wall-clock time [min]:\t {metadata['RUNNING_TIME']}\n"
+        message += f"OMP threads:\t {metadata['OMP_THREADS']}\n"
+        message += f"MPI tasks:\t {metadata['MPI_TASKS']}\n"
+        total_cputime += metadata['TOT_CPU_TIME']
+        total_wall_time += metadata['RUNNING_TIME']
     message += '++++++++++++++++++\n'
     message += "Cross Sections generation\n"
     for nid, xs_file in self.root.xs_files.items():
@@ -71,21 +72,21 @@ class OutputFile:
       message += f"{name}\n"
       
       resFile = xs_file.name + "_res.m"
-      res = serpentTools.read(resFile)
-      message += f"CPU:\t {res.metadata['cpuType']}\n"
-      message += f"CPU time [min]:\t {res.resdata['totCpuTime']}\n"
-      message += f"Wall-clock time [min]:\t {res.resdata['runningTime']}\n"
-      message += f"OMP threads:\t {res.metadata['ompThreads']}\n"
-      message += f"MPI tasks:\t {res.metadata['mpiTasks']}\n"
-      total_cputime += res.resdata['totCpuTime'][0]
-      total_wall_time += res.resdata['runningTime'][0]
+      res = read_res_file_metadata(resFile)
+      message += f"CPU:\t {metadata['CPU_TYPE']}\n"
+      message += f"CPU time [min]:\t {metadata['TOT_CPU_TIME']}\n"
+      message += f"Wall-clock time [min]:\t {metadata['RUNNING_TIME']}\n"
+      message += f"OMP threads:\t {metadata['OMP_THREADS']}\n"
+      message += f"MPI tasks:\t {metadata['MPI_TASKS']}\n"
+      total_cputime += metadata['TOT_CPU_TIME']
+      total_wall_time += metadata['RUNNING_TIME']
 
 
     message += "---------------------------------------------------------\n"
     message += f'TOTAL WALL CLOCK TIME [min]: \t {int(total_wall_time)}\n'
     message += f'TOTAL CPU TIME [min]: \t {int(total_cputime)}\n'
 
-        
+    self.cpu_tot = total_cputime
 
     return message
 
@@ -102,9 +103,13 @@ class OutputFile:
       f_.write(f"")
       f_.write(f"iterations: {self.iterations}\n")
       f_.write(f"Keff convergence: {self.convergence_keff}\n")
-      f_.write(f"Flux convergence: {self.convergence_flux}\n")
+      f_.write(f"Flux convergence: {np.max(self.convergence_flux)}\n")
+      f_.write(f"Time matrixes: {self.time_matrixes}\n")
+      f_.write(f'Total CPU time Power Iteration: {self.time_iter} seconds\n')
+      f_.write(f'Total CPU time ICM: {self.time_matrixes+self.time_iter} seconds\n')
+      f_.write(f'openMP ICM: {self.omp}\n')
       f_.write("-------------------------------------------- \n")
-      f_.write(f"Keff: {self.keff_array[-1]}\n")
+      f_.write(f"Keff: {self.keff_array[self.iterations-1]}\n")
       f_.write("-------------------------------------------- \n")
       f_.write("Calculation of probabilities \n")
       f_.write(self.calculate_computing_time())
@@ -112,6 +117,12 @@ class OutputFile:
       self.output_dir+f"/{self.nameOut}_rmm_flux.csv", "w"
     ) as f_:
       f_.write(self.__write_flux())
+    
+    with open(
+      self.output_dir+f"/{self.nameOut}_rmm_J.csv", "w"
+    ) as f_:
+      f_.write(self.__write_current())
+
 
     with open(
       self.output_dir+f"/{self.nameOut}_rmm_keff_convergence.csv", "w"
@@ -148,9 +159,21 @@ class OutputFile:
     return statement
   
   def __write_keff_file(self):
-    statement = "iteration,keff\n "
-    for it, k in enumerate(self.keff_array):
-      statement += f"{it+1},{k}"
+    numEner = self.root.energy_grid.energy_groups
+    statement = "iteration,keff"
+    for g in range(numEner):
+      statement += f",phi_norm_g{g}"
+    for g in range(numEner):
+      statement += f",tr_it_g{g}"
+    statement += "\n"
+    num_iterations = self.keff_array.shape[0]
+    for it in range(num_iterations):
+      
+      statement += f"{it+1},{self.keff_array[it]:.8E}"
+      for g in range(numEner):
+        statement += f",{self.convergence_flux[it][g]:.8E}"
+      for g in range(numEner):
+        statement += f",{self.transport_iterations[it][g]}"
       statement += "\n"
     return statement
 
@@ -164,7 +187,7 @@ class OutputFile:
     statement = ""
 
     if self.flux_sigma:
-      statement = "Energy_group,coarse_node_id,region_id,material,scalar_flux,"
+      statement = "Energy_group,coarse_node_id,region_id,material,scalar_flux"
       statement += "sigma,volume\n"
       for g in range(numEner):
         for r in range(numRegions):
@@ -188,6 +211,29 @@ class OutputFile:
           statement += f"{g+1},{n_id},{reg_id},{mat},{flux},{vol}\n"
     return statement
 
+  def __write_current(self):
+    numEner = self.root.energy_grid.energy_groups
+    all_surfaces = self.mesh.all_surfaces_order
+    numSurfaces = len(all_surfaces)
+    surfaces_to_coarse_rel = self.mesh.create_surfaces_to_coarse_node_rel()
+    surfs_area = self.mesh.all_surfaces_area
+    statement = ""
+
+    
+    statement = "Energy_group,coarse_node_id,sur_id,jin,jout,area\n"
+    
+    for g in range(numEner):
+      for a in range(numSurfaces):
+        surf_id = all_surfaces[a]
+        n_id = surfaces_to_coarse_rel[surf_id]
+        area = surfs_area[surf_id]
+        jin = self.jin[g][a]
+        jout = self.jout[g][a]
+
+        statement += f"{g+1},{n_id},{surf_id},{jin},{jout},{area}\n"
+    return statement
+
+
   def __write_xs(self):
     numEner = self.root.energy_grid.energy_groups
     coarse_nodes_ids = self.mesh.coarse_order
@@ -204,6 +250,7 @@ class OutputFile:
           xs_tot = self.xs[reg_id]["total"][g]
           statement += f"{g+1},{n_id},{reg_id},{mat},{xs_tot},{xs_fiss}\n"
     return statement
+
 
 
 class OutputFileReader:

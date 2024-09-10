@@ -137,9 +137,11 @@ class Material:
     elif self.__atom_density:
       syntax += f"{self.__atom_density} "
     else:
-      syntax += f"{self.__options}"
+      syntax += f"{self.__options} "
     if self.__moderLibrary:
-      syntax += f"moder {self.__moderLibrary}"
+      syntax += f"moder {self.__moderLibrary} "
+    if self.color is not None:
+      syntax += f" rgb {self.color[0]} {self.color[1]} {self.color[2]}"
     
     syntax += "\n"
     for iso, number in self.__fractions.items():

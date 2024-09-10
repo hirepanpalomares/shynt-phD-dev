@@ -21,7 +21,8 @@ import sys
 class SerpentInputFile():
 
   def __init__(self, 
-    coarse_node, regions, name, root,  xs_generation=False, cell=None
+    coarse_node, regions, name, root,  xs_generation=False, cell=None,
+    type_calculation='criticality'
   ):
     # print(name)
     self.coarse_node = coarse_node
@@ -29,6 +30,8 @@ class SerpentInputFile():
     self.regions = list(regions.values())
     self.name = name
     self.root = root
+    self.xs_generation = xs_generation
+  
     self.libraries = root.libraries
     self.energy_grid = root.energy_grid
     self.mcparams = root.mcparams
@@ -48,7 +51,7 @@ class SerpentInputFile():
       self.__write_material()
       self.__write_libraries()
       self.__file.write("\n\nset bc 2\n")
-      self.__write_mc_params(cell)
+      self.__write_mc_params(cell, type_calculation)
       self.__write_energy_grid()
       if xs_generation:
         geometry, xs_gcu = self.coarse_node.get_gcu_geometry(
@@ -107,20 +110,22 @@ class SerpentInputFile():
   def __write_libraries(self):
     self.__file.write(self.libraries.serpent_syntax)
 
-  def __write_mc_params(self, cell):
-    if cell is None:
-      self.__file.write(self.mcparams.serpent_syntax('criticality'))
-    else:
+  def __write_mc_params(self, cell, type_calculation):
+    if type_calculation == 'criticality':
+      self.__file.write(self.mcparams.serpent_syntax_criticality())
+    elif type_calculation == 'source':
       material = cell.content
       self.__file.write("\n")
-      if material.type_calculation == 'criticality':
-        self.__file.write(self.mcparams.serpent_syntax('criticality'))
-      elif material.type_calculation == 'source':
-        self.__file.write(self.mcparams.serpent_syntax(
-          material.type_calculation,
-          c_id=cell.id,
-          src_name=f'{cell.id}_{material.name}',
-        ))
+      cell_id = cell.id
+      if self.xs_generation:
+         cell_id += 1000
+      self.__file.write(
+        self.mcparams.serpent_syntax_src_calc(
+          self.energy_grid,
+          f'{cell_id}_{material.name}', # src name
+          cell_id,
+        )
+      )
       self.__file.write("\n")
 
   def __write_energy_grid(self, syntax="complete"):

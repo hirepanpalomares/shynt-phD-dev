@@ -3,6 +3,8 @@
 from Shynt.api_py import materials
 from Shynt.api_py.Geometry.universes import (
   HexagonalLatticeTypeX, 
+  HexagonalLatticeTypeY,
+  HexagonalLattice,
   SquareLattice, 
   Universe, 
   Pin
@@ -42,6 +44,7 @@ class PlotLattice:
   """Class to plot an assembly
 
   """
+  
   def __init__(self, 
     cell, dimensions=(2000,2000), name="", mesh={},
   ):
@@ -58,10 +61,170 @@ class PlotLattice:
     )
 
     print("Pillow version:", Image.__version__)
-    self.__img = Image.new('RGB', self.__imageDimensions, color=(254,254,254))
-    self.__plot_assembly()
+    # self.__img = Image.new('RGB', self.__imageDimensions, color=(0,0,0))
+    self.__img = Image.new('RGB', self.__imageDimensions, color=(256,256,256))
+
     
-  def __plot_assembly(self):
+  
+  def __get_surfaces_and_colors_from_lattice(self, lattice):
+    # void = Material("void", color=(0,0,0)) # default void
+    void = Material("void", color=(255, 100, 100))
+    expanded_wrapper = self.__mainCell.region.surface.expand(self.__scaleF)
+
+    surfaces_to_draw = [
+      (expanded_wrapper, void)
+    ]
+    # return surfaces_to_draw
+    
+    print("Getting surfaces to draw ....")
+
+    new_centers = lattice.recalculate_element_centers(
+      self.__scaleF, expanded_wrapper.center
+    )
+    
+    if isinstance(lattice, HexagonalLattice):
+      element_surfaces = self.__get_elements_surfaces_hex_lattice(
+        new_centers, lattice
+      )
+      surfaces_to_draw += element_surfaces
+    elif isinstance(lattice, SquareLattice):
+      lattice_surfaces = self.__get_pin_surfaces_square_lattice(
+        new_centers, lattice
+      )
+      for surf in lattice_surfaces:
+        surfaces_to_draw.append(surf)
+    
+    print(f'Surfaces to draw: {len(surfaces_to_draw)}')
+    
+    return surfaces_to_draw
+  
+  def __get_pin_surfaces_square_lattice(self, new_centers, lattice):
+    surfaces_to_draw = []
+    array_pins = lattice.array
+    for i, row in enumerate(array_pins):
+      for j, pin in enumerate(row):
+        if isinstance(pin, Pin):
+          cx, cy = new_centers[i][j]
+          pin_levels = pin.pin_levels
+          num_levels = len(pin_levels)
+          
+          for l in range(-2,-num_levels-1, -1): 
+            level = pin_levels[l]
+            cyl = InfiniteCylinderZ(cx, cy, level.radius*self.__scaleF)
+            # print(cx, cy, level.radius*self.__scaleF)
+            surfaces_to_draw.append((cyl, level.material))
+        elif isinstance(pin, SquareLattice):
+          new_assembly_centers = pin.recalculate_element_centers(self.__scaleF)
+
+          surfaces_from_assem = self.__get_pin_surfaces_square_lattice(
+            new_assembly_centers, pin
+          )
+          
+          surfaces_to_draw += surfaces_from_assem
+    # print(surfaces_to_draw)
+    return surfaces_to_draw
+    
+  def __get_elements_surfaces_hex_lattice(self, new_centers, lattice):
+    surfaces_to_draw = []
+    lattice_rings = lattice.rings
+    num_rings = len(lattice_rings)
+    
+    central_element = lattice_rings[0][0]
+
+    if isinstance(central_element, Pin):
+      coolant_of_center = central_element.pin_levels[-1].material
+      print(coolant_of_center)
+      closing_hexagon = None
+      cx, cy = central_element.center
+      expanded_wrapper = self.__mainCell.region.surface.expand(self.__scaleF)
+
+      surfaces_to_draw.append(
+        (expanded_wrapper, coolant_of_center)
+      )
+      surfaces_to_draw += self.__get_elements_surfaces_hex_lattice_of_pins(
+        new_centers, lattice
+      )
+    elif isinstance(central_element, HexagonalLattice):
+      # this element should have pins and not other lattice
+      for r in range(num_rings):
+        ring = lattice_rings[r]
+        num_elements = len(ring)
+        
+        for p in range(num_elements):
+          element = lattice_rings[r][p]
+          cx, cy = new_centers[r][p]
+          coolant_of_center = element.rings[0][0].pin_levels[-1].material
+          print(coolant_of_center)
+          closing_hexagon = None
+          if isinstance(lattice, HexagonalLatticeTypeX):
+            closing_hexagon = InfiniteHexagonalCylinderXtype(
+              cx, cy, lattice.pitch * self.__scaleF / 2
+            )
+          elif isinstance(lattice, HexagonalLatticeTypeY):
+            closing_hexagon = InfiniteHexagonalCylinderYtype(
+              cx, cy, lattice.pitch * self.__scaleF / 2
+            )
+    
+          surfaces_to_draw.append(
+            (closing_hexagon, coolant_of_center)
+          )
+
+      for r in range(num_rings):
+        ring = lattice_rings[r]
+        num_elements = len(ring)
+        
+        for p in range(num_elements):
+          element = lattice_rings[r][p]
+          cx, cy = new_centers[r][p]
+
+
+
+          new_assembly_centers = element.recalculate_element_centers(
+            self.__scaleF, (cx, cy)
+          )
+          
+
+          
+          
+          surfaces_from_assem = self.__get_elements_surfaces_hex_lattice_of_pins(
+            new_assembly_centers, element
+          )
+          
+          surfaces_to_draw += surfaces_from_assem
+        
+        
+          
+        # return surfaces_to_draw
+
+    return surfaces_to_draw
+  
+  def __get_elements_surfaces_hex_lattice_of_pins(self, new_centers, lattice):
+    surfaces_to_draw = []
+    lattice_rings = lattice.rings
+    num_rings = len(lattice_rings)
+    
+    for r in range(num_rings):
+      ring = lattice_rings[r]
+      num_pins = len(ring)
+      
+      for p in range(num_pins):
+        element = lattice_rings[r][p]
+        cx, cy = new_centers[r][p]
+        
+        if isinstance(element, Pin):
+          pin_levels = element.pin_levels
+          num_levels = len(pin_levels)
+          for l in range(-2,-num_levels-1, -1): 
+            level = pin_levels[l]
+            cyl = InfiniteCylinderZ(cx, cy, level.radius*self.__scaleF)
+            
+            surfaces_to_draw.append((cyl, level.material))
+  
+  
+    return surfaces_to_draw
+
+
+  def plot_assembly(self):
     x_max, y_max = self.__imageDimensions
 
     # plot surfaces ---------------------------------------------
@@ -69,25 +232,73 @@ class PlotLattice:
     print(f"plotting {num_surfaces_to_plot} surfaces")
     for s in range(num_surfaces_to_plot):
       surf, material = self.__surfacesToDraw[s]
+      # print(s, surf, material)
       surf.translate(self.__transVector)
       color = material.color
       self.__img = draw_surface(surf, self.__img, y_max, fill=color)
   
-
   def __transform_points(self, points):
+    import numpy as np
     x_max, y_max = self.__imageDimensions
     dx, dy = self.__transVector
+    points = np.array(points)
 
-    new_points = []
-    for p in points:
-      x, y = p
-      new_p = (
-        x*self.__scaleF+dx,
-        y_max - (y*self.__scaleF+dy)
-      )
-      new_points.append(new_p)
-    
-    return new_points
+    num_points = points.shape[0]
+
+    dx_dy_mat = {
+      2: np.array([
+        [dx, dy],
+        [dx, dy],
+      ]),
+      3: np.array([
+        [dx, dy],
+        [dx, dy],
+        [dx, dy],
+      ]),
+      4: np.array([
+        [dx, dy],
+        [dx, dy],
+        [dx, dy],
+        [dx, dy],
+      ])
+    }
+    ymax_mat = {
+      2: np.array([
+        [0, y_max],
+        [0, y_max],
+      ]),
+      3: np.array([
+        [0, y_max],
+        [0, y_max],
+        [0, y_max],
+      ]),
+      4: np.array([
+        [0, y_max],
+        [0, y_max],
+        [0, y_max],
+        [0, y_max],
+      ]),
+    }
+
+
+
+    # new_points = []
+    # for p in points:
+    #   x, y = p
+    #   new_p = (
+    #     x*self.__scaleF+dx,
+    #     y_max - (y*self.__scaleF+dy)
+    #   )
+    #   new_points.append(new_p)
+    new_points = None
+    new_points = points * self.__scaleF
+    new_points = new_points + dx_dy_mat[num_points]
+    new_points = ymax_mat[num_points] - new_points
+    new_points[:,0] *= -1
+
+    tuple_new_points = [tuple(p) for p in new_points]
+
+    return tuple(tuple_new_points)
   
   def __get_square_points(self, node):
     x1,x2 = node[0]
@@ -99,50 +310,74 @@ class PlotLattice:
 
     return transformed_points
 
-  def plot_rectangles(self, rectangles, lw=2):
-
-    for rectangle in rectangles:
-      points = self.__get_square_points(rectangle)
-      print(points)
-      self.__img = draw_polygon(points, self.__img, width=lw)
-
-      # xc, yc = self.__calc_centroid(points)
-      # self.__img =  write_text((xc,yc), f"{nid}", self.__img)
+  def plot_mesh(
+    self, nodes_surfaces, lw=10, font_size=10, plot_surf_numbers=False, 
+    plot_node_numbers=False, line_color=(0,0,0)
+  ):
+    import numpy as np
     
 
-  def plot_mesh(self, nodes_surfaces, lw=10,):
     num_coarse_nodes = len(nodes_surfaces)
+    coarse_nodes = list(nodes_surfaces.keys())
+
     print(f"plotting {num_coarse_nodes} coarse_nodes ...")
-    points = []
+
+
+    node_points_transformed = []
+    
+    
+    
     for nid, surfaces in nodes_surfaces.items():
       print(nid, end=",")
       
-      if nid % 20 == 0: print()
-      # print(surfaces.values())
-      
-      node_surfs = list(surfaces.values())
-      node_points = [surf[0] for surf in node_surfs]
-      node_points_transformed = self.__transform_points(node_points)
-      node_centroid = self.__calc_centroid(node_points_transformed)
-
-      self.__img =  write_text(
-        node_centroid, f"{nid}", self.__img, font_size=50
+      node_points = np.array([surf[0] for surf in surfaces.values()])
+      # print(node_points)
+      npt =  self.__transform_points(node_points)
+      node_points_transformed.append(
+        npt
       )
-      for s_id, surf_points in surfaces.items():
-        points = self.__transform_points(surf_points)
-        self.__img = draw_polygon(points, self.__img, width=lw)
+ 
+    for n, nid in enumerate(coarse_nodes):
+      surfaces = node_points_transformed[n]
 
-        # xc, yc = self.__calc_centroid(points)
-        surf_centroid = self.__calc_centroid(points)
-
-        start_writing_s_id = self.__calc_centroid(
-          (node_centroid, surf_centroid)
-        )
-
+      print(nid, end=",")
+      
+      if n % 20 == 0: 
+        print()
+        # print(node_points_transformed[nid-1])
+      # print(surfaces.values())
+      # print(surfaces)
+      
+      self.__img = draw_polygon(
+        node_points_transformed[n], self.__img, width=lw, outline=line_color
+      )
+      
+      node_centroid = None
+      if plot_node_numbers:
+        node_centroid = self.__calc_centroid(node_points_transformed[n])
         self.__img =  write_text(
-          start_writing_s_id, f"{s_id}", self.__img, font_size=50, 
-          fill=(250,0,0)
+          node_centroid, f"{nid}", self.__img, font_size=font_size
         )
+
+      if plot_surf_numbers:
+      
+        if node_centroid is None:
+          node_centroid = self.__calc_centroid(node_points_transformed[n])
+        print(surfaces)
+        print(nodes_surfaces[nid])
+        for s_id, surf_points in nodes_surfaces[nid].items():
+          points = self.__transform_points(surf_points)
+
+
+          surf_centroid = self.__calc_centroid(points)
+
+          start_writing_s_id = self.__calc_centroid(
+            (node_centroid, surf_centroid)
+          )
+          self.__img =  write_text(
+            start_writing_s_id, f"{s_id}", self.__img, font_size=font_size,
+            fill=(250,0,0)
+          )
     print()
 
   def plot_surface_numbers(self, nodes_surfaces, fill=""):
@@ -213,15 +448,15 @@ class PlotLattice:
     if isinstance(enclosing_surf, InfiniteSquareCylinderZ):
         # Calculating scaling factor with x, assuming it is a square
         width_square = enclosing_surf.half_width * 2
-        scale_f = figsize_x * 0.9 / width_square # leaving 5% of margin each side for the drawing area
+        scale_f = figsize_x  / width_square # leaving 5% of margin each side for the drawing area
         return scale_f
     elif isinstance(enclosing_surf, InfiniteHexagonalCylinderXtype):
         width_hexagon = enclosing_surf.radius * 2
-        scale_f = figsize_x * 0.9 / width_hexagon # leaving 5% of margin each side for the drawing area
+        scale_f = figsize_x  / width_hexagon # leaving 5% of margin each side for the drawing area
         return scale_f
     elif isinstance(enclosing_surf, InfiniteHexagonalCylinderYtype):
         width_hexagon = enclosing_surf.radius * 2
-        scale_f = figsize_x * 0.9 / width_hexagon # leaving 5% of margin each side for the drawing area
+        scale_f = figsize_x  / width_hexagon # leaving 5% of margin each side for the drawing area
         return scale_f
     else:
         print("Geometry not suported for plotting")
@@ -241,73 +476,7 @@ class PlotLattice:
 
     return dx, dy
   
-  def __get_surfaces_and_colors_from_lattice(self, lattice):
-    coolant = Material("default_coolant", color=(100, 141, 176)) # default coolant
-    expanded_wrapper = self.__mainCell.region.surface.expand(self.__scaleF)
-    # print("Wrapper")
-    # print(expanded_wrapper.center)
-    # print(expanded_wrapper.half_width)
-    # print("-------")
-    surfaces_to_draw = [
-      (expanded_wrapper, coolant)
-    ]
-    # return surfaces_to_draw
-    
-    new_centers = lattice.recalculate_pin_centers(self.__scaleF)
-    
-    if isinstance(lattice, HexagonalLatticeTypeX):
-      pin_surfaces = self.__get_pin_surfaces_hex_lattice(
-        new_centers, lattice
-      )
-      surfaces_to_draw += pin_surfaces
-    elif isinstance(lattice, SquareLattice):
-      pin_surfaces = self.__get_pin_surfaces_square_lattice(
-        new_centers, lattice
-      )
-      surfaces_to_draw += pin_surfaces
-    return surfaces_to_draw
   
-  def __get_pin_surfaces_square_lattice(self, new_centers, lattice):
-    surfaces_to_draw = []
-    array_pins = lattice.array
-    for i, row in enumerate(array_pins):
-      for j, pin in enumerate(row):
-        cx, cy = new_centers[i][j]
-        pin_levels = pin.pin_levels
-        num_levels = len(pin_levels)
-        
-        for l in range(-2,-num_levels-1, -1): 
-          level = pin_levels[l]
-          cyl = InfiniteCylinderZ(cx, cy, level.radius*self.__scaleF)
-          # print(cx, cy, level.radius*self.__scaleF)
-          surfaces_to_draw.append((cyl, level.material))
-          
-    return surfaces_to_draw
-    
-
-  def __get_pin_surfaces_hex_lattice(self, new_centers, lattice):
-    surfaces_to_draw = []
-    lattice_rings = lattice.rings
-    num_rings = len(lattice_rings)
-    for r in range(num_rings):
-      ring = lattice_rings[r]
-      num_pins = len(ring)
-      # if r == 5: break
-      for p in range(num_pins):
-        pin = lattice_rings[r][p]
-        cx, cy = new_centers[r][p]
-        pin_levels = pin.pin_levels
-        num_levels = len(pin_levels)
-        
-        for l in range(-2,-num_levels-1, -1): 
-          level = pin_levels[l]
-          cyl = InfiniteCylinderZ(cx, cy, level.radius*self.__scaleF)
-          
-          surfaces_to_draw.append((cyl, level.material))
-          
-        # return surfaces_to_draw
-
-    return surfaces_to_draw
   
   def to_ipython_img(self):
     from IPython.display import Image

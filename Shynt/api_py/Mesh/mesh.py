@@ -1,7 +1,9 @@
 from Shynt.api_py.Mesh.coarse_mesh import (
   PinCellMesh,
   TriangularMesh,
+  TriangularMeshHexPin,
   SquareGridHexAssembly,
+  CoreMesh,
   SquareGridHexPin
 ) 
 
@@ -49,13 +51,14 @@ class Mesh():
   """
 
   def __init__(
-  self, cell: Cell, global_mesh_type: str, local_mesh_type: str, offset=0.0
+  self, cell: Cell, global_mesh_type: str, local_mesh_type: str, offset=0.0,
+  boundary="reflective"
   ) -> None:
     self.cell = cell
     self.global_mesh_type = global_mesh_type
     self.local_mesh_type = local_mesh_type
     self.offset = offset
-    
+    self.boundary_bc = boundary
     self.coarse_mesh = None
 
 
@@ -69,7 +72,7 @@ class Mesh():
     self.__numRegions = None
     self.__numSurfaces = None
   
-  def create_coarse_mesh(self) -> None:
+  def create_coarse_mesh(self, surface_twins=None) -> None:
     """Helper method to create the coarse mesh,
     It chooses between different meshes depending on the attribute 
     global_mesh_type. Types available:
@@ -90,12 +93,15 @@ class Mesh():
       coarse_mesh =  SquareGridHexAssembly(
         self.cell, offset=self.offset
       )
+    elif self.global_mesh_type == "triangular_hex_pin":
+      coarse_mesh = TriangularMeshHexPin(self.cell)
     elif self.global_mesh_type == "triangular":
       coarse_mesh =  TriangularMesh(self.cell)
-
+    elif self.global_mesh_type == "core_assembly_triangular":
+      coarse_mesh =  CoreMesh(self.cell, self.boundary_bc, surface_twins=surface_twins)
     self.coarse_mesh = coarse_mesh
 
-  def create_fine_mesh(self) -> None:
+  def create_fine_mesh(self, symmetry="") -> None:
     """Helper method to create the fine mesh,
     It chooses between different meshes depending on the attribute 
     local_mesh_type. Types available:
@@ -105,11 +111,11 @@ class Mesh():
       and <class FineMesh> as value
     """
     from Shynt.api_py.Mesh.local_mesh_material import MaterialMesh
-    from Shynt.api_py.Geometry.universes import HexagonalLatticeTypeX
+    from Shynt.api_py.Geometry.universes import HexagonalLattice
 
     print("\ncreating fine mesh ...")
     is_hex_lattice = False
-    if isinstance(self.cell.content, HexagonalLatticeTypeX): 
+    if isinstance(self.cell.content, HexagonalLattice): 
       is_hex_lattice = True
 
     coarse_nodes = self.coarse_mesh.coarse_nodes
@@ -117,11 +123,13 @@ class Mesh():
     if self.local_mesh_type == "material_cell":
       for nid, coarse_node in coarse_nodes.items():
         # print(nid)
+
         if coarse_node.fine_mesh is None:
           fine_mesh_of_node = MaterialMesh(
             coarse_node=coarse_node, 
             type_coarse_mesh=self.global_mesh_type, 
-            is_hex_lattice=is_hex_lattice
+            is_hex_lattice=is_hex_lattice,
+            symmetry=symmetry
           )
           coarse_node.fine_mesh = fine_mesh_of_node
   
@@ -133,6 +141,16 @@ class Mesh():
         rel[r_id] = n_id
     
     return rel
+
+  def create_surfaces_to_coarse_node_rel(self):
+    rel = {}
+    for n_id, c_node in self.coarse_mesh.coarse_nodes.items():
+      surfs_node = c_node.surfaces
+      for s_id in surfs_node.keys():
+        rel[s_id] = n_id
+    
+    return rel
+
 
   def create_coarse_region_rel(self):
     regions_rel = {}

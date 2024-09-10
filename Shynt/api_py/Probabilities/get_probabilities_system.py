@@ -4,9 +4,10 @@ from Shynt.api_py.Probabilities.p_calc import (
 from Shynt.api_py.Probabilities.p_calc_new import (
   calculate_probabilities_main_nodes_new
 )
-from Shynt.api_py.Serpent.detector_output import (
-  read_detectors_data,
-  read_detectors_data_new
+from Shynt.api_py.Serpent.output_reader import (
+  read_detectors_data_serpentTools,
+  read_detectors_data_Own,
+  read_detectors_data_new,
 )
 
 import numpy as np
@@ -25,6 +26,7 @@ def get_inputs_data(det_inputs):
       det_inputs_data[nid].append(data)
   return det_inputs_data
 
+
 def get_probabilities(root, det_inputs_data):
   # def get_probabilities(root, det_inputs):
   energy_g = root.energy_grid.energy_groups
@@ -36,7 +38,9 @@ def get_probabilities(root, det_inputs_data):
 
   # Calculating probabilities
   
-  coarse_node_scores = read_detectors_data(det_inputs_data)
+  # coarse_node_scores = read_detectors_data_serpentTools(det_inputs_data)
+  coarse_node_scores = read_detectors_data_Own(det_inputs_data)
+
 
   prob_nodes, prob_nodes_uncertainties = calculate_probabilities_main_nodes(
     coarse_mesh,
@@ -44,114 +48,134 @@ def get_probabilities(root, det_inputs_data):
     energy_g,
     det_inputs_data 
   )
-
-
-  print(prob_nodes[1]['surfaces'][1].keys())
-  print(prob_nodes_uncertainties[1]['surfaces'][1].keys())
-  probs = fill_probabilities(
-    prob_nodes, coarse_mesh
-  )
-  sigma = fill_probabilities(
-    prob_nodes_uncertainties, coarse_mesh
-  )
-
   
+  prob_nodes = apply_symmetry(prob_nodes, root)
+  prob_nodes_uncertainties = apply_symmetry(prob_nodes_uncertainties, root)
 
 
-  return probs, sigma
-  # return prob_nodes
+  return prob_nodes, prob_nodes_uncertainties
+
+def get_probabilities_from_lib(json_file, ids_convert):
+  import json
+
+  def convert_keys_to_int(d):
+    """
+    Recursively convert dictionary keys to integers, if possible.
+    
+    :param d: The dictionary with string keys.
+    :return: A new dictionary with integer keys where applicable.
+    """
+    new_dict = {}
+    
+    for key, value in d.items():
+      # Try to convert the key to an integer, otherwise keep it as a string
+
+      new_key = None
+      if isinstance(key, int):
+        new_key = key
+      elif isinstance(key, str):
+        new_key = int(key) if key.isdigit() else key
+      
+      # Recursively apply the function if the value is a dictionary
+      if isinstance(value, dict):
+        new_dict[new_key] = convert_keys_to_int(value)
+      else:
+        new_dict[new_key] = value
+    
+    return new_dict
 
 
-def fill_probabilities(
-  probabilities_main_nodes, coarse_mesh
-):
-  """
-  This method replicates the probabilities of the main nodes
-  to those nodes that belong to the same type.
-
-  TO do this, the method relies on the variables:
-    - mesh_info.equivalence_region_rel
-    - mesh_info.equivalence_surface_rel
-  """
-  new_prob = {
-    "regions": {},
-    "surfaces": {}
-  }
-  new_prob_sigma = {
-    "regions": {},
-    "surfaces": {}
-  }
+  probabilities = {}
+  with open(json_file, 'r') as json_file:
+    probabilities = json.load(json_file)
   
-  coarse_nodes = coarse_mesh.coarse_nodes
-  equivalent_nodes = coarse_mesh.equivalent_nodes
-  print('#'*100)
-  print('Replicating probabilities ...')
-  # print(coarse_mesh.equivalent_surfaces.keys())
-  for id_main, eq_node_list in equivalent_nodes.items():
-    # print('node:', id_main)
-    for id_eq in eq_node_list:
-      regions = coarse_nodes[id_eq].fine_mesh.regions
-      # print(regions.keys())
-      surfaces = coarse_nodes[id_eq].surfaces
-      # print(surfaces.keys())
-      new_prob["regions"].update({
-        r: {
-          "regions": {},
-          "surfaces": {}
-        } for r in regions
-      })
-      new_prob["surfaces"].update({
-        s: {
-          "regions": {},
-          "surfaces": {}
-        } for s in surfaces
-      })
-      new_prob_sigma["regions"].update({
-        r: {
-          "regions": {},
-          "surfaces": {}
-        } for r in regions
-      })
-      new_prob_sigma["surfaces"].update({
-        s: {
-          "regions": {},
-          "surfaces": {}
-        } for s in surfaces
-      })
-      prob_id_main = probabilities_main_nodes[id_main]
-      # Filling probabilities to every similar node
+  probabilities = convert_keys_to_int(probabilities)
 
-      for r, reg_id in enumerate(regions):
-        reg_eq = coarse_mesh.equivalent_regions[reg_id]
-        # reg to reg
-        for rp, regp_id in enumerate(regions):
-          reg_p_eq = coarse_mesh.equivalent_regions[regp_id]
-          prob_reg = prob_id_main["regions"][reg_eq]["regions"][reg_p_eq]
-          new_prob["regions"][reg_id]["regions"][regp_id] = prob_reg
-            
-        # reg to surf
-        for surf in surfaces:
-          surf_eq = coarse_mesh.equivalent_surfaces[surf]
-          prob_surf = prob_id_main["regions"][reg_eq]["surfaces"][surf_eq]
-          new_prob["regions"][reg_id]["surfaces"][surf] = prob_surf
+  converted_probabilities = {}
+  for c_id in probabilities:
+    c_id_conv = ids_convert["nodes"][c_id]
+    converted_probabilities[c_id_conv] = {
+      "regions": {}, "surfaces": {}
+    }
+    for r_id in probabilities[c_id]["regions"]:
+      r_id_conv = ids_convert["regions"][r_id]
+      converted_probabilities[c_id_conv]["regions"][r_id_conv] = {
+        "regions": {}, "surfaces": {}
+      }
+      for r_id_p, probs in probabilities[c_id]["regions"][r_id]["regions"].items():
+        r_id_p_conv = ids_convert["regions"][r_id_p]
+        converted_probabilities[c_id_conv]["regions"][r_id_conv]["regions"][r_id_p_conv] = probs
+      for s_id_p, probs in probabilities[c_id]["regions"][r_id]["surfaces"].items():
+        s_id_p_conv = ids_convert["surfaces"][s_id_p]
+        converted_probabilities[c_id_conv]["regions"][r_id_conv]["surfaces"][s_id_p_conv] = probs
 
-      for surf in surfaces:
-        # print('surf', surf)
-        surf_eq = coarse_mesh.equivalent_surfaces[surf]
-        # surface to region
-        for r, reg_id in enumerate(regions):
-          reg_eq_id = coarse_mesh.equivalent_regions[reg_id]
-          p_reg = prob_id_main["surfaces"][surf_eq]["regions"][reg_eq_id]
-          new_prob["surfaces"][surf]["regions"][reg_id] = p_reg
+    for s_id in probabilities[c_id]["surfaces"]:
+      s_id_conv = ids_convert["surfaces"][s_id]
+      converted_probabilities[c_id_conv]["surfaces"][s_id_conv] = {
+        "regions": {}, "surfaces": {}
+      }
+      for r_id_p, probs in probabilities[c_id]["surfaces"][s_id]["regions"].items():
+        r_id_p_conv = ids_convert["regions"][r_id_p]
+        converted_probabilities[c_id_conv]["surfaces"][s_id_conv]["regions"][r_id_p_conv] = probs
+      for s_id_p, probs in probabilities[c_id]["surfaces"][s_id]["surfaces"].items():
+        s_id_p_conv = ids_convert["surfaces"][s_id_p]
+        converted_probabilities[c_id_conv]["surfaces"][s_id_conv]["surfaces"][s_id_p_conv] = probs
+      
 
-        # surface to surface
-        for surf_p in surfaces:
-          surf_p_eq = coarse_mesh.equivalent_surfaces[surf_p]
-          p_surf = prob_id_main["surfaces"][surf_eq]["surfaces"][surf_p_eq]
-          new_prob["surfaces"][surf]["surfaces"][surf_p] = p_surf
 
-  return  new_prob
+  return converted_probabilities
 
+
+
+def apply_symmetry(probabilities, root):
+  main_coarse_nodes = root.mesh.coarse_mesh.equivalent_nodes.keys()
+  for n_id in main_coarse_nodes:
+    coarse_node = root.mesh.coarse_mesh.coarse_nodes[n_id]
+    fine_mesh = coarse_node.fine_mesh
+    if fine_mesh.symmetry != "":
+      print(fine_mesh.regions_symmetry)
+      for reg_id, cell in fine_mesh.regions.items():  
+        if reg_id in fine_mesh.regions_symmetry:
+          # is main region
+          prob_main_reg = probabilities[n_id]["regions"][reg_id]
+
+          surfaces = list(prob_main_reg["surfaces"].keys())
+          original_surfaces = list(prob_main_reg["surfaces"].keys())
+
+          for reg_symm in fine_mesh.regions_symmetry[reg_id]:
+            p_reg_symm = {
+              "regions": {}, 
+              "surfaces":{}
+            }
+            p_reg_symm["regions"][reg_symm] = prob_main_reg["regions"][reg_id]
+            p_reg_symm["regions"][reg_id] = prob_main_reg["regions"][reg_symm]
+            # symmetry on region to region -----------------------------------
+            for reg_symm_p in prob_main_reg["regions"]:
+              if reg_symm_p in p_reg_symm["regions"]: continue
+              if reg_symm_p in fine_mesh.regions_symmetry[reg_id]:
+                if reg_symm_p == reg_symm: continue
+                p_reg_symm["regions"][reg_symm_p] = prob_main_reg["regions"][reg_symm_p]
+              else:
+                p_reg_symm["regions"][reg_symm_p] = prob_main_reg["regions"][reg_symm_p]
+
+            # symmetry on region to surface ----------------------------------
+            num_surfaces = len(surfaces)
+            if num_surfaces == 3:
+              surfaces = surfaces[1:num_surfaces] + [surfaces[0]]
+            elif num_surfaces == 4:
+              surfaces = [surfaces[2],surfaces[1],surfaces[0],surfaces[3]]
+            print(surfaces)
+            for i, sid in enumerate(surfaces):
+              p_reg_symm["surfaces"][sid] = prob_main_reg["surfaces"][original_surfaces[i]]
+            probabilities[n_id]["regions"][reg_symm] = p_reg_symm
+          continue
+        else:
+          
+          pass
+           
+    else:
+      continue
+  return probabilities
 
 def get_probabilities_new(
   energy,
@@ -405,5 +429,3 @@ def check_reciprocity(probabilities, xs, energy_g, mesh_info):
         
     
     return reciprocity
-
-                

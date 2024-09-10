@@ -33,14 +33,14 @@ def get_fuel_counts(
   fuel_regions_counts = {}
   fuel_regions_errors = {}
   region_to_region = detectors["region_to_region"]
-  print(scores.keys())
-  print("current fuel region", cfr)
+  # print(f'scores keys: {scores.keys()}')
+  # print("current fuel region", cfr)
   fuel_regions_counts[cfr] = { "regions": {}, "surfaces": {} }
   fuel_regions_errors[cfr] = { "regions": {}, "surfaces": {} }
   
   for rp in regions:
     if rp != cfr:
-      print(rp)
+      # print(rp)
       det_name = region_to_region[rp]
       region_tallies = np.flip(abs(scores[det_name].tallies))
       error_region_tallies = np.flip(abs(scores[det_name].errors))
@@ -71,13 +71,13 @@ def get_fuel_counts(
   return fuel_regions_counts, fuel_regions_errors
 
 def get_fuel_probabilities(
-  fuel_neutrons, regions, surfaces, energy, fuel_regions, cfr
+  fuel_neutrons, regions, surfaces, energy, cfr
 ):
   p_fuel = {
     cfr : {
       "regions": { },
       "surfaces": { }
-    } for fr in fuel_regions
+    }
   }
   
 
@@ -92,14 +92,13 @@ def get_fuel_probabilities(
   # Calculation of probabilities
   for r in regions:
     p_fuel[cfr]["regions"][r] = fuel_neutrons[cfr]["regions"][r] / tneff
+    p_fuel[cfr]["regions"][r] = p_fuel[cfr]["regions"][r].tolist()
   for s in surfaces:
     p_fuel[cfr]["surfaces"][s] = fuel_neutrons[cfr]["surfaces"][s] / tneff
+    p_fuel[cfr]["surfaces"][s] = p_fuel[cfr]["surfaces"][s].tolist()
 
   
   return p_fuel, tneff
-
-
-  
 
 def get_nonFuel_counts(
   scores, detectors, regions, surfaces, cnfr
@@ -178,12 +177,13 @@ def get_nonFuel_probabilities(
   # Calculating probabilities
   for rp in regions:
     p_nonFuel[nfr]["regions"][rp] = nf_neutrons[nfr]["regions"][rp]/tne_nf
+    p_nonFuel[nfr]["regions"][rp] = p_nonFuel[nfr]["regions"][rp].tolist()
+
   for s in surfaces:
     p_nonFuel[nfr]["surfaces"][s] = nf_neutrons[nfr]["surfaces"][s]/tne_nf
+    p_nonFuel[nfr]["surfaces"][s] = p_nonFuel[nfr]["surfaces"][s].tolist()
    
   return p_nonFuel, tne_nf
-
-
 
 def get_surface_counts(
   scores, detectors, energy, regions, surfaces
@@ -231,6 +231,10 @@ def get_surface_counts(
       surface_counts[s]["regions"][r] = region_tallies
       surface_errors[s]["regions"][r] = error_region_tallies
     for sp in surfaces:
+      if sp == s:
+        surface_counts[s]["surfaces"][sp] = np.zeros(energy)
+        surface_errors[s]["surfaces"][sp] = np.zeros(energy)
+        continue
       det_name_surface = surface_to_surface[sp]
       surf_tallies = np.flip(abs(scores[det_name_surface].tallies))
       error_surf_tallies = np.flip(abs(scores[det_name_surface].errors))
@@ -275,12 +279,12 @@ def get_surface_probabilities(
   for s in surfaces:
     for r in regions:
       p_surfaces[s]["regions"][r] = surf_neutrons[s]["regions"][r]/tne_s[s]
+      p_surfaces[s]["regions"][r] = p_surfaces[s]["regions"][r].tolist()
     for sp in surfaces:
       p_surfaces[s]["surfaces"][sp] = surf_neutrons[s]["surfaces"][sp]/tne_s[s]
+      p_surfaces[s]["surfaces"][sp] = p_surfaces[s]["surfaces"][sp].tolist()
 
   return p_surfaces, tne_s
-
-
 
 def calculate_probabilities_main_nodes(
   coarse_mesh, coarse_node_scores, energy, det_inputs_data
@@ -301,15 +305,17 @@ def calculate_probabilities_main_nodes(
   
   probabilities = {}
   prob_uncertainties = {}
-  equivalent_regions = coarse_mesh.equivalent_regions
-  equivalent_surfaces = coarse_mesh.equivalent_surfaces
+  # equivalent_regions = coarse_mesh.equivalent_regions
+  # equivalent_surfaces = coarse_mesh.equivalent_surfaces
   coarse_nodes = coarse_mesh.coarse_nodes
 
   
   
   # ------------------------------------------------------------------------
   for n_id in det_inputs_data: # Loop for the different coarse nodes
-    print(n_id)
+    
+    print("-"*50)
+    print(f"node {n_id}")
     regions = coarse_nodes[n_id].fine_mesh.regions
     surfaces = coarse_nodes[n_id].surfaces
     fuel_regions = [
@@ -336,7 +342,9 @@ def calculate_probabilities_main_nodes(
       detectors = detector_file_data['det_relation']
       name_file = detector_file_data['name']
       current_region = detector_file_data['region']
-      print(type_)
+      # print(type_)
+      print(name_file)
+      print(current_region)
       if type_ == "region_fuel":
         fuel_neutrons, fuel_errors = get_fuel_counts(
           coarse_node_scores[n_id],
@@ -344,14 +352,13 @@ def calculate_probabilities_main_nodes(
           regions,
           surfaces, 
           current_region,
-          # fuel_regions
         )
+        # print(f'\t Fuel neutrons: {fuel_neutrons}')
         fuel_probabilities, tneff = get_fuel_probabilities(
           fuel_neutrons,
           regions,
           surfaces,
           energy,
-          fuel_regions,
           current_region
         )
         fuel_prob_uncertainties = calculate_probabilities_uncertainties(
@@ -360,10 +367,9 @@ def calculate_probabilities_main_nodes(
         )
         prob_uncertainties[n_id]["regions"].update(fuel_prob_uncertainties)
         probabilities[n_id]["regions"].update(fuel_probabilities)
-        print("-"*50)
       elif type_ == "region_nonFuel":
-        print(f"Extracting non fuel region detector scores")
-        print(f"node: {n_id}\nfile name: {name_file}")
+        # print(f"Extracting non fuel region detector scores")
+        # print(f"node: {n_id}\nfile name: {name_file}")
 
         nonFuel_neutrons, nonFuel_errors = get_nonFuel_counts(
           coarse_node_scores[n_id],
@@ -372,8 +378,8 @@ def calculate_probabilities_main_nodes(
           surfaces,
           current_region
         )
-        print(f"Calculating collision probabilities")
-        print(f"node: {n_id}\nfile name: {name_file}")
+        # print(f"Calculating collision probabilities")
+        # print(f"node: {n_id}\nfile name: {name_file}")
         
         nonFuel_probabilities, tne_nf = get_nonFuel_probabilities(
           nonFuel_neutrons,
@@ -390,10 +396,9 @@ def calculate_probabilities_main_nodes(
         prob_uncertainties[n_id]["regions"].update(nonFuel_prob_uncertainties)
         probabilities[n_id]["regions"].update(nonFuel_probabilities)
         # print(nonFuel_uncertainty)
-        print("-"*50)
       elif type_ == "surfaces":
-        print(f"Extracting surfaces detector scores")
-        print(f"node: {n_id}\nfile name: {name_file}")
+        # print(f"Extracting surfaces detector scores")
+        # print(f"node: {n_id}\nfile name: {name_file}")
         surface_neutrons, surface_errors = get_surface_counts(
           coarse_node_scores[n_id],
           detectors,
@@ -402,8 +407,8 @@ def calculate_probabilities_main_nodes(
           surfaces
         )
         # print(surface_neutrons)
-        print(f"Calculating collision probabilitie")
-        print(f"node: {n_id}\nfile name: {name_file}")
+        # print(f"Calculating collision probabilitie")
+        # print(f"node: {n_id}\nfile name: {name_file}")
         
         surface_probabilities, tne_s  = get_surface_probabilities(
           surface_neutrons,

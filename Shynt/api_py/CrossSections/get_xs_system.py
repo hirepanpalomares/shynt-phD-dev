@@ -1,9 +1,22 @@
 from .extractor_xs import get_cross_sections
 
+def get_xs_files_data(xs_serpent_files):
+  xs_files_data = {}
+  # Create dictionary to not provide the entire SerpentInputFile class --------
+  if len(xs_files_data) == 0:
+    for id_coarse, xs_inp in xs_serpent_files.items():
+      xs_files_data[id_coarse] = {
+        'name': xs_inp.name,
+        'xs_gcu': xs_inp.xs_gcu
+      }
+    
+  return xs_files_data
+
+
+      
 def  get_xs_data(
   eq_regions, root, 
-  xs_files_data={}, 
-  xs_serpent_files={},
+  xs_files_data, 
   mapped_regions={},
   transport_correction=False, 
   scattering_production=False, 
@@ -25,21 +38,13 @@ def  get_xs_data(
   energy_g = root.energy_grid.energy_groups
   coarse_nodes = root.mesh.coarse_mesh.coarse_nodes
 
-  xs_files_data = {}
-  # Create dictionary to not provide the entire SerpentInputFile class --------
-  if len(xs_files_data) == 0:
-    for id_coarse, xs_inp in xs_serpent_files.items():
-      xs_files_data[id_coarse] = {
-        'name': xs_inp.name,
-        'xs_gcu': xs_inp.xs_gcu
-      }
+  
   # ---------------------------------------------------------------------------
   xs = get_cross_sections(
     energy_g, xs_files_data, coarse_nodes, scattering_production, 
     map_regions=mapped_regions
   )
 
-  print("XS retrieved ------------------")
   
 
 
@@ -47,17 +52,69 @@ def  get_xs_data(
     print("Calculating transport correction ...")
     xs = calculate_transport_corrected_xs(xs, energy_g)
   else:
-    for cid in xs: xs[cid]["scatter"] = xs[cid]["scatter_p0"]
+    for cid in xs: 
+      xs[cid]["scatter"] = xs[cid]["scatter_p0"].tolist()
+      xs[cid]["scatter_p1"] = xs[cid]["scatter_p1"].tolist()
+      xs[cid]["scatter_p0"] = xs[cid]["scatter_p0"].tolist()
+      xs[cid]["total"] = xs[cid]["total"].tolist()
+      pass
 
   # filling probabilities to every similar node
-  new_xs = {}
-  for reg_eq, main_reg in eq_regions.items():
+  # new_xs = {}
+  # print(xs.keys())
+  # for reg_eq, main_reg in eq_regions.items():
+    # print(reg_eq, main_reg)
     # Filling XS
-    new_xs[reg_eq] = xs[main_reg]
+    # new_xs[reg_eq] = xs[main_reg]
     
+  print("XS retrieved ------------------")
   
-  return new_xs
+  return xs
 
+
+def get_xs_data_from_lib(json_file, ids_convert):
+  import json
+
+  def convert_keys_to_int(d):
+    """
+    Recursively convert dictionary keys to integers, if possible.
+    
+    :param d: The dictionary with string keys.
+    :return: A new dictionary with integer keys where applicable.
+    """
+    new_dict = {}
+    
+    for key, value in d.items():
+      # Try to convert the key to an integer, otherwise keep it as a string
+
+      new_key = None
+      if isinstance(key, int):
+        new_key = key
+      elif isinstance(key, str):
+        new_key = int(key) if key.isdigit() else key
+      
+      # Recursively apply the function if the value is a dictionary
+      if isinstance(value, dict):
+        new_dict[new_key] = convert_keys_to_int(value)
+      else:
+        new_dict[new_key] = value
+    
+    return new_dict
+
+  xs = {}
+  with open(json_file, 'r') as json_f:
+    xs = json.load(json_f)
+  
+  xs = convert_keys_to_int(xs)
+
+  converted_xs = {}
+  
+  for r_id in xs:
+    r_id_conv = ids_convert["regions"][r_id]
+    converted_xs[r_id_conv] = xs[r_id]
+
+
+  return converted_xs
 
 
 def calculate_transport_corrected_xs(xs, energy_g):
@@ -66,6 +123,7 @@ def calculate_transport_corrected_xs(xs, energy_g):
   xs_tr_0 = {
     
   }
+
   for cid in xs:
     xs_tr_0[cid] = {
       "capture": xs[cid]["capture"],
@@ -75,37 +133,21 @@ def calculate_transport_corrected_xs(xs, energy_g):
       "chi": xs[cid]["chi"],      
     }
     # Calculation of transport correction -----------
-    print("region ", cid)
-    print("scatt_p0")
-    print(xs[cid]["scatter_p0"])
-    print("scatt_p1")
-    print(xs[cid]["scatter_p1"])
-    print("fission")
-    print(xs[cid]["fission"])
-    # Scattering
     scatt_tr0 = xs[cid]["scatter_p0"]
     scatt_p1 = xs[cid]["scatter_p1"]
-    for g in range(energy_g):
-      sum_p1 = np.sum(scatt_p1[:][g])
-      print(g, sum_p1)
-      scatt_tr0[g][g] = scatt_tr0[g][g] - sum_p1
-      
-
-    
-    # Total
     total_tr0 = xs[cid]["total"]
-    absorption = xs[cid]["absorption"],
-    # print("absorption_xs", xs[cid]["absorption"])
-    # print(absorption)
-    for g in range(energy_g):    
-      sum_scat = np.sum(scatt_tr0[:][g])
-      
-      total_tr0[g] = xs[cid]["absorption"][g] + sum_scat
+    for gp in range(energy_g):
+      # scattering
+      sum_p1 = np.sum(scatt_p1[:][gp])
+      scatt_tr0[gp][gp] = scatt_tr0[gp][gp] - sum_p1
     
-    xs_tr_0[cid]["total"] = total_tr0
-    xs_tr_0[cid]["scatter"] = scatt_tr0
-    print("Scat_tr0")
-    print(scatt_tr0)
-    print("total_tr0", total_tr0)
+      # Total      
+      total_tr0[gp] = total_tr0[gp] - sum_p1
+      
+    xs_tr_0[cid]["total"] = total_tr0.tolist()
+    xs_tr_0[cid]["scatter"] = scatt_tr0.tolist()
+    xs[cid]["scatter_p1"] = xs[cid]["scatter_p1"].tolist()
+    xs[cid]["scatter_p0"] = xs[cid]["scatter_p0"].tolist()
+
 
   return xs_tr_0

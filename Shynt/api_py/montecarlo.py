@@ -24,38 +24,47 @@ class MontecarloParams:
 
   """
 
-  def __init__(self, histories, active, unactive, seed=0):
+  def __init__(self, histories, active, unactive, seed=0, set_ures=False):
     self.__histories = histories
     self.__active_cycles = active
     self.__unactive_cycles = unactive
     self.__seed = seed
+    self.__set_ures = set_ures
+    self.src_calc = False
+    self.no_void = False
   
-  def serpent_syntax(self, type_of_calculation, c_id='', src_name='', gcut=1):
+  def serpent_syntax_criticality(self):
     serpent_syntax = ''
-    if type_of_calculation == 'criticality':
-      serpent_syntax += f"set pop {self.__histories} {self.__active_cycles} "
-      serpent_syntax += f"{self.__unactive_cycles}\n"
-      if self.__seed:
-        serpent_syntax += f"set seed {self.__seed}\n"
-    elif type_of_calculation == 'source':
-      serpent_syntax += f'src {src_name}\n'
-      serpent_syntax += f'sc {c_id}\n'
-      serpent_syntax += f'sb 8 0\n'
-      serpent_syntax += f'7.49000000E-04 0\n'
-      serpent_syntax += f'1.50000000E-02 5\n'
-      serpent_syntax += f'4.09000000E-02 5\n'
-      serpent_syntax += f'1.11000000E-01 5\n'
-      serpent_syntax += f'3.02000000E-01 5\n'
-      serpent_syntax += f'8.21000000E-01 5\n'
-      serpent_syntax += f'2.23000000E+00 5\n'
-      serpent_syntax += f'2.00000000E+01 5\n\n'
-      batches = self.__active_cycles 
-      total_npop = self.__histories * batches
-      serpent_syntax += f'set nps {total_npop} {batches}\n'
-      serpent_syntax += f'set gcut {gcut}\n'
-
+    serpent_syntax += f"set pop {self.__histories} "
+    serpent_syntax += f"{self.__active_cycles} "
+    serpent_syntax += f"{self.__unactive_cycles}\n"
+    if self.__set_ures:
+      serpent_syntax += "set ures 1 \n\n"
+    if self.__seed:
+      serpent_syntax += f"set seed {self.__seed}\n"
+   
     return serpent_syntax
 
+  def serpent_syntax_src_calc(self, energy, src_name, c_id, gcut=1):
+    serpent_syntax = f'src {src_name}\n'
+    serpent_syntax += f'sc {c_id}\n'
+    num_energy = energy.energy_groups
+
+    serpent_syntax += f'sb {num_energy} 0\n'
+
+    serpent_syntax += f'{energy.energy_mesh[1]} 0\n' # first energy cut
+    weight = 5 # Random number until now
+    for energy_upper_lim in energy.energy_mesh[2:]:
+      serpent_syntax += f'{energy_upper_lim} {weight}\n'
+    serpent_syntax += '\n'
+
+    batches = self.__active_cycles 
+    total_npop = self.__histories * batches
+    serpent_syntax += f'set nps {total_npop} {batches}\n'
+    serpent_syntax += f'set gcut {gcut}\n'
+
+
+    return serpent_syntax
 
   @property
   def serp_dir_name(self):
@@ -67,6 +76,13 @@ class MontecarloParams:
   def dir_name(self):
     serp_dir = f'{self.histories}_{self.active_cycles}_'
     serp_dir += f'{self.unactive_cycles}'
+    if self.__set_ures:
+      serp_dir += '_ures1'
+    if self.src_calc:
+      serp_dir += '_src'
+    if self.no_void:
+      serp_dir += '_novoid'
+
     return serp_dir
   
   @property

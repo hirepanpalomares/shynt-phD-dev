@@ -1,5 +1,9 @@
 
 import numpy as np
+import scipy.sparse as sprs
+import ctypes
+import psutil
+
 import matplotlib.pyplot as plt
 import time
 
@@ -14,55 +18,64 @@ from Shynt.api_py.ResponseMatrix.build_matrix_M import (
 )
 from Shynt.api_py.ResponseMatrix.build_matrix_R import (
   getResponseMatrix_byGroup,
-  getResponseMatrix_allG
+  getResponseMatrix_mainNodes
 )
 from Shynt.api_py.ResponseMatrix.build_matrix_S import (
   getMatrixS_system_byGroup,
-  getMatrixS_system_allG
+  getMatrixS_mainNodes
 )
 from Shynt.api_py.ResponseMatrix.build_matrix_T import (
   getMatrixT_system_byGroup,
-  getMatrixT_system_allG
+  getMatrixT_mainNodes
 )
 from Shynt.api_py.ResponseMatrix.build_matrix_U import (
   getMatrixU_system_byGroup,
-  getMatrixU_system_allG
+  getMatrixU_mainNodes
 )
 from Shynt.api_py.ResponseMatrix.build_Phi_Source import buildPhiSource
 from Shynt.api_py.ResponseMatrix.build_source_Q import SourceQ
 # from Shynt.api_py.Probabilities.propagation import propagate_prob_uncertainty
 
+from Shynt.api_py.ResponseMatrix.c_data_structures import (
+  MatrixEntry,
+  SrcMatrixEntry,
+  IcmMatrixes,
+  ConvergenceData,
+  MeshData,
+  TwinSurfaceInfo,
+  TwinSurfaceInfoArray,
+  CoarseNode,
+  OutputData
+)
 
 class RmmSolution:
 
-  def __init__(self, energy_g, mesh, xs, probabilities):
+  def __init__(
+    self, energy_g, mesh, xs, probabilities
+  ):
     self.energy_g = energy_g
     self.mesh = mesh
     self.xs = xs
     self.probabilities = probabilities
-
+    
     self.matrixS_bg = {}
     self.matrixU_bg = {}
     self.matrixT_bg = {}
     self.matrixR_bg = {}
-    self.matrixM = {}
+    self.matrixM = []
     self.inverse_IMR_bg = {}
     self.systemSource = {}
     self.fission_source = {}
 
 
-    self.matrixS_sys = None
-    self.matrixU_sys = None
-    self.matrixT_sys = None
-    self.matrixR_sys = None
-    self.matrixM_sys = None
-    self.inverse_IMR_sys = None
-    self.matrixZ_sys = None
-    self.matrixF_sys = None
-
+   
     self.solution_data = {}
     self.computing_time_cpu = 0.0 # Yet to implement
     self.computing_time_wall = 0.0 # Yet to implement
+
+    self.time_elapsed_matrixes = 0.0 
+    self.time_elapsed_pow_it = 0.0 
+
 
     # Useful mesh information -------------------------------------------------
     self.all_coarse_nodes = mesh.coarse_order
@@ -76,137 +89,193 @@ class RmmSolution:
     print(f"Number of regions: {self.numRegions}")
     print(f"Number of surfaces: {self.numSurfaces}")
 
-  def build_matrices(self):
-    start = time.time()
-    # BUILDING MATRIXES ------------------------------------------------------
-    print("Building matrix S .......", end="")
-    matrixS_bg = getMatrixS_system_byGroup(
-      self.mesh, self.energy_g, self.xs, self.probabilities
-    )
-    print(matrixS_bg[0].shape)
-    print("Building matrix U .......", end="")
-    matrixU_bg = getMatrixU_system_byGroup(
-      self.mesh, self.energy_g, self.probabilities)
-     
-    print(matrixU_bg[0].shape)
-    print("Building matrix T .......", end="")
-    matrixT_bg = getMatrixT_system_byGroup(
-      self.mesh, self.energy_g, self.xs, self.probabilities
-    )
-    print(matrixT_bg[0].shape)
-    print("Building matrix R .......", end="")
-    matrixR_bg = getResponseMatrix_byGroup(
-      self.mesh, self.energy_g, self.probabilities)
-     
-    print(matrixR_bg[0].shape)
-    #print(matrixR_bg[7][:10,:10])
-    print("Building matrix M .......", end="")
-    matrixM, twin_surfs = getM_matrix_easier(self.mesh)  
-    print(matrixM.shape)
-    print("matrix M: \n", matrixM)
-
-    # Inverting the matrix ----------------------------------------------------
-    print("Inverting (I - MxR)......")  
-    inverse_IMR_bg = calculate_inverseIMR(
-      matrixM, matrixR_bg, self.energy_g, self.numSurfaces
-    )
-    print(inverse_IMR_bg[0].shape)
-
-    self.matrixS_bg = matrixS_bg
-    self.matrixR_bg = matrixR_bg
-    self.matrixU_bg = matrixU_bg
-    self.matrixT_bg = matrixT_bg
-    self.matrixM = matrixM
-    self.inverse_IMR_bg = inverse_IMR_bg
-
-    end = time.time()
-    print(f'Built the matrixes in: {end-start} sec.')
-
-  def build_matrices_allG(self):
-    import sys
-
-    start = time.time()
-    # BUILDING MATRIXES ------------------------------------------------------
-    print("Building matrix S .......", end="")
-    matrixS_sys = getMatrixS_system_allG(
-      self.mesh, self.energy_g, self.xs, self.probabilities
-    )
-    print(f' {matrixS_sys.shape} ({sys.getsizeof(matrixS_sys)/1e6} MB)')
-
-    print("Building matrix U .......", end="")
-    matrixU_sys = getMatrixU_system_allG(
-      self.mesh, self.energy_g, self.probabilities)
-    print(f' {matrixU_sys.shape} ({sys.getsizeof(matrixU_sys)/1e6} MB)')
-   
-   
-    print("Building matrix T .......", end="")
-    matrixT_sys = getMatrixT_system_allG(
-      self.mesh, self.energy_g, self.xs, self.probabilities
-    )
-    print(f' {matrixT_sys.shape} ({sys.getsizeof(matrixT_sys)/1e6} MB)')
-    
-
-    print("Building matrix R .......", end="")
-    matrixR_sys = getResponseMatrix_allG(
-      self.mesh, self.energy_g, self.probabilities
-    )
-    print(f' {matrixR_sys.shape} ({sys.getsizeof(matrixR_sys)/1e6} MB)')
-
-    print("Building matrix M .......", end="")
-    # matrices_M = []
-    # for g in range(self.energy_g):
-    #   mM, twin_surfs = getM_matrix_easier(self.mesh)  
-    #   matrices_M.append(mM)
-    # matrixM_sys = getBlockMatrix(matrices_M)
-    matrixM_sys, twin_surfs = get_mM_system(self.mesh, self.energy_g)  
-
-    print(f' {matrixM_sys.shape} ({sys.getsizeof(matrixM_sys)/1e6} MB)')
-
-    end = time.time()
-
-    self.matrixS_sys = matrixS_sys
-    self.matrixR_sys = matrixR_sys
-    self.matrixU_sys = matrixU_sys
-    self.matrixT_sys = matrixT_sys
-    self.matrixM_sys = matrixM_sys
-    
-    print(f'Built the matrixes in: {end-start} sec.')
-
+ 
+ 
   def build_source(self):
     start = time.time()
 
     print("Building initial source .......", end='')
-    systemSource = SourceQ( # scattering matrix and fission matrix per region
+    systemSource = SourceQ( 
+      # It is initialized by building the scattering matrix and fission matrix 
+      # per region in the main nodes
       self.mesh, self.energy_g, self.xs
     ) 
-    fission_source = systemSource.buildFissionSource( # for power iteration
-      self.mesh, self.probabilities
-    )
+    # fission_source = systemSource.buildFissionSource( # for power iteration
+    #   self.mesh, self.probabilities
+    # )
 
     self.systemSource = systemSource
-    self.fission_source = fission_source
+    # self.fission_source = fission_source
     print("OK")
     end = time.time()
 
     print(f'Built the scattering and fission source in: {end-start} sec.')
     
-  def build_source_allG(self):
-    import sys
+  
+  def power_iteration(self, phi_new, phi_prev, keff_prev, fiss_src):
+    """
 
-    start = time.time()
-    print("Building initial source .......")
-    systemSource = SourceQ( # scattering matrix and fission matrix per region
-      self.mesh, self.energy_g, self.xs
-    )
-    mZ = systemSource.build_big_scatt_matrix_blocks(self.mesh)
-    mF = systemSource.build_big_fission_matrix_blocks(self.mesh)
-    print(f'  Scattering matrix {mZ.shape} ({sys.getsizeof(mZ)/1e6} MB)')
-    print(f'  Fission matrix {mF.shape} ({sys.getsizeof(mF)/1e6} MB)')
-    self.matrixF_sys = mF
-    self.matrixZ_sys = mZ
-    print("OK")
-    end = time.time()
-    print(f'Built Scattering and Fission source in: {end-start} sec.')
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+    if isinstance(phi_new, dict) and isinstance(phi_new, dict):
+      phi_new = self.create_long_vector_flux(phi_new)
+      phi_prev = self.create_long_vector_flux(phi_prev)
+    
+
+    vector_prev = []
+    vector_new = []
+
+    if fiss_src:
+      vector_prev = np.matmul(fiss_src, phi_prev)
+      vector_new = np.matmul(fiss_src, phi_new)
+    else:
+      vector_prev = phi_prev
+      vector_new = phi_new
+
+    new_product = np.inner(vector_prev, vector_new)
+    prev_product = np.inner(vector_prev, vector_prev)
+    
+    
+    k_new = keff_prev * new_product / prev_product
+
+    return k_new
+
+  def check_power_convergence(
+    self, k_prev, k_new, phi_prev, phi_new
+  ):
+    """
+    Function to check the convergence for the power iteration method, it checks
+    the convergence in the k_eff, scalar flux, and the neutron currents 
+    in-between the coarse nodes.
+
+    For the convergence of neutron flux and neutron current it creates a long
+    vector and performs the convergence opperations i.e. (new-prev)/prev and 
+    takes the max value of the resultant vector.
+
+    Parameters
+    ----------
+    k_prev : float
+
+    k_new : float
+    
+    phi_prev : dict
+
+    phi_new : dict
+
+    jin_prev : dict
+
+    jin_new : dict
+
+    energy_g : int
+
+    Returns
+    -------
+    k_converge : float
+
+    new_converge.max() : float
+
+    jin_converge.max() : float
+
+    """
+    k_converge = abs(abs(k_new) - k_prev)/k_prev
+
+    if isinstance(phi_new, dict) and isinstance(phi_new, dict):
+      phi_new = self.create_long_vector_flux(phi_new)
+      phi_prev = self.create_long_vector_flux(phi_prev)
+
+    max_phi_new = np.max(phi_new)
+    max_phi_prev = np.max(phi_prev)
+
+    phi_converge = (max_phi_new - max_phi_prev) / max_phi_prev
+
+   
+    return k_converge, phi_converge.max()
+
+  def create_flux_dictionary_bg(self, phi_long_vector):
+    coarse_nodes = self.mesh.coarse_order
+    coarse_nodes_regions = self.mesh.coarse_region_rel
+    
+    # create indexes
+    
+    indexes = { g: {} for g in range(self.energy_g)}
+        
+    idx = 0
+    for n_id in coarse_nodes:
+      regions_node = coarse_nodes_regions[n_id]
+      for g in range(self.energy_g):
+        for r_id in regions_node:
+          indexes[g][r_id] = idx
+          idx += 1
+
+
+    # print(indexes[0])
+    phi_bg = {}
+    for g in range(self.energy_g):
+      # print('g: ', g)
+      phi_g_array = []
+      for r_id in self.mesh.all_regions_order:
+        # print(r_id)
+        idx_long = indexes[g][r_id]
+        phi_g_array.append(phi_long_vector[idx_long])
+      phi_bg[g] = np.array(phi_g_array)
+    
+    return phi_bg
+
+  def create_long_vector_flux(self, phi, for_output=False):
+    """
+      Function to create a long flux vector containing the flux for all the 
+      regions and all the energy groups. It is arranged in such a way that it 
+      can be multiplied by the big fission source block matrix.
+
+      phi = [
+        phi_r1_g1 .. phi_r1_G .. phi_r2_g1 .. phi_r2_G .. phi_rI_g1 .. phi_rI_G
+      ]
+
+      Parameters
+      ----------
+      phi : dict
+
+      Returns
+      -------
+      phi_long : np.array()
+    """
+
+
+    if for_output:
+      phi_g = {}
+      for g in phi:
+        phi_long = np.array([])
+        if isinstance(phi[g], dict):
+          for nid, phi_g_nid in phi[g].items():
+            phi_long = np.concatenate((phi_long, phi_g_nid), axis=0)
+        phi_g[g] = phi_long
+      return phi_g
+    else:
+      phi_long = np.array([])
+      for g, phi_g in phi.items():
+        
+        if isinstance(phi[g], dict):
+          for nid, phi_g_nid in phi_g.items():
+            phi_long = np.concatenate((phi_long, phi_g_nid), axis=0)
+        else:
+          phi_long = np.concatenate((phi_long, phi_g), axis=0)
+      return phi_long
+
+  def plot_matrix_sparsity(self,matrix, name, log_scale=False):
+    plt.figure()
+    if log_scale:
+      log_matrix = np.log10(matrix)
+      plt.imshow(log_matrix, interpolation='none', cmap='jet', vmin=0)
+    else:
+      plt.imshow(matrix, interpolation='none', cmap='jet')
+    plt.title(name)
+    plt.colorbar()
+    plt.savefig(f"{name}.png")
 
   def run_simplePI_factorized_long_phi_vector(
     self, max_iterations=1000, tolerance=1E-10
@@ -360,6 +429,332 @@ class RmmSolution:
       "j_out_sys": {} #j_out_sys
     }
   
+  def build_source_allG(self):
+    import sys
+
+    start = time.time()
+    print("Building initial source .......")
+    systemSource = SourceQ( # scattering matrix and fission matrix per region
+      self.mesh, self.energy_g, self.xs
+    )
+    mZ = systemSource.build_big_scatt_matrix_blocks(self.mesh)
+    mF = systemSource.build_big_fission_matrix_blocks(self.mesh)
+    print(f'  Scattering matrix {mZ.shape} ({sys.getsizeof(mZ)/1e6} MB)')
+    print(f'  Fission matrix {mF.shape} ({sys.getsizeof(mF)/1e6} MB)')
+    self.matrixF_sys = mF
+    self.matrixZ_sys = mZ
+    print("OK")
+    end = time.time()
+    print(f'Built Scattering and Fission source in: {end-start} sec.')
+
+
+class RmmSolution_inverse_operator(RmmSolution):
+  
+  def __init__(
+    self, energy_g, mesh, xs, probabilities, sparse=False, c_calc=False
+  ):
+    super().__init__(energy_g, mesh, xs, probabilities)
+    self.sparse = sparse
+    self.c_calc = c_calc
+
+  def build_matrices(self):
+    import sys
+   
+    start = time.time()
+    # BUILDING MATRIXES ------------------------------------------------------
+    
+    print("Building matrix S .......") # ------------------------------------
+    matrixS_bg = getMatrixS_system_byGroup(
+      self.mesh, self.energy_g, self.xs, self.probabilities, 
+      store_sparse=self.sparse
+    )
+    print(f' {matrixS_bg[0].shape} ', end='\t')
+    if self.sparse:
+      print(f'({matrixS_bg[0].data.nbytes*self.energy_g/1e9} GB)')
+
+
+    print("Building matrix U .......", ) # ------------------------------------
+    matrixU_bg = getMatrixU_system_byGroup(
+      self.mesh, self.energy_g, self.probabilities, 
+      store_sparse=self.sparse
+    )
+    print(f' {matrixU_bg[0].shape} ', end='\t')
+    if self.sparse:
+      print(f'({matrixU_bg[0].data.nbytes*self.energy_g/1e9} GB)')
+    else:
+      print(f' ({sys.getsizeof(matrixU_bg[0])*self.energy_g/1e9} GB)')
+
+
+    print("Building matrix T .......", ) # ------------------------------------
+    matrixT_bg = getMatrixT_system_byGroup(
+      self.mesh, self.energy_g, self.xs, self.probabilities, 
+      store_sparse=self.sparse
+    )
+    print(f' {matrixT_bg[0].shape} ', end='\t')
+    if self.sparse:
+      print(f' ({matrixT_bg[0].data.nbytes*self.energy_g/1e9} GB)')
+
+
+    print("Building matrix R .......", ) # ------------------------------------
+    matrixR_bg = getResponseMatrix_byGroup(
+      self.mesh, self.energy_g, self.probabilities, 
+      store_sparse=self.sparse
+    )
+    print(f' {matrixR_bg[0].shape} ', end='\t')
+    if self.sparse:
+      print(f'({matrixR_bg[0].data.nbytes*self.energy_g/1e9} GB)')
+    
+    print(f' ({sys.getsizeof(matrixR_bg[0])*self.energy_g/1e9} GB)')
+
+
+    print("Building matrix M .......", ) # ------------------------------------
+    matrixM, twin_surfs = getM_matrix_easier(
+      self.mesh, store_sparse=self.sparse
+    ) 
+    if self.sparse:
+      print(f'{matrixM.shape} ({matrixM.data.nbytes*self.energy_g/1e9} GB)')
+    else:
+      print(f' {matrixM.shape} ({sys.getsizeof(matrixM)/1e9} GB)')
+
+
+      
+    self.matrixR_bg = matrixR_bg
+    self.matrixS_bg = matrixS_bg
+    self.matrixT_bg = matrixT_bg
+    self.matrixU_bg = matrixU_bg
+    self.matrixM = matrixM
+    
+
+    # Inverting the matrix ----------------------------------------------------
+    print("Inverting (I - MxR)......")  
+    
+    inverse_IMR_bg = self.calculate_inverseIMR(
+      matrixM, matrixR_bg, self.energy_g, self.numSurfaces, 
+    )
+    # self.plot_matrix_sparsity(
+    #   inverse_IMR_bg[0]*10**10, 'inverse_g0', log_scale=True
+    # )
+
+
+    # Calculating matrix A ----------------------------------------------------
+    self.matrixA_bg = self.calculate_matrixA(
+      matrixS_bg, matrixR_bg, 
+      inverse_IMR_bg, 
+      matrixT_bg, matrixU_bg, 
+      matrixM
+    )
+    
+    # self.plot_matrix_sparsity(
+    #   self.matrixA_bg[0]*10**10, 'mA_g0', log_scale=True
+    # )
+
+    end = time.time()
+    self.time_elapsed_matrixes = end-start
+    print(f'Built the matrixes in: {end-start} sec.')
+
+  def calculate_inverseIMR_C(
+    self, matrixM, matrixR, energy_g, numSurfaces, 
+  ):
+    """
+    Calculates the inverse of the therm (I - MxR) in the response
+    matrix method for each energy group
+
+    Parameters
+    ----------
+    matrixM : np.array()
+      Matrix M i.e. topological relation of the surfaces in the global 
+      problem
+    matrixR : dict
+      Response matrix (matrix "R") dictionary where keys are the energy
+      groups
+    energy_g : int 
+      Energy groups
+    
+    Returns
+    -------
+    inv : dict
+      Dictionary with the inverse of the matrix (I - MxR) where the keys
+      are the energy groups
+    """
+    inv = {}
+    mM = matrixM
+    identityMatrix = []
+    
+    mM_row_idxs = matrixM[0]
+    mM_col_idxs = matrixM[1]
+    mM_values = matrixM[2]
+    numValuesM = mM_values.shape[0]
+    print(mM_row_idxs.shape)
+    print(mM_col_idxs.shape)
+    print(mM_values.shape)
+    print(numSurfaces)
+    print(numValuesM)
+
+
+    mM_row_idxs_ctype = (ctypes.c_int * numValuesM)(*mM_row_idxs)
+    mM_col_idxs_ctype = (ctypes.c_int * numValuesM)(*mM_col_idxs)
+    mM_values_ctype = (ctypes.c_double * numValuesM)(*mM_values)
+
+    for g in range(energy_g):
+      print(f"energy group {g+1} --------------------------------------------")
+      mR_row_idxs = matrixR[g][0]
+      mR_col_idxs = matrixR[g][1]
+      mR_values = matrixR[g][2]
+      numValues_mR = mR_row_idxs.shape[0]
+      mR_row_idxs_ctype = (ctypes.c_int * numValues_mR)(*mR_row_idxs)
+      mR_col_idxs_ctype = (ctypes.c_int * numValues_mR)(*mR_col_idxs)
+      mR_values_ctype = (ctypes.c_double * numValues_mR)(*mR_values)
+      print(f"types converted")
+      
+      c_matrix_lib.calculate_inverse_IMR(
+        mM_row_idxs_ctype, mM_col_idxs_ctype, mM_values_ctype,
+        mR_row_idxs_ctype, mR_col_idxs_ctype, mR_values_ctype,
+        ctypes.c_int(numValuesM), ctypes.c_int(numValues_mR),
+        ctypes.c_int(numSurfaces),
+      )
+      raise SystemExit
+      mM_x_mR = []
+      mI_MR = []
+      inverse = []
+      Hej,
+
+
+
+      # return 0
+      if self.sparse:
+        
+        # mM_x_mR = mM.dot(matrixR[g])
+        # mI_MR = identityMatrix - mM_x_mR 
+        # lu = sprs.linalg.splu(mI_MR)
+        
+        # for n in range(numSurfaces):
+        #   sparse_vector_I = sprs.csc_matrix(
+        #     ([1],([n], [0])), shape=(numSurfaces,1)
+        #   ).toarray()
+        #   xn = lu.solve(sparse_vector_I)
+        #   print(xn)
+        # inverse = mI_MR
+        # inverse = sprs.linalg.inv(mI_MR)
+        pass
+      else:
+        mM_x_mR = np.matmul(mM, matrixR[g])
+      
+        mI_MR = identityMatrix - mM_x_mR 
+      
+        try:    
+          inverse = np.linalg.inv(mI_MR)
+        except np.linalg.LinAlgError:
+          inverse = np.linalg.pinv(mI_MR)
+
+
+      # print(inverse)
+      inv[g] = inverse
+    # print(inv[0])
+    return inv
+  
+  def calculate_inverseIMR(
+    self, matrixM, matrixR, energy_g, numSurfaces, 
+  ):
+    """
+    Calculates the inverse of the therm (I - MxR) in the response
+    matrix method for each energy group
+
+    Parameters
+    ----------
+    matrixM : np.array()
+      Matrix M i.e. topological relation of the surfaces in the global 
+      problem
+    matrixR : dict
+      Response matrix (matrix "R") dictionary where keys are the energy
+      groups
+    energy_g : int 
+      Energy groups
+    
+    Returns
+    -------
+    inv : dict
+      Dictionary with the inverse of the matrix (I - MxR) where the keys
+      are the energy groups
+    """
+    inv = {}
+    mM = matrixM
+    identityMatrix = []
+    if self.sparse:
+      identityMatrix = sprs.identity(numSurfaces)
+    else:
+      identityMatrix = np.identity(numSurfaces)  # identity matrix
+    np.set_printoptions(threshold=200)
+    for g in range(energy_g):
+      print(f"energy group {g+1}")
+      
+      mM_x_mR = []
+      mI_MR = []
+      inverse = []
+
+      if self.sparse:
+        mM_x_mR = mM.dot(matrixR[g])
+        mI_MR = identityMatrix - mM_x_mR 
+        
+        inverse = sprs.linalg.inv(mI_MR)
+      else:
+        mM_x_mR = np.matmul(mM, matrixR[g])
+        # self.plot_matrix_sparsity(mM_x_mR, 'mM_x_mR')
+        mI_MR = identityMatrix - mM_x_mR 
+        # self.plot_matrix_sparsity(mI_MR, 'I - MR')
+        print("nnz MR", np.count_nonzero(mM_x_mR))
+        print("nnz I-MR", np.count_nonzero(mI_MR))
+        try:    
+          inverse = np.linalg.inv(mI_MR)
+        except np.linalg.LinAlgError:
+          inverse = np.linalg.pinv(mI_MR)
+        
+
+
+      print(inverse)
+      print("nnz inv(I-MR)", np.count_nonzero(inverse))
+      inv[g] = inverse
+    # print(inv[0])
+    return inv
+
+  def calculate_matrixA(
+    self, matrixS_bg, matrixR_bg, 
+    inverse_IMR_bg, 
+    matrixT_bg, matrixU_bg, 
+    matrixM
+  ):
+    mA_bg = {}
+    for g in range(self.energy_g):
+
+      print(f'calculating matrix A (g={g}) --- CPU utilization: {psutil.cpu_percent()}%')
+      
+      if self.sparse:
+        mSK = matrixS_bg[g].dot(inverse_IMR_bg[g])
+        mSKM = mSK.dot(matrixM)
+        mSKMU = mSKM.dot(matrixU_bg[g])
+        mA = mSKMU + matrixT_bg[g]
+        mA_bg[g] = mA
+
+      else:
+        mSK = np.matmul(matrixS_bg[g], inverse_IMR_bg[g])
+        mSKM = np.matmul(
+          mSK, matrixM
+        )
+        mSKMU = np.matmul(mSKM, matrixU_bg[g])
+        mA = mSKMU + matrixT_bg[g]
+        mA_bg[g] = mA
+
+      del mSK
+      del mSKMU
+      del (
+        # matrixS_bg[g], 
+        # matrixR_bg[g], 
+        #inverse_IMR_bg[g], 
+        # matrixT_bg[g], 
+        # matrixU_bg[g]
+      )
+      # print(mA.shape)
+    return mA_bg
+  
   def run_simplePI_factorized_bg(
     self, max_iterations=1000, tolerance=1E-10
   ):
@@ -370,7 +765,6 @@ class RmmSolution:
         2. Calculate Phi
       
     """
-    start = time.time()
     
     # Initial guesses keff and phi --------------------------------------------
     phi_guess = {g: np.ones(self.numRegions) for g in range(self.energy_g)}
@@ -385,24 +779,6 @@ class RmmSolution:
     phi_source_array = []
     
     # input()
-    # print(matrixS_bg[0])
-
-    mA_bg = {}
-    for g in range(self.energy_g):
-      print(f'calculating matrix A (g={g})')
-      mSK = np.matmul(self.matrixS_bg[g], self.inverse_IMR_bg[g])
-      mSKM = np.matmul(
-        mSK, self.matrixM
-      )
-      mSKMU = np.matmul(mSKM, self.matrixU_bg[g])
-      mA = mSKMU + self.matrixT_bg[g]
-      mA_bg[g] = mA
-      # print(mA.shape)
-
-    end = time.time()
-    print(f'Built dictionary of mA_g in {end-start} sec.')
-
-    # iiii = input('Press enter to continue')
     start2 = time.time()
 
     while (
@@ -410,7 +786,7 @@ class RmmSolution:
       iteration < max_iterations + 1
     ):
       print("-"*50)
-
+      
       # Estimating the Source --------------------------------
       print("Estimating source ...")
       source_Q_vectors = self.systemSource.calculate_Qvector(
@@ -419,12 +795,18 @@ class RmmSolution:
       )
       # print(source_Q_vectors[1].shape)
       
+      
       phi_new = {}
       for g in range(self.energy_g):
-        phi_g = np.matmul(mA_bg[g],source_Q_vectors[g])
+        if self.sparse:
+          phi_g = self.matrixA_bg[g].dot(source_Q_vectors[g])
+        else:
+          phi_g = np.matmul(self.matrixA_bg[g],source_Q_vectors[g])
+        # print(phi_g)
         phi_new[g] = phi_g
         # print("phi_shape:",phi_g.shape)
-     
+      print(phi_new[0][:5])
+      print(phi_new[0][-5:])
 
       # power iteration -----------------------------------------
       keff_new = self.power_iteration(
@@ -435,7 +817,7 @@ class RmmSolution:
 
       
       # check convergence ------------------------------------
-      k_converge, phi_converge = self.check_convergence(
+      k_converge, phi_converge = self.check_power_convergence(
         keff_prev, keff_new, phi_prev, phi_new
       )
       print("keff: ", keff_new)
@@ -452,22 +834,11 @@ class RmmSolution:
       
       iteration += 1
 
-      # return 0
-
-    # j_in_sys = create_long_vector_jin(j_in_new)
-    # j_out_sys = np.matmul(np.linalg.inv(matrixM_sys), j_in_sys)
-    # phi_uncertainty = propagate_prob_uncertainty(phi_new, mesh_info, energy_g,
-    # source_Q_vectors, xs, j_in_sys, prob_sigma)
-    # phi_uncertainty = order_flux_output_sys(
-    # phi_uncertainty, mesh_info, energy_g)
-    # phi_sys = create_long_vector_phi_sys(phi_new)
-    # flux_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, 
-    # phi_sys, j_in_sys)
-    # current_eq_proof(probabilities, source_Q_vectors, mesh_info, energy_g, xs, 
-    # phi_sys, j_in_sys)
+      
       
     end2 = time.time()
-    print(f'Iterative method completed in {end2-start2} sec')
+    self.time_elapsed_pow_it = end2 - start2
+    print(f'Iterative method completed in {end2 - start2} sec')
     
     self.solution_data = {
       "keff": k_array,
@@ -477,9 +848,12 @@ class RmmSolution:
       "flux_convergence": phi_converge, 
       "iterations": iteration,
       "phi_source": phi_source_array,
+      'time_matrixes': self.time_elapsed_matrixes,
+      'time_iterations': self.time_elapsed_pow_it,
       "j_in_sys": {}, #j_in_sys,
       "j_out_sys": {} #j_out_sys
     }
+    return k_array, phi_new
   
   def run_chevyshev_PI_factorized_bg(
     self, max_iterations=1000, tolerance=1E-10
@@ -659,7 +1033,6 @@ class RmmSolution:
       "j_out_sys": {} #j_out_sys
     }
     
-
   def run_simplePI_bg(
     self, max_iterations=1000, tolerance=1E-10
   ):
@@ -768,170 +1141,716 @@ class RmmSolution:
     }
     
   
-  def power_iteration(self, phi_new, phi_prev, keff_prev, fiss_src):
-    """
+class RmmSolution_transport_sweep(RmmSolution):
 
-    Parameters
-    ----------
-
-    Returns
-    -------
-
-    """
-    if isinstance(phi_new, dict) and isinstance(phi_new, dict):
-      phi_new = self.create_long_vector_flux(phi_new)
-      phi_prev = self.create_long_vector_flux(phi_prev)
-    
-    vector_prev = []
-    vector_new = []
-
-    
-    vector_prev = np.matmul(fiss_src, phi_prev)
-    vector_new = np.matmul(fiss_src, phi_new)
-
-    new_product = np.inner(vector_prev, vector_new)
-    prev_product = np.inner(vector_prev, vector_prev)
-    
-    k_new = keff_prev * new_product / prev_product
-
-    return k_new
-
-  def check_convergence(
-    self, k_prev, k_new, phi_prev, phi_new, jin_prev=False, jin_new=False
+  def __init__(
+    self, energy_g, mesh, xs, probabilities, c_calc=False, parallel=False,
+    c_lib_path=''
   ):
-    """
-    Function to check the convergence for the power iteration method, it checks
-    the convergence in the k_eff, scalar flux, and the neutron currents 
-    in-between the coarse nodes.
-
-    For the convergence of neutron flux and neutron current it creates a long
-    vector and performs the convergence opperations i.e. (new-prev)/prev and 
-    takes the max value of the resultant vector.
-
-    Parameters
-    ----------
-    k_prev : float
-
-    k_new : float
+    super().__init__(energy_g, mesh, xs, probabilities)
+    self.c_calc = c_calc
+    self.parallel = parallel
+    self.c_lib = None
     
-    phi_prev : dict
-
-    phi_new : dict
-
-    jin_prev : dict
-
-    jin_new : dict
-
-    energy_g : int
-
-    Returns
-    -------
-    k_converge : float
-
-    new_converge.max() : float
-
-    jin_converge.max() : float
-
-    """
-    k_converge = abs(abs(k_new) - k_prev)/abs(k_new)
-
-    # max_phi_prev = np.zeros(energy_g)
-    # max_phi_new = np.zeros(energy_g)
-    # max_jin_prev = np.zeros(energy_g)
-    # max_jin_new = np.zeros(energy_g)
-    # for g in range(energy_g):
-    #   max_phi_new[g] = phi_new[g].max()
-    #   max_phi_prev[g] = phi_prev[g].max()
-    #   max_jin_new[g] = jin_new[g].max()
-    #   max_jin_prev[g] = jin_prev[g].max()
-    # phi_converge = abs(max_phi_new - max_phi_prev) / max_phi_new 
-    # jin_converge = abs(max_jin_new - max_jin_prev) / max_jin_new 
-    if isinstance(phi_new, dict) and isinstance(phi_new, dict):
-      phi_new = self.create_long_vector_flux(phi_new)
-      phi_prev = self.create_long_vector_flux(phi_prev)
-
-    phi_converge = (phi_new - phi_prev) / phi_prev
-
-    if jin_prev and jin_new:
-      jin_new = create_long_vector_jin(jin_new)
-      jin_prev = create_long_vector_jin(jin_prev)
-      jin_converge = (jin_new - jin_prev) / jin_prev
-      return k_converge, phi_converge.max(), jin_converge.max()
+    if parallel and c_calc:
+      print(c_lib_path)
+      if c_lib_path == '':
+        c_lib_path = '/home/hirepan/Documents/chalmers/Project/codes/Shynt'
+        c_lib_path += '/repo/Shynt/src_cpp/icm_iterations_parallel.so'
+      print("Parallel calculation in  C")
+      # Load the shared library
+      self.c_lib = ctypes.CDLL(c_lib_path)
+      self.c_lib.power_iteration_with_transport_sweep.argtypes = (
+        ctypes.Structure, ctypes.Structure,  ctypes.Structure, ctypes.c_int
+      )
+      self.c_lib.power_iteration_with_transport_sweep.restype = OutputData
     else:
-      return k_converge, phi_converge.max()
+      if c_lib_path == '':
+        c_lib_path = '/home/hirepan/Documents/chalmers/Project/codes/Shynt'
+        c_lib_path += '/repo/Shynt/src_cpp/icm_iterations.so'
+      # Load the shared library
+      self.c_lib = ctypes.CDLL(c_lib_path)
+      self.c_lib.power_iteration_with_transport_sweep.argtypes = (
+        ctypes.Structure, ctypes.Structure,  ctypes.Structure
+      )
+      self.c_lib.power_iteration_with_transport_sweep.restype = OutputData
+    
+    self.nuFiss_main_reg = None
+    self.fission_src = None
+    self.scattering_src = None
+    self.matrixR_mn_ctype = None
+    self.matrixS_mn_ctype = None
+    self.matrixT_mn_ctype = None
+    self.matrixU_mn_ctype = None
+
+    self.matrixR_mainNodes = None
+    self.matrixS_mainNodes = None
+    self.matrixT_mainNodes = None
+    self.matrixU_mainNodes = None
+
+  def build_matrices(self):
+  
+    start = time.time()
+    # BUILDING MATRIXES ------------------------------------------------------
+    print("Building matrix R .......", )
+    matrixR_bg_mainNodes = getResponseMatrix_mainNodes(
+      self.mesh, self.energy_g, self.probabilities
+    )
+    print("Building matrix S .......")
+    matrixS_bg_mainNodes = getMatrixS_mainNodes(
+      self.mesh, self.energy_g, self.xs, self.probabilities
+    )
+    print("Building matrix T .......", )
+    matrixT_bg_mainNodes = getMatrixT_mainNodes(
+      self.mesh, self.energy_g, self.xs, self.probabilities
+    )
+    print("Building matrix U .......", )
+    matrixU_bg_mainNodes = getMatrixU_mainNodes(
+      self.mesh, self.energy_g, self.probabilities
+    )
+    
+
+    self.matrixR_mainNodes = matrixR_bg_mainNodes
+    self.matrixS_mainNodes = matrixS_bg_mainNodes
+    self.matrixT_mainNodes = matrixT_bg_mainNodes
+    self.matrixU_mainNodes = matrixU_bg_mainNodes
+
+    if self.c_calc:
+      self.matrixR_mn_ctype = self.convert_matrix_bg_to_ctypes(
+        matrixR_bg_mainNodes
+      )
+      self.matrixS_mn_ctype = self.convert_matrix_bg_to_ctypes(
+        matrixS_bg_mainNodes
+      )
+      self.matrixT_mn_ctype = self.convert_matrix_bg_to_ctypes(
+        matrixT_bg_mainNodes
+      )
+      self.matrixU_mn_ctype = self.convert_matrix_bg_to_ctypes(
+        matrixU_bg_mainNodes
+      )
+    
+    end = time.time()
+    self.time_elapsed_matrixes = end-start
+    print(f'Built the matrixes in: {end-start} sec.')
 
 
-  def create_flux_dictionary_bg(self, phi_long_vector):
-    coarse_nodes = self.mesh.coarse_order
-    coarse_nodes_regions = self.mesh.coarse_region_rel
+  def build_source(self):
+    start = time.time()
+
+    print("Building initial source .......", end='')
+    systemSource = SourceQ( 
+      # It is initialized by building the scattering matrix and fission matrix 
+      # per region in the main nodes
+      self.mesh, self.energy_g, self.xs
+    ) 
+    self.systemSource = systemSource
+
+    self.fission_src, self.nuFiss_main_reg = self.convert_src_matrixes_to_ctypes(
+      systemSource.fissionMatrix
+    )
+    self.scattering_src, self.nuFiss_main_reg = self.convert_src_matrixes_to_ctypes(
+      systemSource.scatteringMatrix
+    )
+    print(self.fission_src)
+    print("OK")
+    end = time.time()
+    print(f'Built the scattering and fission source in: {end-start} sec.')
+  
+  def parse_data_to_ctypes(self):
+    self.icm_matrixes_ctypes = IcmMatrixes(
+      self.matrixR_mn_ctype, 
+      self.matrixS_mn_ctype, 
+      self.matrixT_mn_ctype, 
+      self.matrixU_mn_ctype, 
+
+      self.fission_src, 
+      self.scattering_src,
+
+      self.nuFiss_main_reg
+    )
+    # ------------------------------------------------------------------
     
-    # create indexes
     
-    indexes = { g: {} for g in range(self.energy_g)}
+    # ------------------------------------------------------------------
+    self.mesh_data_ctypes = self.convert_mesh_data_for_c_api()
+    
+  
+  def run_simplePI_transport_sweep_bg_cCalc(
+    self, max_iterations=1000, tolerance=1E-10, omp=1
+  ):
+    convergence_ctypes = ConvergenceData(
+      ctypes.c_int(max_iterations), ctypes.c_double(tolerance),
+      ctypes.c_int(self.energy_g)
+    )
+    # return 0
+    output = None
+    if self.parallel:
+      print("Num coarse nodes from python: ", self.mesh_data_ctypes.numCoarseNodes)
+      output = self.c_lib.power_iteration_with_transport_sweep(
+        self.icm_matrixes_ctypes, 
+        convergence_ctypes, 
+        self.mesh_data_ctypes, 
+        ctypes.c_int(omp)
+      )
+    else:
+      output = self.c_lib.power_iteration_with_transport_sweep(
+        self.icm_matrixes_ctypes, 
+        convergence_ctypes, 
+        self.mesh_data_ctypes
+      )
+    # ------------------------------------------------------------------
+    keff_array = np.ctypeslib.as_array(output.keff, shape=(max_iterations,))
+    tr_iter = np.ctypeslib.as_array(output.transport_iterations, shape=((max_iterations,self.energy_g))) 
+    phi_np = np.ctypeslib.as_array(output.phi, shape=(self.energy_g*self.numRegions,))
+    phi_np = phi_np.reshape((self.energy_g,self.numRegions))
+
+    jin_np = np.ctypeslib.as_array(output.jin, shape=(self.energy_g*self.numSurfaces,))
+    jin_np = jin_np.reshape((self.energy_g,self.numSurfaces))
+    jout_np = np.ctypeslib.as_array(output.jout, shape=(self.energy_g*self.numSurfaces,))
+    jout_np = jout_np.reshape((self.energy_g,self.numSurfaces))
+
+    phi_convergence = np.ctypeslib.as_array(output.phi_convergence, shape=((max_iterations,self.energy_g)))
+    # phi_convergence = phi_convergence.reshape((self.energy_g,self.numRegions))
+
+    self.solution_data = {
+      "keff": keff_array,                # double *
+      "phi":  phi_np,                    # double *
+      "phi_convergence": phi_convergence,
+      "transport_iterations": tr_iter,   # double *
+      "keff_convergence": output.keff_convergence,
+      "iterations": output.power_iterations,
+      'time_matrixes': self.time_elapsed_matrixes,
+      'time_iterations': output.time_iterations, 
+      "omp": omp,
+      "phi_sigma": False,                        
+      "phi_source": False,                       
+      "jin": jin_np,                            
+      "jout": jout_np                            
+    }
+
+  def run_simplePI_transport_sweep_bg(
+    self, max_iterations=1000, tolerance=1E-10
+  ):
+    import copy
+    phi_prev = {
+      g: {
+        nid : np.ones(
+          len(c_node.fine_mesh.regions)
+        ) for nid, c_node in self.mesh.coarse_mesh.coarse_nodes.items()
+      } for g in range(self.energy_g)
+    }
+    phi_new = {
+      g: {
+        nid : np.ones(
+          len(c_node.fine_mesh.regions)
+        ) for nid, c_node in self.mesh.coarse_mesh.coarse_nodes.items()
+      } for g in range(self.energy_g)
+    }
+
+    keff_prev = 1
+
+    print("Calculating transfer indexes for Jin ... ", end='')
+    j_transfer_idxs = self.calculate_transfer_idxs()
+    print("Completed")
+    k_converge = 1
+    phi_converge = 1
+    iteration = 1
+    k_array = []
+    phi_source_array = []
+    
+    # input()
+    start2 = time.time()
+    iterations_info = open("iter_info.txt", 'w')
+
+    while (
+      (k_converge >= tolerance or phi_converge >= tolerance) and
+      iteration < max_iterations + 1
+    ):
+      print("-"*50)
+      j_converge = 1
+      ji_prev = {
+        g: {
+          nid : np.ones(
+            len(c_node.surfaces)
+          ) for nid, c_node in self.mesh.coarse_mesh.coarse_nodes.items()
+        } for g in range(self.energy_g)
+      }
+      ji_new = {
+        g: {
+          nid : np.ones(
+            len(c_node.surfaces)
+          ) for nid, c_node in self.mesh.coarse_mesh.coarse_nodes.items()
+        } for g in range(self.energy_g)
+      }
+      jo_prev = {
+        g: {
+          nid : np.ones(
+            len(c_node.surfaces)
+          ) for nid, c_node in self.mesh.coarse_mesh.coarse_nodes.items()
+        } for g in range(self.energy_g)
+      }
+      transport_iter = 1
+
+      print("Beggining transport iterations ...")
+      while j_converge >= tolerance:
+        # print(f"{transport_iter},", end='')
+        if transport_iter < 5:
+          self.print_jin_or_phi(
+            phi_new, f"tr{transport_iter}_power{iteration}_phi_new_py.txt", 1
+          )
+          self.print_jin_or_phi(
+            jo_prev, f"tr{transport_iter}_power{iteration}_jout_prev_py.txt", 1
+          )
+          self.print_jin_or_phi(
+            ji_new, f"tr{transport_iter}_power{iteration}_jin_new_py.txt", 1
+          )
+
+        for g in range(self.energy_g):
+          for nid, c_node in self.mesh.coarse_mesh.coarse_nodes.items():
+            eq_node = self.mesh.coarse_mesh.equivalent_nodes_rel[nid]
+            regions_node = c_node.fine_mesh.regions
+
+            # calculate phi_node_new
+            mS = self.matrixS_mainNodes[g][eq_node]
+            mT = self.matrixT_mainNodes[g][eq_node]
+            qsrc_prev = self.systemSource.calculate_Qvector_node(
+              keff_prev, phi_prev, regions_node, g, nid
+            )
+            
+            phi_new[g][nid] = np.matmul(
+              mS, ji_prev[g][nid]
+            ) + np.matmul(mT, qsrc_prev)
+            
+            # ---- update currents -----
+            mR = self.matrixR_mainNodes[g][eq_node]
+            mU = self.matrixU_mainNodes[g][eq_node]
+            
+            jo_prev[g][nid] = np.matmul(
+              mR, ji_prev[g][nid]
+            ) + np.matmul(mU, qsrc_prev)
+          # print(phi_new[g][2])
+          
+          # transfer jin  -------------------------------------------------
+          for nid, c_node in self.mesh.coarse_mesh.coarse_nodes.items():
+            
+            surfaces_n = list(c_node.surfaces.keys())
+            for sidx, sid in enumerate(surfaces_n):
+              transfer_node, transfer_sidx = j_transfer_idxs[nid][sidx]
+              ji_new[g][transfer_node][transfer_sidx] = jo_prev[g][nid][sidx]
+          
+          jout_prev_all = self.create_long_vector_flux(jo_prev[g])
+          jin_new_all = self.create_long_vector_flux(ji_new[g])
+          phi_new_all  = self.create_long_vector_flux(phi_new[g])
+          # print("phi: ", phi_new_all[:4])
+          # print("jin: ", jin_new_all[:4])
+          # print("Jout ", jo_prev[0][1])
+          # print("Jin transfered", ji_new[0][1])
+          # return jout_prev_all, jin_new_all
+          # break
+          # --------------------------------------------------------------
         
-    idx = 0
-    for n_id in coarse_nodes:
-      regions_node = coarse_nodes_regions[n_id]
+      
+        # Check J_in convergence:
+        # print("ji_prev: ", id(ji_prev[0][1]))
+        # print("ji_new : ", ji_new[0][1])
+
+        
+        j_converge = self.check_transport_convergence(ji_prev, ji_new)
+        # print("j_converge", j_converge)
+        ji_prev = copy.deepcopy(ji_new)
+        transport_iter += 1
+        # if (transport_iter == 4):
+        #   break
+      # power iteration -----------------------------------------
+      if iteration < 5:
+        self.print_jin_or_phi(
+          ji_new, f'trConverged_power{iteration}_jin_new_py.txt', iteration
+        )
+        self.print_jin_or_phi(
+          phi_new, f'trConverged_power{iteration}_phi_new_py.txt', iteration
+        )
+
+      keff_new = self.power_iteration(
+        phi_new, phi_prev, keff_prev, fiss_src=self.fission_source
+      )   
+      
+      k_array.append(keff_new)
+      phi_source_array.append([])
+      
+      # check convergence ------------------------------------
+      k_converge, phi_converge = self.check_power_convergence(
+        keff_prev, keff_new, phi_prev, phi_new
+      )
+      print(f"keff: {keff_new:.15f}")
+      print("# Transport iterations: ", transport_iter)
+      print(f"Keff converge: {k_converge:.8E}")
+      print(f"Phi converge: {phi_converge:.8E}")
+      print(f"Convergence tolerance: {tolerance:.8E}")
+      print("Power iteration:", iteration)
+
+      iterations_info.write(f"keff: {keff_new:.15f}\n")
+      iterations_info.write(f"# Transport iterations: {transport_iter}\n")
+      iterations_info.write(f"Keff converge: {k_converge:.8E}\n")
+      iterations_info.write(f"Phi converge: {phi_converge:.8E}\n")
+      iterations_info.write(f"Convergence tolerance: {tolerance:.8E}\n")
+      iterations_info.write(f"Power iteration: {iteration}\n")
+      iterations_info.write("-----------------------------------\n")
+      # update for the next iteration ------------------------
+      keff_prev = keff_new
+      phi_prev = copy.deepcopy(phi_new)
+      
+      iteration += 1
+      # break
+
+    iterations_info.close()
+    
+    end2 = time.time()
+    self.time_elapsed_pow_it = end2 - start2
+    print(f'Iterative method completed in {end2 - start2} sec')
+
+    self.solution_data = {
+      "keff": k_array,                                                  # double *
+      "phi":  self.create_long_vector_flux(phi_new, for_output=True),   # double **
+
+      "phi_sigma": False,                                               # double
+      "keff_convergence": k_converge,                                   # double
+      "flux_convergence": phi_converge,                                 # double
+      "iterations": iteration,                                          # int
+      "phi_source": phi_source_array,                                   # double ***
+      'time_matrixes': self.time_elapsed_matrixes,                      # double
+      'time_iterations': self.time_elapsed_pow_it,                      # double
+      "j_in_sys": {},                                                   # double **
+      "j_out_sys": {}                                                   # double **
+    }
+    return k_array, phi_new
+       
+  def print_jin_or_phi(self, dictionary, name, tr_iter):
+    mode_file = 'w'
+    # if tr_iter == 1:
+    #   mode_file = 'w'
+    
+    with open(name, mode_file) as file_out:
+      file_out.write("------------- Transport iter --------- \n")
       for g in range(self.energy_g):
-        for r_id in regions_node:
-          indexes[g][r_id] = idx
-          idx += 1
-
-
-    # print(indexes[0])
-    phi_bg = {}
-    for g in range(self.energy_g):
-      # print('g: ', g)
-      phi_g_array = []
-      for r_id in self.mesh.all_regions_order:
-        # print(r_id)
-        idx_long = indexes[g][r_id]
-        phi_g_array.append(phi_long_vector[idx_long])
-      phi_bg[g] = np.array(phi_g_array)
+        for nid, vector in dictionary[g].items():
+          for val in vector:
+            file_out.write(f"{val:.12f}\n")
     
-    return phi_bg
-
-
-  def create_long_vector_flux(self, phi):
+  def convert_matrix_bg_to_ctypes(self, m_g_node):
     """
-      Function to create a long flux vector containing the flux for all the 
-      regions and all the energy groups. It is arranged in such a way that it 
-      can be multiplied by the big fission source block matrix.
+      m_g_node --> [energy group][main_node][row][col]
 
-      phi = [
-        phi_r1_g1 .. phi_r1_G .. phi_r2_g1 .. phi_r2_G .. phi_rI_g1 .. phi_rI_G
-      ]
-
-      Parameters
-      ----------
-      phi : dict
-
+      ---
       Returns
-      -------
-      phi_long : np.array()
+      [main_node][energy group][row][col]
+    """
+    # mM_row_idxs_ctype = (ctypes.c_int * numValuesM)(*mM_row_idxs)
+    # mM_col_idxs_ctype = (ctypes.c_int * numValuesM)(*mM_col_idxs)
+    # mM_values_ctype = (ctypes.c_double * numValuesM)(*mM_values)
+    
+    # allocate matrix 4D
+
+    main_nodes = list(self.mesh.coarse_mesh.equivalent_nodes.keys())
+    num_mainNodes = len(main_nodes)
+
+    mainNodesMatrixesArray = MatrixEntry * num_mainNodes
+
+    mainNodes_matrixes = mainNodesMatrixesArray()
+
+    DoublePtr = ctypes.POINTER(ctypes.c_double)
+    DoublePtrPtr = ctypes.POINTER(DoublePtr)
+    DoublePtrPtrPtr = ctypes.POINTER(DoublePtrPtr)
+
+
+    for mnid, main_nid in enumerate(main_nodes):
+
+      numRows, numCols = m_g_node[0][main_nid].shape
+      # Allocate memory for the 3D array of matrixes per energy group
+      # for each main node
+      array_3d_ctypes = (DoublePtrPtr * self.energy_g)()
+      # print(array_3d_ctypes)
+      for g in range(self.energy_g):
+        array_3d_ctypes[g] = (DoublePtr * numRows)()
+
+        for row in range(numRows):
+          array_3d_ctypes[g][row] = (ctypes.c_double * numCols)()
+
+          for col in range(numCols):
+            array_3d_ctypes[g][row][col] = ctypes.c_double(
+              m_g_node[g][main_nid][row][col]
+            )
+
+      matrixEntry_struct_instance = MatrixEntry()
+      matrixEntry_struct_instance.numRows = numRows
+      matrixEntry_struct_instance.numCols = numCols
+      matrixEntry_struct_instance.matrix = (
+        DoublePtrPtr * self.energy_g
+      )(*array_3d_ctypes)
+      
+      mainNodes_matrixes[mnid] = matrixEntry_struct_instance
+    
+    return mainNodes_matrixes
+
+  def convert_src_matrixes_to_ctypes(self, src_matrx):
+
     """
 
-    phi_long = np.array([])
+      src_matrx  can be either fission or scattering
+      each src_mtrx is a dictionary with regions as keys and 
+      fission or scattering matrix as values. The size of the
+      square matrix is GxG
+
+    """
+   
     
-    for g, phi_g in phi.items():
-      phi_long = np.concatenate((phi_long, phi_g), axis=0)
-    return phi_long
 
-  def plot_matrix_sparsity(self,matrix, name):
-    plt.figure()
-    plt.imshow(matrix, interpolation='none', cmap='jet')
-    plt.title(name)
-    plt.colorbar()
-    plt.savefig(f"{name}.png")
+    main_regions = list(src_matrx.keys())
+    num_mainRegions = len(main_regions)
+
+    mainRegions_SrcMatrixArray = SrcMatrixEntry * num_mainRegions
+    mainRegions_src_matrix = mainRegions_SrcMatrixArray()
+
+    DoublePtr = ctypes.POINTER(ctypes.c_double)
+    DoublePtrPtr = ctypes.POINTER(DoublePtr)
+
+    nuFiss_array = (DoublePtr * num_mainRegions)()
+
+    for mrid, main_rid in enumerate(main_regions):
+
+      # Allocate memory for the 3D array of matrixes per energy group
+      # for each main node
+      array_2d_ctypes = (DoublePtr * self.energy_g)()
+      # print("asasas", mrid, main_rid)
+      # print(self.systemSource.nuSigFiss[main_rid])
+      nuFiss_array[mrid] = (ctypes.c_double * self.energy_g)()
+      nuFiss_i = self.systemSource.nuSigFiss[main_rid]
+      for g in range(self.energy_g):
+
+        nuFiss_array[mrid][g] = nuFiss_i[g]
+        
+        array_2d_ctypes[g] = (ctypes.c_double * self.energy_g)()
+        for gp in range(self.energy_g):
+          array_2d_ctypes[g][gp] = ctypes.c_double(
+            src_matrx[main_rid][g][gp]
+          )
+      src_matrixEntry_struct_instance = SrcMatrixEntry(
+        self.energy_g, self.energy_g, array_2d_ctypes
+      )
+      mainRegions_src_matrix[mrid] = src_matrixEntry_struct_instance
+    
+    return mainRegions_src_matrix, nuFiss_array
+
+  def convert_mesh_data_for_c_api(self):
+    coarse_node_list = self.mesh.coarse_order
+    
+    regions_list = []
+    regions_by_coarse = []
+    
+    main_coarse_nodes = self.mesh.coarse_mesh.main_nodes
+    main_surfaces = self.mesh.coarse_mesh.main_surfaces
+    main_regions = self.mesh.coarse_mesh.main_regions
+    main_regions_vol = self.mesh.coarse_mesh.main_regions_vol
+    num_main_coarse_nodes = len(main_coarse_nodes)
+
+    coarse_nodes_main_idx = {
+      main_node: midx for midx, main_node in enumerate(main_coarse_nodes)
+    }
+    surfaces_main_idx = {
+      main_surf: ms_idx for ms_idx, main_surf in enumerate(main_surfaces)
+    }
+    regions_main_idx = {
+      main_reg: mr_idx for mr_idx, main_reg in enumerate(main_regions)
+    }
+
+    coarse_mesh = self.mesh.coarse_mesh
+    coarse_nodes_array = CoarseNode * self.numCoarseNodes
+
+    coarse_nodes = coarse_nodes_array()
+    phi_idx = 0
+    jin_idx = 0
+    self.jin_transfer_idxs = self.calculate_transfer_idxs()
+    for cid in coarse_node_list:
+      # print(cid)
+      eq_node = coarse_mesh.equivalent_nodes_rel[cid]
+      eq_node_idx = coarse_nodes_main_idx[eq_node]
+      regs_node = list(
+        coarse_mesh.coarse_nodes[cid].fine_mesh.regions.keys()
+      )
+      surfs_node = list(
+        coarse_mesh.coarse_nodes[cid].surfaces.keys()
+      )
+      
+      num_regs_node = len(regs_node)
+      num_surfs_node = len(surfs_node)
+
+      equivalent_regions = [
+        regions_main_idx[coarse_mesh.equivalent_regions[rid]] for rid in regs_node
+      ]
+      # print(equivalent_regions)
+      equivalent_surfaces = [
+        surfaces_main_idx[coarse_mesh.equivalent_surfaces[sid]] for sid in surfs_node
+      ]
+      
+      
+      # print(regs_node)
+      regions_list += regs_node
+      regions_by_coarse.append(regs_node)
+
+      # -----------------------------------------------------
+      # twins info 
+      
+
+      transfer_surfs = self.jin_transfer_idxs[cid]
+      twin_data = { }
+      for i, tr_data in enumerate(transfer_surfs):
+        
+        from_surf_idx, tr_nid, tr_sidx, tr_weight = tr_data
+
+        tr_node_surfs = list(coarse_mesh.coarse_nodes[tr_nid].surfaces.keys())
+        
+        to_surf_id = tr_node_surfs[tr_sidx]
+        from_surf_id = surfs_node[from_surf_idx] 
+        
+        twin_surf_info = TwinSurfaceInfo(
+          ctypes.c_int(from_surf_id),
+          ctypes.c_int(to_surf_id),
+          ctypes.c_int(tr_nid),
+          ctypes.c_double(tr_weight)
+        )
+        if from_surf_idx not in twin_data:
+          twin_data[from_surf_idx] = [twin_surf_info]
+        else:
+          twin_data[from_surf_idx].append(twin_surf_info)
+
+      
+      
+      for ss, array_of_twins in twin_data.items():
+        num_of_twins = len(array_of_twins)
+        array = TwinSurfaceInfo * num_of_twins
+        array_twins = array()
+        for t, twin in enumerate(array_of_twins):
+          # print(twin)
+          array_twins[t] = twin
+        
+        twin_surface_info_array = TwinSurfaceInfoArray(
+          (TwinSurfaceInfo * num_of_twins)(*array_of_twins),
+          ctypes.c_int(num_of_twins)
+        )
+
+        twin_data[ss] = twin_surface_info_array
+
+      # print(twin_data)
+
+      twin_surf_info_array_array = TwinSurfaceInfoArray * num_surfs_node
+      node_surfs_twin_info = twin_surf_info_array_array()
+
+      for ss, ss_id in enumerate(surfs_node):
+        # print(ss_id, twin_data[ss])
+        
+        node_surfs_twin_info[ss] = twin_data[ss]
+
+      # -----------------------------------------------------
+
+      coarse_node = CoarseNode(
+        (ctypes.c_int * num_regs_node)(*regs_node), 
+        (ctypes.c_int * num_surfs_node)(*surfs_node), 
+
+        (ctypes.c_int * num_regs_node)(*equivalent_regions),
+        (ctypes.c_int * num_surfs_node)(*equivalent_surfaces),
+        
+        ctypes.c_int(eq_node_idx),
+
+        (TwinSurfaceInfoArray * num_surfs_node)(*node_surfs_twin_info),
+
+        ctypes.c_int(num_regs_node),
+        ctypes.c_int(num_surfs_node),
+        ctypes.c_int(phi_idx),
+        ctypes.c_int(jin_idx),
+      )
+      coarse_nodes[cid - 1] = coarse_node
+      phi_idx += num_regs_node
+      jin_idx += num_surfs_node
+
+    main_nodes_array = CoarseNode * num_main_coarse_nodes
+    main_nodes = main_nodes_array()
+    
+    i = 0
+    
+    for mcid in main_coarse_nodes:
+      main_nodes[i] = coarse_nodes[mcid]
+      i += 1
 
 
+    # -------------------------------------------------------------------------
+
+    sys_bc = self.mesh.boundary_bc
+    bc = True if sys_bc == "reflective" else False
+    mesh_data = MeshData(
+      coarse_nodes, # coarse_nodes
+      main_nodes, # mainCoarseNodes_array
+
+      (ctypes.c_int * len(main_coarse_nodes))(*main_coarse_nodes), # 
+      (ctypes.c_int * len(main_regions))(*main_regions), # 
+      (ctypes.c_double * len(main_regions))(*main_regions_vol), # 
+      
+      (ctypes.c_int * len(main_surfaces))(*main_surfaces), # 
+
+      ctypes.c_int(self.numCoarseNodes), # numCoarseNodes
+      ctypes.c_int(self.numSurfaces), # numSurfaces
+      ctypes.c_int(self.numRegions), # numRegions
+      ctypes.c_int(num_main_coarse_nodes), # numMainNodes
+      ctypes.c_bool(bc)
+    )
+
+    return mesh_data
+
+  def check_transport_convergence(self, jin_prev, jin_new):
+    if isinstance(jin_prev, dict) and isinstance(jin_new, dict):
+      jin_new = self.create_long_vector_flux(jin_new)
+      jin_prev = self.create_long_vector_flux(jin_prev)
+   
+    jin_converge = (jin_new - jin_prev) / jin_prev
+    jin_converge = np.abs(jin_converge)
+
+    return np.max(jin_converge)
+  
+  def calculate_transfer_idxs(self):
+    surface_twins = self.mesh.coarse_mesh.surface_twins
+    coarse_nodes = self.mesh.coarse_mesh.coarse_nodes
+
+    transfer_idxs = {}
+
+    for nid, c_node in coarse_nodes.items():
+    
+      transfer_idxs[nid] = []
+      surfaces_n = list(c_node.surfaces.keys())
+      for sidx, s_id in enumerate(surfaces_n):
+        twins = surface_twins[s_id]
+        # print(twins)
+        num_twins = len(twins)
+
+        for twin_info in twins:
+          # print(twin_info)
+          twin_sid, twin_node, weight = twin_info
+          if twin_sid == None: #it means it is a boundary
+            # the boundary conditions will be treated in the iterative method 
+            # when transfering Jout -> Jin 
+            # weight = 1.0 for this case
+            transfer_idxs[nid].append((sidx, nid, sidx, 1.0))
+            continue
+
+          # look for the index of the twin_sid ---------------------------
+          other_node_surfaces = coarse_nodes[twin_node].surfaces
+          for other_sid_idx, other_sid in enumerate(other_node_surfaces):
+            if other_sid == twin_sid: 
+              transfer_idxs[nid].append((sidx, twin_node, other_sid_idx, weight))
+              break
+        
+        # --------------------------------------------------------------
+
+    return transfer_idxs
 
 
-
-
-def find_index_one(mM,row_idx):
-  for idx, val in enumerate(mM[row_idx]):
-    if val == 1: return idx
 
 
 def flux_eq_proof(probabilities, source, mesh_info, energy_g, xs, flux, j_in):
@@ -970,7 +1889,6 @@ def flux_eq_proof(probabilities, source, mesh_info, energy_g, xs, flux, j_in):
       vec_right.append(right_sum)
     left.append(vec_left)
     right.append(vec_right)
-
 
 def current_eq_proof(
   probabilities, source, mesh_info, energy_g, xs, flux, j_in
@@ -1013,71 +1931,6 @@ def current_eq_proof(
       vec_right.append(right_sum)
     left.append(vec_left)
     right.append(vec_right)
-
-
-def check_convergence(
-  k_prev, k_new, phi_prev, phi_new, jin_prev=False, jin_new=False
-):
-  """
-  Function to check the convergence for the power iteration method, it checks
-  the convergence in the k_eff, scalar flux, and the neutron currents 
-  in-between the coarse nodes.
-
-  For the convergence of neutron flux and neutron current it creates a long
-  vector and performs the convergence opperations i.e. (new-prev)/prev and 
-  takes the max value of the resultant vector.
-
-  Parameters
-  ----------
-  k_prev : float
-
-  k_new : float
-  
-  phi_prev : dict
-
-  phi_new : dict
-
-  jin_prev : dict
-
-  jin_new : dict
-
-  energy_g : int
-
-  Returns
-  -------
-  k_converge : float
-
-  new_converge.max() : float
-
-  jin_converge.max() : float
-
-  """
-  k_converge = abs(k_new - k_prev)/k_new
-
-  # max_phi_prev = np.zeros(energy_g)
-  # max_phi_new = np.zeros(energy_g)
-  # max_jin_prev = np.zeros(energy_g)
-  # max_jin_new = np.zeros(energy_g)
-  # for g in range(energy_g):
-  #   max_phi_new[g] = phi_new[g].max()
-  #   max_phi_prev[g] = phi_prev[g].max()
-  #   max_jin_new[g] = jin_new[g].max()
-  #   max_jin_prev[g] = jin_prev[g].max()
-  # phi_converge = abs(max_phi_new - max_phi_prev) / max_phi_new 
-  # jin_converge = abs(max_jin_new - max_jin_prev) / max_jin_new 
-
-  phi_new = create_long_vector_flux(phi_new)
-  phi_prev = create_long_vector_flux(phi_prev)
-  phi_converge = (phi_new - phi_prev) / phi_prev
-
-  if jin_prev and jin_new:
-    jin_new = create_long_vector_jin(jin_new)
-    jin_prev = create_long_vector_jin(jin_prev)
-    jin_converge = (jin_new - jin_prev) / jin_prev
-    return k_converge, phi_converge.max(), jin_converge.max()
-  else:
-    return k_converge, phi_converge.max()
-
 
 def calculate_inverseIMR(matrixM, matrixR, energy_g, numSurfaces):
   """
@@ -1131,7 +1984,6 @@ def calculate_inverseIMR(matrixM, matrixR, energy_g, numSurfaces):
 
   return inv
 
-
 def calculate_inverseIMR_sys(matrixM, matrixR):
 
   mM = matrixM
@@ -1143,65 +1995,6 @@ def calculate_inverseIMR_sys(matrixM, matrixR):
   inverse = np.linalg.inv(matrix_to_invert)
   inv = inverse
   return inv
-
-
-
-
-def power_iteration(phi_new, phi_prev, keff_prev, fission_source):
-  """
-  
-  Parameters
-  ----------
-
-
-  Returns
-  -------
-
-
-  """
-    
-  phi_new = create_long_vector_flux(phi_new)
-  phi_prev = create_long_vector_flux(phi_prev)
-  
-
-  vector_prev = np.matmul(fission_source, phi_prev)
-  vector_new = np.matmul(fission_source, phi_new)
-
-  new_product = np.inner(vector_prev, vector_new)
-  prev_product = np.inner(vector_prev, vector_prev)
-  
-  k_new = keff_prev * new_product / prev_product
-
-  return k_new
-
-
-
-
-
-def create_long_vector_jin(j_in):
-  """
-  Function to create a long j_in vector containing the j_in for all the 
-  surfaces and all the energy groups. 
-
-  jin = [
-    jin_a1_g1 .. jin_a1_G .. jin_a2_g1 .. jin_a2_G .. jin_aA_g1 .. jin_aA_G
-  ]
-
-  Parameters
-  ----------
-  j_in : dict
-
-  Returns
-  -------
-  jin_long : np.array()
-
-  """
-
-  jin_long = np.array([])
-  for g, jin_g in j_in.items():
-    jin_long = np.concatenate((jin_long, jin_g), axis=0)
-  return jin_long
-
 
 def order_flux_output_sys(flux_system, mesh_info, energy_g):
   """This method orders the flux in a dictionary per coarse node
@@ -1245,9 +2038,6 @@ def order_flux_output_sys(flux_system, mesh_info, energy_g):
   
   return phi_output
     
-    
-
-
 def checkMatrixM(mM, equivalence):
   indexs = {
     0: 193, 1: 194, 2: 195, 3: 197,
@@ -1302,7 +2092,6 @@ def checkMatrixM(mM, equivalence):
     s_eq = equivalence[s]
     s_eq_index = indexs_inv[s_eq]
     assert one_index == s_eq_index
-
 
 def count_ones_array(array):
   numOnes = []
