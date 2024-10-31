@@ -1,0 +1,15 @@
+.vscode
+.VSCodeCounter
+
+**/output_RMM*
+**/serpent_files
+**/serpent_files/*
+
+**/__pycache__/
+**/id-counter
+**/cases/*
+
+**/*.m
+**/*.out
+**/*.seed
+

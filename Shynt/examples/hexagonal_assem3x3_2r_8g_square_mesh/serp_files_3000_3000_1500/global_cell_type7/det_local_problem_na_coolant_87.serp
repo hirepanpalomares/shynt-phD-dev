@@ -1,0 +1,61 @@
+set title "global_cell_type7/det_local_problem_na_coolant_87.serp"
+
+mat na_coolant sum tmp 453
+Na-23.03c 0.0237718
+
+mat inner_fuel sum tmp 453
+92235.03c 0.000101116
+92238.03c 0.019868
+94238.03c 1.78056e-05
+94239.03c 0.00245592
+94240.03c 0.000732245
+94241.03c 0.000196866
+94242.03c 6.83261e-05
+95241.03c 4.8183e-05
+8016.03c 0.046507
+
+
+set acelib "jeff311/sss_jeff311u.xsdata" 
+
+
+set bc 2
+
+set pop 3000 3000 1500
+
+ene fast_ene_str 1 1.00000000E-10 7.49000000E-04 1.50000000E-02 4.09000000E-02 1.11000000E-01 3.02000000E-01 8.21000000E-01 2.23000000E+00 2.00000000E+01 
+
+
+surf 1 rect 0.0 0.491295 0.0 0.8509479
+surf 2 pad 0.0 0.0 0.00 0.357  270  360
+surf 3 pad 0.491295 0.8509479 0.00 0.357   90  180
+surf 4 py 0.491295
+trans s 4 0.0 0.0 0.0 0.0 0.0 30
+
+cell 86 inside_hex inner_fuel -2  -1
+cell 88 inside_hex inner_fuel -3  -1 
+cell 85 inside_hex na_coolant -1  2  3 -4
+cell 87 inside_hex na_coolant -1  2  3  4
+cell 999999  0  fill inside_hex  -1
+cell 999998  0  outside  1
+
+
+plot 3 500 866
+
+% ----- Surface for detectors
+surf 232 px 0.00000
+surf 233 py 0.8509479
+surf 234 px 0.491295
+surf 235 py 0.00000
+surf 236 pad 0.0 0.0 0.0 0.357 270 360
+surf 237 pad 0.491295 0.8509479 0.0 0.357 90  180
+
+% ----- Detectors ------
+det reg87_reg87 de fast_ene_str dr -1 na_coolant dc 87 dfl 1 2 dfl 1 0 dfl 1 1 
+det total_rate_reg87 de fast_ene_str dr -1 na_coolant dc 87 dfl 1 1 
+det reg87_reg85 de fast_ene_str dr -1 na_coolant dc 85 dfl 1 2 dfl 1 0 
+det reg87_reg86 de fast_ene_str dr -1 inner_fuel dc 86 dfl 1 2 dfl 1 0 
+det reg87_reg88 de fast_ene_str dr -1 inner_fuel dc 88 dfl 1 2 dfl 1 0 
+det reg87_surface232 ds 232 -1 de fast_ene_str dfl 1 2 dfl 1 0 
+det reg87_surface233 ds 233 1 de fast_ene_str dfl 1 2 dfl 1 0 
+det reg87_surface234 ds 234 1 de fast_ene_str dfl 1 2 dfl 1 0 
+det reg87_surface235 ds 235 -1 de fast_ene_str dfl 1 2 dfl 1 0 
