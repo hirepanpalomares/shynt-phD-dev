@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 void freeMatrix(int** matrix, int rows);
 int** multiplyMatrices(
@@ -27,7 +28,6 @@ void multiplyMatrixVector(
     // printf("i = %i \n", i);
     result[i] = 0.0;
     for (int k = 0; k < cols_mat; k++) {
-      // printf("k = %i \n", k);
       
       result[i] += matrix[i][k] * vector[start_vec+k];
     }
@@ -41,7 +41,9 @@ void sumVectors(
 ) {
  
   for (int i = 0; i < rows_vec1; i++) {
+    
     result[result_idx + i] = vector1[i] + vector2[i];
+   
   }
   
 }
@@ -51,13 +53,22 @@ void substractVectors(
   double* vector2, int rows_vec2, int v2_start_idx,
   double* result, int result_idx
 ) {
- 
+  // vector1 - vector2
   for (int i = 0; i < rows_vec1; i++) {
     result[result_idx + i] = vector1[v1_start_idx + i] - vector2[v2_start_idx + i];
   }
   
 }
 
+double dot_product_vector(double* vector1, double* vector2, int rows_vector
+) {
+  double product_sum = 0.0;
+  for (int i = 0; i < rows_vector; i++) { 
+    product_sum += vector1[i] * vector2[i];
+  }
+
+  return product_sum;
+}
 
 double vector_norm(double * vector, int rows_vector){
   double norm = 0.0;

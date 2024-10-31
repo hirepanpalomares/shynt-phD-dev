@@ -486,17 +486,17 @@ class InfiniteSquareCylinderZ(Surface):
       return surfaces
 
   def translate(self, translation_vector):
-      x_tr, y_tr = translation_vector
-      
-      self.__center_x += x_tr
-      self.__center_y += y_tr
+    x_tr, y_tr = translation_vector
+    
+    self.__center_x += x_tr
+    self.__center_y += y_tr
 
-      self.__surf_left.translate(translation_vector)
-      self.__surf_top.translate(translation_vector)
-      self.__surf_right.translate(translation_vector)
-      self.__surf_bottom.translate(translation_vector)
+    self.__surf_left.translate(translation_vector)
+    self.__surf_top.translate(translation_vector)
+    self.__surf_right.translate(translation_vector)
+    self.__surf_bottom.translate(translation_vector)
       
-      return 1
+    return 1
 
   def scale(self, scale_f):
       new_half_width = self.__half_width * scale_f
@@ -509,9 +509,19 @@ class InfiniteSquareCylinderZ(Surface):
 
       self.__half_width = new_half_width
 
-  def expand(self, scale_f):   
+  def expand(self, scale_f):
+    new_hw = self.__half_width*scale_f
+
+    lef_bottom_corner = (
+       self.center_x - self.__half_width,
+       self.center_y - self.__half_width,
+    )
+    
+    new_center_x = lef_bottom_corner[0] + new_hw
+    new_center_y = lef_bottom_corner[1] + new_hw
+
     surf = InfiniteSquareCylinderZ(
-      self.center_x, self.center_y, half_width=self.__half_width*scale_f
+      new_center_x, new_center_y, half_width=new_hw
     )
     return surf
   

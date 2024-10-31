@@ -275,21 +275,7 @@ OutputData power_iteration_with_transport_sweep(
     }
     printf("Transport iterations terminated \n");
 
-    // if (iteration < 5) {
-    //   char name_file_phi_new[] = "phi_new.txt";
-    //   char name_file_jin_new[] = "jin_new.txt";
-    //   char tr_iter_phi_new_name[50];
-    //   char tr_iter_jin_new_name[50];
-    //   sprintf(tr_iter_phi_new_name, "trConverged_power%i_%s",iteration,name_file_phi_new);
-    //   sprintf(tr_iter_jin_new_name, "trConverged_power%i_%s",iteration,name_file_jin_new);
-    //   print_vector(
-    //     phi_new, eneG, mesh.numRegions, tr_iter_phi_new_name, iteration
-    //   );
-    //   print_vector(
-    //     jin_new, eneG, mesh.numSurfaces, tr_iter_jin_new_name, iteration
-    //   );
-    // }
-    
+  
     // calculate  keff new;
     keff_new = calculate_keff(
       phi_prev, phi_new, 
@@ -333,7 +319,7 @@ OutputData power_iteration_with_transport_sweep(
 
 
     // break;
-    if (iteration == 10){break;}
+    // if (iteration == 10){break;}
     iteration ++;
   }
 
@@ -348,17 +334,7 @@ OutputData power_iteration_with_transport_sweep(
     }
   }
   
-  // printf("\n%.8f  %.8f  %.8f  %.8f \n",
-  //   phi_new[0][0], phi_new[0][1], phi_new[0][2], phi_new[0][3]
-  // );
-  // output.phi[0] = phi_new[0][0];
-  // output.phi[1] = phi_new[0][1];
-  // output.phi[2] = phi_new[0][2];
-  // output.phi[3] = phi_new[0][3];
-
-  // printf("\n%.8f  %.8f  %.8f  %.8f \n",
-  //   output.phi[0], output.phi[1], output.phi[2], output.phi[3]
-  // );
+  
 
   printf("\nICM terminated with %i power iterations\n", iteration);
   for (int g = 0; g <  eneG; g++) {
@@ -456,19 +432,15 @@ void check_power_convergence(
   double **phi_prev, double **phi_new, int numRegions, int eneG,
   double *power_converge, double *phi_convergence
 ){
-  double k_converge = (keff_new - keff_prev) / keff_prev;
-  if (k_converge < 0.0 ){
-    k_converge *= -1;
-  }
+  double k_converge = fabs(keff_new - keff_prev) / keff_prev;
+  
 
   double phi_converge = 0.0;
   for (int g = 0; g < eneG; g++) {
     for (int a = 0; a < numRegions; a++) {
-      double new_phi_converge_val = (phi_new[g][a] - phi_prev[g][a])/phi_prev[g][a];
+      double new_phi_converge_val = fabs(phi_new[g][a] - phi_prev[g][a])/phi_prev[g][a];
 
-      if (new_phi_converge_val < 0.0) {
-        new_phi_converge_val *= -1;
-      }
+    
       phi_convergence[g * numRegions + a] = new_phi_converge_val;
       if (new_phi_converge_val > phi_converge){
         phi_converge = new_phi_converge_val;

@@ -1,6 +1,9 @@
 
 from Shynt.api_py.Mesh.local_fine_mesh import FineMesh
 from Shynt.api_py.Geometry.cells import Cell
+import numpy as np
+import math
+
 
 
 
@@ -27,6 +30,7 @@ class MaterialMesh(FineMesh):
     self.__type_coarse_mesh = type_coarse_mesh
     self.__is_hex_lattice = is_hex_lattice
     self.regions = {}
+    self.regions_points = {}
     self.regions_symmetry = {}
     self.regions_volume = {}
     self.surface_of_regions = {}
@@ -169,8 +173,11 @@ class MaterialMesh(FineMesh):
       regions_symmetry = {}
       
       sum_volumes = 0.0
+      radius1 = 0.0
       for l in range(len(regions_pin)-1): # Loop for every level of the pin
+      
         level = regions_pin[l]
+        radius2 = level.radius
         cell = pin_from_assembly.cells[level.cell_id]
         vol_cell = cell.volume
         material_cell = cell.content
@@ -178,10 +185,14 @@ class MaterialMesh(FineMesh):
   
         # vol_new_region = vol_cell/fuel_divider[type_coarse_node]
         node_points = self.coarse_node.surf_points
+        # points_position = self.coarse_node.theta_corners
         if type_coarse_node == "inner_triangle":
           sum_volumes += vol_cell/2
           regions_ids = []
-          for point in node_points:
+          # for point, position in zip(node_points, points_position):
+          for p, point in enumerate(node_points):
+            angle = self.coarse_node.theta_corners[p]
+
             new_fine_region = Cell(fill=cell.content, volume=vol_cell/6)
             regions[new_fine_region.id] = new_fine_region
             regions_ids.append(new_fine_region.id)
@@ -190,17 +201,17 @@ class MaterialMesh(FineMesh):
             )
             self.surface_of_regions[new_fine_region.id] = {
               "type": "pie",
-              "th1": "",
-              "th2": "",
               "center": point,
-              "material": material_cell
+              "material": material_cell,
+              "radius1": radius1,
+              "radius2": radius2,
+              "angle": angle,
+              "coolant": False
             }
+            # if position == "up"
           if symmetry == "triangular_mesh":
             main_rid = regions_ids[0]
-            regions_symmetry[main_rid] = [regions_ids[1], regions_ids[2]]
-
-          
-          
+            regions_symmetry[main_rid] = [regions_ids[1], regions_ids[2]]  
         elif type_coarse_node == "square_side":
           sum_volumes += vol_cell/2
           new_fine_region1 = Cell(fill=cell.content, volume=vol_cell/4)
@@ -214,6 +225,27 @@ class MaterialMesh(FineMesh):
           self.coarse_node.regions_points_relation[material_cell.name].append(
             new_fine_region2.id
           )
+          angle1 = self.coarse_node.theta_corners[0]
+          angle2 = self.coarse_node.theta_corners[1]
+
+          self.surface_of_regions[new_fine_region1.id] = {
+            "type": "pie",
+            "center": node_points[0],
+            "material": material_cell,
+            "radius1": radius1,
+            "radius2": radius2,
+            "angle": angle1,
+            "coolant": False
+          }
+          self.surface_of_regions[new_fine_region2.id] = {
+            "type": "pie",
+            "center": node_points[-1],
+            "material": material_cell,
+            "radius1": radius1,
+            "radius2": radius2,
+            "angle": angle2,
+            "coolant": False
+          }
           if symmetry == "triangular_mesh":
             regions_symmetry[new_fine_region1.id] = [new_fine_region2.id]
         elif type_coarse_node == "corner_triangle":
@@ -224,8 +256,16 @@ class MaterialMesh(FineMesh):
             new_fine_region.id
           )
           regions_symmetry[new_fine_region.id] = []
-
-
+          self.surface_of_regions[new_fine_region.id] = {
+            "type": "pie",
+            "center": node_points[0],
+            "material": material_cell,
+            "radius1": radius1,
+            "radius2": radius2,
+            "angle":  self.coarse_node.theta_corners[0],
+            "coolant": False
+          }
+        radius1 = radius2
       # Last level: typically coolant ---------------------
       last_level = regions_pin[-1]
       cell = pin_from_assembly.cells[last_level.cell_id]
@@ -236,7 +276,12 @@ class MaterialMesh(FineMesh):
       new_fine_region = Cell(fill=cell.content, volume=vol_coolant)
       regions[new_fine_region.id] = new_fine_region
       regions_symmetry[new_fine_region.id] = []
-
+      self.surface_of_regions[new_fine_region.id] = {
+        "type": "coolant",  
+        "material": cell.content,
+        "coolant": True
+      }
+      
 
       self.regions = regions
       self.regions_symmetry = regions_symmetry
@@ -244,8 +289,70 @@ class MaterialMesh(FineMesh):
       print('triangular mesh not valid')
       raise SystemExit
 
-    
+  def get_pin_regions_points(self, theta_points=10):
+    """
+    Only implemented for a single radius pie slice
+    """
+    regions_points = {}
+    for r in self.regions:
+      try:
+        if not self.surface_of_regions[r]["coolant"]:
+       
+          point = self.surface_of_regions[r]["center"]
+          angle = self.surface_of_regions[r]["angle"]
+          radius1 = self.surface_of_regions[r]["radius1"]
+          radius2 = self.surface_of_regions[r]["radius2"]
+          material = self.surface_of_regions[r]['material']
+          th1, th2 = angle
 
+          # Convert angle from degrees to radians
+          th1_rad = np.deg2rad(th1)
+          th2_rad = np.deg2rad(th2)
+
+          x = np.array([point[0]+radius1*math.cos(th1_rad)])
+          y = np.array([point[1]+radius1*math.sin(th1_rad)])
+          
+
+
+          # Create theta for the pie slice (from 0 to angle)
+          theta = np.linspace(th1_rad, th2_rad, theta_points)
+
+          # Calculate the coordinates of the outer arc
+          x_arc_outer = point[0] + radius2 * np.cos(theta)
+          y_arc_outer = point[1] + radius2 * np.sin(theta)
+
+          # Calculate the coordinates of the inner arc (reverse direction)
+          x_arc_inner = point[0] + radius1 * np.cos(theta[::-1])
+          y_arc_inner = point[1] + radius1 * np.sin(theta[::-1])
+
+          x = np.concatenate([x, x_arc_outer, x_arc_inner])
+          y = np.concatenate([y, y_arc_outer, y_arc_inner])
+          regions_points[r] = {
+            "x": x,
+            "y": y,
+            "color": material.color
+          }
+      except KeyError:
+        pass
+    return regions_points
+  
+  def get_coolant_regions_points(self):
+    regions_points = {}
+
+    for r in self.regions:
+      try:
+        if self.surface_of_regions[r]["coolant"]:
+          material = self.surface_of_regions[r]['material']
+          regions_points[r] = {
+            "x": [p[0] for p in self.coarse_node.surf_points],
+            "y": [p[1] for p in self.coarse_node.surf_points],
+            "color": material.color
+          }
+      except KeyError:
+        pass
+    return regions_points
+  
+  
   def calculate_volumes(self):
     volumes = {}
     # print(self.__type_coarse_mesh)

@@ -484,12 +484,15 @@ class TriangularMesh(CoarseMesh):
       nodes_diff, 
       node_pin_levels,
       triangle_type,
-      nodes_center
+      nodes_center,
+      boundary_node_theta,
     ) = self.__get_mesh_in_rings(initial_n_id=initial_nid)
 
     self.points_mesh = nodes_surfaces
     self.mesh_rings = nodes_map
     self.coarse_nodes_differentiator = nodes_diff
+
+
 
     coarse_nodes = {}
     surfaces = {}
@@ -505,7 +508,7 @@ class TriangularMesh(CoarseMesh):
         if r < num_rings - 1:
           node = CoarseNodeTriangularMesh_InnerTriangle(
             n_id, self.hex_assembly, surface_points, no_void,
-            node_pin_levels[n_id],  None, None
+            node_pin_levels[n_id],  None, nodes_center[n_id]
             # triangle_type[n_id],
             # nodes_center[n_id]
           )
@@ -514,15 +517,18 @@ class TriangularMesh(CoarseMesh):
           num_points = len(surface_points)
           if num_points == 4: 
             node = CoarseNodeTriangularMesh_SquareSubChanell(
-              n_id, self.hex_assembly, surface_points      
+              n_id, self.hex_assembly, surface_points
             )
             node.pins_in_node = self.pins_in_nodes[n_id]
+            node.theta_corners = boundary_node_theta[n_id]
           elif num_points == 3: 
             node = CoarseNodeTriangularMesh_TriangleCorner(
               n_id, self.hex_assembly, surface_points, no_void,
               node_pin_levels[n_id], 
             )
             node.pins_in_node = self.pins_in_nodes[n_id]
+            node.theta_corners = boundary_node_theta[n_id]
+
             
         surfs, s_id = node.calculate_surfaces(s_id)
         surfaces.update(surfs)
@@ -556,6 +562,7 @@ class TriangularMesh(CoarseMesh):
     nodes_differentiator = {}
     node_pin_levels = {}
     nodes_map = []
+    boundary_node_theta = {}
     assembly = self.cell.content
     pin_centers = assembly.element_centers
     num_rings = assembly.num_rings
@@ -805,7 +812,8 @@ class TriangularMesh(CoarseMesh):
       nsurfs_boundary, 
       boundary_ring, 
       node_diff, 
-      pin_levels_node
+      pin_levels_node,
+      boundary_node_theta
     ) = self.__get_mesh_in_boundary(node_id)
 
 
@@ -815,13 +823,23 @@ class TriangularMesh(CoarseMesh):
     node_pin_levels.update(pin_levels_node)
 
     
-    return nodes_surfaces, nodes_map, nodes_differentiator, node_pin_levels, nodes_triangle_type, nodes_center
+    return (
+      nodes_surfaces, 
+      nodes_map, 
+      nodes_differentiator, 
+      node_pin_levels, 
+      nodes_triangle_type, 
+      nodes_center,
+      boundary_node_theta
+    )
 
   def __get_mesh_in_boundary(self, node_id):
     from math import (
       cos, sin, radians
     )
     import numpy as np
+
+    boundary_node_theta = {}
 
     n_id = node_id
 
@@ -877,6 +895,32 @@ class TriangularMesh(CoarseMesh):
         'dy': dpts * np.sin(np.radians(30)),
         "dtc": dptc
       }
+    }
+    theta = {
+      'F': {
+        'corner': [(150,180),(180,210)],
+        'side': [(60,150),(150,240)],
+      },
+      'A': {
+        'corner': [(120,150),(90,120)],
+        'side': [(0,90),(90,180)],
+      },
+      'B': {
+        'corner': [(60,90),(30,60)],
+        'side': [(-60,30),(30,120)],
+      },
+      'C': {
+        'corner': [(0,30),(330,360)],
+        'side': [(240,330),(-30,60)],
+      },
+      'D': {
+        'corner': [(270,300), (300,330)],
+        'side': [(180,270),(270,360)],
+      },
+      'E': {
+        'corner': [(240,270),(210,240)],
+        'side': [(120,210),(210,300)],
+      },
     }
     dtc_dx_dy = {
       'A': {
@@ -1017,6 +1061,9 @@ class TriangularMesh(CoarseMesh):
 
         self.pins_in_nodes[n_id] = {pin1: 0}
         self.pins_in_nodes[n_id+1] = {pin1: 0}
+        boundary_node_theta[n_id] = [theta[side]["corner"][0]]
+        boundary_node_theta[n_id+1] = [theta[side]["corner"][1]]
+
         # ----------------------------------------------
 
         nodes[n_id] = (p1, p2, p3)
@@ -1081,6 +1128,7 @@ class TriangularMesh(CoarseMesh):
       self.pin_coarse_nodes[pin2[0]][pin2[1]].append(n_id)
 
       self.pins_in_nodes[n_id] = {pin1: 0, pin2: 1}
+      boundary_node_theta[n_id] = theta[side]["side"]
 
       # ----------------------------------------------
       
@@ -1108,7 +1156,7 @@ class TriangularMesh(CoarseMesh):
         side_idx += 1
         distance = 0.0
       
-    return nodes, node_ring, node_diff, node_pin_levels
+    return nodes, node_ring, node_diff, node_pin_levels, boundary_node_theta
   
   def calculate_nodes_surfaces(self):
     nodes_surfaces = {}

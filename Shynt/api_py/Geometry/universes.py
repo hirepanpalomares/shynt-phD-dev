@@ -514,7 +514,7 @@ class SquareLattice(Universe):
     self.__left_bottom = left_bottom # corner
     self.__pitch = pitch
     self.__array = array
-    self.centers = []
+    self.element_centers = []
 
     self.__check_rows_cols()
     self.__ny = len(array)
@@ -544,7 +544,7 @@ class SquareLattice(Universe):
     new_array = [
       [None for i in range(num_cols)] for j in range(num_rows)
     ]
-    self.pin_centers = self.calculate_pin_centers(
+    self.element_centers = self.calculate_element_centers(
       pitch=self.__pitch, left_bottom=self.__left_bottom
     )
     
@@ -552,27 +552,44 @@ class SquareLattice(Universe):
 
     # pin_replacement = None
     for r, row in enumerate(self.__array):
-      for p, pin in enumerate(row):
-      
-        copy_pin = pin.copy()
-        new_center = self.pin_centers[r][p]
-        copy_pin.translate_to(new_center)
-        
-        closing_square = InfiniteSquareCylinderZ(
-          new_center[0], new_center[1], half_width=self.__pitch/2
-        )
-        copy_pin.close_last_level(closing_square)
-        new_array[r][p] = copy_pin
-        cells = copy_pin.cells
-        super().add_cells(cells)
+      for p, element in enumerate(row):
+        copy_element = element.copy()
+
+        if isinstance(copy_element, Pin):
+          new_center = self.element_centers[r][p]
+          copy_element.translate_to(new_center)
+          
+          closing_square = InfiniteSquareCylinderZ(
+            new_center[0], new_center[1], half_width=self.__pitch/2
+          )
+          copy_element.close_last_level(closing_square)
+          new_array[r][p] = copy_element
+          cells = copy_element.cells
+          super().add_cells(cells)
+        elif isinstance(copy_element, SquareLattice):
+          new_center = self.element_centers[r][p]
+          new_left_bottom = (
+            new_center[0]-self.__pitch/2, 
+            new_center[1]-self.__pitch/2
+          )
+          copy_element.translate_to(new_left_bottom)
+          
+          closing_square = InfiniteSquareCylinderZ(
+            new_center[0], new_center[1], half_width=self.__pitch/2
+          )
+          # copy_element.close_last_level(closing_square)
+          new_array[r][p] = copy_element
+          cells = copy_element.cells
+          super().add_cells(cells)
+          pass
 
     self.__array = new_array
 
-  def calculate_pin_centers(self, pitch=0.0, left_bottom=(0.0,0.0)):
+  def calculate_element_centers(self, pitch, left_bottom):
     num_rows = self.__nx
     num_cols = self.__ny
     
-    pin_centers = [
+    element_centers = [
       [() for i in range(num_cols)] for j in range(num_rows)
     ]
     
@@ -591,26 +608,27 @@ class SquareLattice(Universe):
       for p, pin in enumerate(row):
         new_center_x = top_left_center_x + pitch * p
         new_center = (new_center_x, new_center_y)
-        pin_centers[r][p] = new_center
+        element_centers[r][p] = new_center
 
-    return pin_centers
+    return element_centers
   
-  def recalculate_pin_centers(self, scale_f):
+  def recalculate_element_centers(self, scale_f, left_bottom=None):
     """Class method to recalculate the pin centers with a scale factor. It acts
     over the pitch, this is used mainly for plotting.
 
     """
     pitch = self.__pitch * scale_f
     
-    lb_x, lb_y = self.__left_bottom
-    left_bottom = (lb_x*scale_f, lb_y*scale_f)
+    if left_bottom is None:
+      new_element_centers = self.calculate_element_centers(
+        pitch=pitch, left_bottom=self.__left_bottom
+      )
+    else:
+      new_element_centers = self.calculate_element_centers(
+        pitch=pitch, left_bottom=left_bottom
+      )
 
-    new_pin_centers = self.calculate_pin_centers(
-      pitch=pitch, left_bottom=left_bottom
-    )
-    
-
-    return new_pin_centers
+    return new_element_centers
   
   def __get_different_pins(self):
     types = []
@@ -701,7 +719,7 @@ class SquareLattice(Universe):
     dx, dy = trans_vector
     lb_x, lb_y = self.__left_bottom
     self.__left_bottom = (lb_x+dx, lb_y+dy)
-    new_centers = self.recalculate_pin_centers(scale_f=1.0)
+    new_centers = self.recalculate_element_centers(1.0, self.__left_bottom)
     self.pin_centers = new_centers
 
     surfs_translated = []
@@ -709,8 +727,34 @@ class SquareLattice(Universe):
     for c_id, pin_cell in cells.items():
       # pin_cell.region.translate
       pin_cell.translate(trans_vector, surfs_translated)
+  
+  def translate_to(self, point):
+    new_x, new_y = point
+    cx, cy = self.__left_bottom
+    trans_vector = (
+      new_x - cx,
+      new_y - cy
+    )
+    self.translate(trans_vector)
+
+
+  def copy(self):
+    """
+    It makes a copy of the lattice
+    
+    """
+    name = self.name
+    left_bottom = self.__left_bottom
+    pitch = self.__pitch
+    array_lat = self.__array
     
 
+    copy_lattice = SquareLattice(
+      name, left_bottom, pitch, array_lat
+    )
+
+    return copy_lattice
+  
   @property
   def array(self):
     return self.__array

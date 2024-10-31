@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include <time.h>
 #include <math.h>
 
@@ -21,13 +23,18 @@ double check_transport_convergence(
 void check_power_convergence(
   double keff_prev, double keff_new,
   double **phi_prev, double **phi_new, int numRegions, int eneG,
-  double *power_converge, double *phi_convergence, int iteration
+  double *power_converge, double *phi_convergence, int iteration,
+  double **nuFiss_i, int *eq_reg_list, double *mainRegions_vol
 );
 
 double calculate_keff(
   double **phi_prev, double **phi_new, double *mainRegions_vol,
   int numRegions, int eneG, 
   double keff_prev, double **nuFiss_i, int *eq_reg_list
+);
+double *calculate_fission_src(
+  int numRegions, int eneG, double **nuFiss_i,  
+  int *eq_reg_list, double *mainRegions_vol, double **phi
 );
 
 void print_icm_matrix(
@@ -37,6 +44,22 @@ void print_icm_matrix(
 void print_vector(
   double **vector, int rows, int cols, char *name, int transport_iter
 );
+
+void split_line(char* line, double* jin, double* jout, int count) {
+  char* token = strtok(line, ",");  // Get the index
+  int g = atoi(token);
+  token = strtok(NULL, ","); // drop the energy cid
+  token = strtok(NULL, ","); // drop the energy sid
+  
+  token = strtok(NULL, ",");
+  jin[count] = atof(token);
+
+  token = strtok(NULL, ",");
+  jout[count] = atof(token);
+
+  token = strtok(NULL, ","); // drop the last value
+
+}
 
 OutputData power_iteration_with_transport_sweep(
   IcmMatrixes icm_matrixes, ConvergenceData convergence, MeshData mesh, int num_omp
@@ -55,17 +78,28 @@ OutputData power_iteration_with_transport_sweep(
 
   // allocate phi_prev and phi_new ----------------------------------------
   double **phi_prev = (double **)malloc(eneG * sizeof(double));
+  double **phi_prev_prev = (double **)malloc(eneG * sizeof(double));
   double **phi_new = (double **)malloc(eneG * sizeof(double));
-  double **residual_phi = (double **)malloc(eneG * sizeof(double));
+  double **residual_phi_old = (double **)malloc(eneG * sizeof(double));
+  double **residual_phi_new = (double **)malloc(eneG * sizeof(double));
+  double **residual_cheb1 = (double **)malloc(eneG * sizeof(double));
+
+
   for (int g = 0; g <  eneG; g++) {
     phi_prev[g] = (double *)malloc(mesh.numRegions * sizeof(double));
+    phi_prev_prev[g] = (double *)malloc(mesh.numRegions * sizeof(double));
     phi_new[g] = (double *)malloc(mesh.numRegions * sizeof(double));
-    residual_phi[g] = (double *)malloc(mesh.numRegions * sizeof(double));
+    residual_phi_old[g] = (double *)malloc(mesh.numRegions * sizeof(double));
+    residual_phi_new[g] = (double *)malloc(mesh.numRegions * sizeof(double));
+    residual_cheb1[g] = (double *)malloc(mesh.numRegions * sizeof(double));
     
     for (int r = 0; r <  mesh.numRegions; r++) {
       phi_prev[g][r] = 1.0;
+      phi_prev_prev[g][r] = 1.0;
       phi_new[g][r] = 1.0;
-      residual_phi[g][r] = 1.0;
+      residual_phi_old[g][r] = 1.0;
+      residual_phi_new[g][r] = 1.0;
+      residual_cheb1[g][r] = 1.0;
 
     } 
   }
@@ -133,10 +167,40 @@ OutputData power_iteration_with_transport_sweep(
   output.jout = (double *)malloc(eneG * mesh.numSurfaces * sizeof(double));
   output.transport_iterations = (int *)malloc(eneG*convergence.max_iterations * sizeof(int));
   output.phi_convergence = (double *)malloc(eneG * convergence.max_iterations * sizeof(double));
-  
+  double *epsilon_array = (double *)malloc(convergence.max_iterations * sizeof(double));
   
   // ------------------------------------------------------------------------
+  // Reading J boundary
+  // FILE* file = fopen("/home/hirepan/Documents/chalmers/Project/codes/Shynt/repo/Shynt/src_cpp/4r-J.csv", "r");
+  // if (file == NULL) {
+  //     perror("Error opening file");
+  //     return output;
+  // }
 
+  // char line[1024];
+  // int max_elements = 506161;  // Number of elements you want to handle
+
+  // double* jin_csv = malloc(max_elements * sizeof(double));
+  // double* jout_csv = malloc(max_elements * sizeof(double));
+
+
+  // // Skip the header line
+  // fgets(line, sizeof(line), file);
+
+  // int count = 0;
+  // // Read each line of the CSV file
+  // while (fgets(line, sizeof(line), file)) {
+  //     line[strcspn(line, "\n")] = '\0';  // Remove the newline character
+
+  //     // Split the line into numeric values and store them
+  //     split_line(line, jin_csv, jout_csv, count);
+  //     printf("Index = %i, Jin = %f, Jout = %f \n", count, jin_csv[count], jout_csv[count]);
+
+  //     count++;
+  // }
+
+  // fclose(file);
+  // -------------------------------------------------------------------------
   // Equivalence list of regions
   int *eq_reg_list = (int *)malloc(mesh.numRegions * sizeof(int));
 
@@ -151,11 +215,11 @@ OutputData power_iteration_with_transport_sweep(
   printf("Allocation completed \n");
 
   // initialize keff
-  double keff_prev = 1.0;
+  double keff_prev = 0.8;
   double keff_new = 1.0;
   output.keff[0] = 1.0;
   output.transport_iterations[0] = 0;
-
+  epsilon_array[0] = 0.0;
 
   // initialize convergence values
   double k_converge = 1.0;
@@ -164,7 +228,6 @@ OutputData power_iteration_with_transport_sweep(
     k_converge, phi_converge
   };
   
-  int iteration = 1;
 
   SrcMatrixEntry *mScatt = icm_matrixes.mScat_i;
   SrcMatrixEntry *mFiss = icm_matrixes.mFiss_i;
@@ -172,6 +235,26 @@ OutputData power_iteration_with_transport_sweep(
 
   printf("Power iteration loop starting \n");
   int boundary_counter = 0;
+  // Parameters for Chebyshev acceleration:
+  double dr_prev = 0.0;
+  double dr_new = 1.0;
+  double dr0 = 0.0;
+  int chebyshev_iteration = 0;
+  double alpha = 1.0;
+  double beta = 0.0;
+  double chev_prev = 1.0;
+  double chev_prev_prev = 1.0;
+  double chev_new = 1.0;
+  double gamma = 0.0;
+
+  int iteration = 1;
+  int free_iteration = 4;
+  int iterations_accelerated = free_iteration;
+  double cheb_iter_check = 10;
+
+  bool acceleration = false;
+
+
   while (   // power loop
     (k_converge >= convergence.tolerance  || phi_converge >= convergence.tolerance)
     &&  iteration < convergence.max_iterations
@@ -180,9 +263,16 @@ OutputData power_iteration_with_transport_sweep(
     
     printf("Beginning transport iterations: \n");
     printf("Transport iterations completed (g): ");
+    
+    
+
     for (int g = 0; g < eneG; g++) {
       int transport_iter = 0;
       double j_converge = 1.0;
+
+      
+
+
       while (  // transport loop
         j_converge >= convergence.tolerance //&& 
         // transport_iter < convergence.max_iterations
@@ -292,6 +382,8 @@ OutputData power_iteration_with_transport_sweep(
                 else {
                   // void
                   jin_new[g][to_surf] = 0.0;
+                  // int idx = g*mesh.numSurfaces + to_surf;
+                  // jin_new[g][to_surf] = jin_csv[idx];
                 }
               }
               else {
@@ -318,14 +410,154 @@ OutputData power_iteration_with_transport_sweep(
 
 
       }
+      
+      
+      
       int idx_tr_iter = ((iteration) * eneG) + g;
       output.transport_iterations[idx_tr_iter] = transport_iter;
 
-      // if (transport_iter == 4){break;}
 
       printf("%i, ", transport_iter);
       
     }
+
+    // Calculate new  residuals ---------------------------------
+    for (int g = 0; g < eneG; g++){
+      substractVectors(
+        phi_new[g], mesh.numRegions, 0,
+        phi_prev[g], mesh.numRegions, 0,
+        residual_phi_new[g], 0
+      );
+    }
+    // ---------------------------------------------------
+
+    // Acceleration -----------------------------------------
+    if (iteration > iterations_accelerated){ // calculation of coefficients
+      chebyshev_iteration = iteration - iterations_accelerated;
+      printf("\nAcceleration iteration: %i\n", chebyshev_iteration);
+
+      if (chebyshev_iteration == 1){
+        dr0 = dr_new;
+        for (int g = 0; g < eneG; g++){
+          for (int r = 0; r < mesh.numRegions; r++) {
+            residual_cheb1[g][r] = residual_phi_new[g][r];
+          }
+        }
+        alpha = 2 / (2 - dr0);
+        beta = 0;
+        gamma = acosh((2/dr0)-1);
+      }
+      else if (chebyshev_iteration > 1){
+        alpha=(4/dr0)*(cosh((chebyshev_iteration-1)*gamma)/cosh(chebyshev_iteration*gamma));
+        beta = (1-(dr0/2))-1/alpha;
+      }
+      
+      // Chebyshev extrapolation --
+      for (int g = 0; g < eneG; g++){
+        for (int r = 0; r < mesh.numRegions; r++) {
+          phi_new[g][r] = phi_prev[g][r] + alpha*(residual_phi_new[g][r] + beta*(phi_prev[g][r] - phi_prev_prev[g][r]));
+        }
+      }
+        
+
+      if (chebyshev_iteration == cheb_iter_check) {
+        printf("Chebysev DR recalculation\n");
+        // Recalculation of the dominance ratio i guess
+        // with the residual of the first accelerated iteration
+
+        double *fission_src_residual_new = calculate_fission_src(
+          mesh.numRegions, eneG, nuFiss_i, eq_reg_list, mesh.mainRegions_volume, 
+          residual_phi_new
+        );
+        double *fission_src_residual_cheb1 = calculate_fission_src(
+          mesh.numRegions, eneG, nuFiss_i, eq_reg_list, mesh.mainRegions_volume, 
+          // residual_cheb1
+          residual_phi_old
+
+        );
+        double numerator =  dot_product_vector(
+          fission_src_residual_new, fission_src_residual_new, mesh.numRegions
+        );
+        double denominator =  dot_product_vector(
+          fission_src_residual_cheb1, fission_src_residual_cheb1, mesh.numRegions
+        );
+        // double _E = sqrt(numerator/denominator);
+        dr_new = sqrt(numerator/denominator);
+
+            
+        // double x = (2/dr0) - 1;
+        // double _E_star = 1/cosh((cheb_iter_check-1)*acosh(x));
+        
+        // counter=counter+1; // counter to store E_star
+        // E_star_array(counter,1)=E_star;
+        // dr_new = (dr0/2)*( 
+        //   cosh(
+        //     acosh(_E/_E_star)/(cheb_iter_check-1)
+        //   ) + 1
+        // );
+        printf("dr_new %.8f\n", dr_new);
+        // printf("_E %.8f\n", _E);
+        // printf("_E_star %.8f\n", _E_star);
+
+
+        if ((dr_new-dr_prev)/dr_new < 0.001){
+          cheb_iter_check *= 2;
+        }
+        
+        // DR_array(outer_counter,1)=DR;
+        dr_prev = dr_new;
+        iterations_accelerated = iteration;
+        // Line above now equalizes with the trasnport counter and then next iteration
+        // outer_counter will be higher by one and will enter acceleration
+        // as a first cheb iteration
+      }
+      else {
+        // TODO store the dominance ratio in a vector
+      }
+
+    }
+
+
+      
+    
+
+    
+    // ---------------------------------------------------
+
+    // Calculate dominance ratio --------------------------
+    if (iteration > 1 && iteration <= free_iteration) {
+      double *fission_src_residual_new = calculate_fission_src(
+        mesh.numRegions, eneG, nuFiss_i, eq_reg_list, mesh.mainRegions_volume, 
+        residual_phi_new
+      );
+      double *fission_src_residual_old = calculate_fission_src(
+        mesh.numRegions, eneG, nuFiss_i, eq_reg_list, mesh.mainRegions_volume, 
+        residual_phi_old
+      );
+      double numerator =  dot_product_vector(
+        fission_src_residual_new, fission_src_residual_new, mesh.numRegions
+      );
+      double denominator =  dot_product_vector(
+        fission_src_residual_old, fission_src_residual_old, mesh.numRegions
+      );
+      dr_new = sqrt(numerator/denominator);
+      if (iteration >= iterations_accelerated){
+        if (dr_new > 0.5){
+          // i dont really know why is this "if" here
+          // I think it is to make sure that the dr_new is actually greater 
+          // than 0.5
+          dr_prev = dr_new;
+          iterations_accelerated = iteration; 
+          // iterations_accelerated  value is adjusted until dr_new > 0.5
+        }
+        else {
+          iterations_accelerated = iteration + 1;
+        }
+      }
+    }
+
+    // ----------------------------------------------------
+
     printf("\nBoundaries: %i, \n", boundary_counter);
     
     // calculate  keff new;
@@ -333,35 +565,34 @@ OutputData power_iteration_with_transport_sweep(
       phi_prev, phi_new, mesh.mainRegions_volume,
       mesh.numRegions, eneG, keff_prev, nuFiss_i, eq_reg_list
     );
+    // keff_new = 1.477791646402194;
+    // keff_prev = 1.477791646402194;
 
     check_power_convergence(
       keff_prev, keff_new, phi_prev, phi_new, mesh.numRegions, eneG,
-      pow_convergence, output.phi_convergence, iteration
+      pow_convergence, output.phi_convergence, iteration, nuFiss_i, 
+      eq_reg_list,  mesh.mainRegions_volume
     );
+    
 
     k_converge = pow_convergence[0];
     phi_converge = pow_convergence[1];
-    
-    // update keff and phi for the next iteration -----------------------------
+    epsilon_array[iteration] = k_converge;
+    // update keff, residual, phi for the next iteration ----------------------
     for (int g = 0; g < eneG; g++) {
       for (int r = 0; r < mesh.numRegions; r++) {
+        phi_prev_prev[g][r] = phi_prev[g][r];
         phi_prev[g][r] = phi_new[g][r];
+        residual_phi_old[g][r] = residual_phi_new[g][r];
       }
       for (int a = 0; a < mesh.numSurfaces; a++) {
         jin_prev[g][a] = jin_new[g][a];
       }
     }
-
-    // Calculate norm of the residual ----------------------------------------
-    // printf("\nResidual (g): ");
-    // for (int g = 0; g < eneG; g++) {
-    //   double norm = vector_norm(residual_phi[g], mesh.numRegions);
-    //   printf("%.4E, ", norm);
-    // }
-    // printf("\n");
-    // -----------------------------------------------------------------------
-
     keff_prev = keff_new;
+    // ------------------------------------------------------------------------
+    
+
 
     // Print iteration data
     // printf("Transport convergence: %.8E \n", j_converge);
@@ -373,6 +604,15 @@ OutputData power_iteration_with_transport_sweep(
     // printf("%.8E  %.8E  %.8E \n", jout_new[0][217170], jout_new[0][217171], jout_new[0][217172]);
     // printf("Jin 217171, 217172, 217173\n");
     // printf("%.8E  %.8E  %.8E \n", jin_new[0][217170], jin_new[0][217171], jin_new[0][217172]);
+    // if (iteration > 3){
+    //   dr_prev = epsilon_array[iteration-1]/epsilon_array[iteration-2];
+    //   dr_new = epsilon_array[iteration]/epsilon_array[iteration-1];
+    // }
+    printf("Dominance ratio prev: %.8E \n", dr_prev);
+    printf("Dominance ratio new: %.8E \n", dr_new);
+    printf("sqrt in PI\n");
+    // printf("dr_new - dr_prev: %.8E \n", fabs(dr_new-dr_prev));
+
 
     printf(" -----------------------\n");
     fflush(stdout);
@@ -441,7 +681,8 @@ OutputData power_iteration_with_transport_sweep(
   free(icm_ops->mRJi);
   free(icm_ops->mUQ);
   free(icm_ops);
-  
+  // free(jin_csv);
+  // free(jout_csv);
   end = clock();
   
   cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
@@ -486,13 +727,8 @@ double check_transport_convergence(
   
 
   for (int a = 0; a < numSurfaces; a++) {
-    double new_converge_val = (jin_new[g][a] - jin_prev[g][a])/jin_prev[g][a];
-    // printf("%.8f ", new_converge_val);
+    double new_converge_val = fabs(jin_new[g][a] - jin_prev[g][a])/jin_prev[g][a];
 
-    if (new_converge_val < 0.0) {
-      new_converge_val *= -1;
-    }
-    // printf("%.8f \n", new_converge_val);
 
     if (new_converge_val > converge){
       converge = new_converge_val;
@@ -505,7 +741,8 @@ double check_transport_convergence(
 void check_power_convergence(
   double keff_prev, double keff_new, 
   double **phi_prev, double **phi_new, int numRegions, int eneG,
-  double *power_converge, double *phi_convergence, int iteration
+  double *power_converge, double *phi_convergence, int iteration,
+  double **nuFiss_i, int *eq_reg_list, double *mainRegions_vol
 ){
   /*
     Funcion that calculates 
@@ -513,24 +750,38 @@ void check_power_convergence(
       - the convergence value of keff
       - the residual
   */
-  double k_converge = (keff_new - keff_prev) / keff_prev;
-  if (k_converge < 0.0 ){
-    k_converge *= -1;
-  }
+  double k_converge = fabs(keff_new - keff_prev) / keff_prev;
+
+
+  double *fission_src_new = calculate_fission_src(
+    numRegions, eneG, nuFiss_i, eq_reg_list, mainRegions_vol, phi_new
+  );
+  double *fission_src_prev = calculate_fission_src(
+    numRegions, eneG, nuFiss_i, eq_reg_list, mainRegions_vol, phi_prev
+  );
+
   double phi_converge = 0.0;
-  for (int g = 0; g < eneG; g++) {
+  double sum_fsrc_new_m_prev = 0.0;
+  double sum_fsrc_prev = 0.0;
+  
+  for (int a = 0; a < numRegions; a++) {
+    sum_fsrc_new_m_prev += fabs(fission_src_new[a] - fission_src_prev[a]);
+    sum_fsrc_prev += fission_src_prev[a];
+  }
+  phi_converge = sum_fsrc_new_m_prev / sum_fsrc_prev;
+
+
+  for (int g = 0; g < eneG; g++) { // loop to calculate the euclidean norm of the flux
     double norm_flux = 0.0;
     for (int a = 0; a < numRegions; a++) {
-      double new_phi_converge_val = (phi_new[g][a] - phi_prev[g][a])/phi_prev[g][a];
+      // double new_phi_converge_val = fabs(phi_new[g][a] - phi_prev[g][a])/phi_prev[g][a];
       // double square_phinew_phiprev;
       norm_flux += pow(phi_new[g][a] - phi_prev[g][a], 2);
-      if (new_phi_converge_val < 0.0) {
-        new_phi_converge_val *= -1;
-      }
+      
       // phi_convergence[g*numRegions + a] = new_phi_converge_val;
-      if (new_phi_converge_val > phi_converge){
-        phi_converge = new_phi_converge_val;
-      }
+      // if (new_phi_converge_val > phi_converge){
+      //   phi_converge = new_phi_converge_val;
+      // }
     }
 
     phi_convergence[((iteration) * eneG) + g] = sqrt(norm_flux);
@@ -541,19 +792,12 @@ void check_power_convergence(
   
 }
 
-double calculate_keff(
-  double **phi_prev, double **phi_new, double *mainRegions_vol,
-  int numRegions, int eneG, double keff_prev, double **nuFiss_i,  
-  int *eq_reg_list
-) {
-  double new_dot_prod = 0.0;
-  double prev_dot_prod = 0.0;
-
-  // CALCULATE NUMERATOR: INTEGRATED FISSION SOURCE IN ENERGY (N+1)
-  // CALCULATE DENOMINATOR: INTEGRATED FISSION SOURCE IN ENERGY (N)
-
-  double *numerator = (double *)malloc(numRegions * sizeof(double));
-  double *denominator = (double *)malloc(numRegions * sizeof(double));
+double *calculate_fission_src(
+  int numRegions, int eneG, double **nuFiss_i,  
+  int *eq_reg_list, double *mainRegions_vol, double **phi
+){
+  double *fiss_src = (double *)malloc(numRegions * sizeof(double));
+  
 
   for (int i = 0; i < numRegions; i++) {
     double sum_g_new = 0.0;
@@ -562,30 +806,50 @@ double calculate_keff(
     int eq_idx = eq_reg_list[i];
     double vol = mainRegions_vol[eq_idx];
     // printf("%i, %i \n", a, eq_idx);
+    double fission_src_i = 0.0;
+   
+
     for (int g = 0; g < eneG; g++) {
-      sum_g_new += nuFiss_i[eq_idx][g] * phi_new[g][i] * vol;
-      sum_g_prev += nuFiss_i[eq_idx][g] * phi_prev[g][i] * vol;
+      fission_src_i += nuFiss_i[eq_idx][g] * phi[g][i] * vol;
+      // printf("%.8f, %.8f, %.8f \n", nuFiss_i[eq_idx][g], phi[g][i], vol);
     }
-    numerator[i] = sum_g_new;
-    denominator[i] = sum_g_prev;
+    fiss_src[i] = fission_src_i;
   }
 
-  
-  
+  return fiss_src;
+}
 
-  for (int a = 0; a < numRegions; a++) {
-    // new_dot_prod += phi_prev[g][a] * phi_new[g][a];
-    // prev_dot_prod += phi_prev[g][a] * phi_prev[g][a];
+double calculate_keff(
+  double **phi_prev, double **phi_new, double *mainRegions_vol,
+  int numRegions, int eneG, double keff_prev, double **nuFiss_i,  
+  int *eq_reg_list
+) {
 
-    new_dot_prod += numerator[a];
-    prev_dot_prod += denominator[a];
+  // printf("hello\n");
+  // CALCULATE NUMERATOR: INTEGRATED FISSION SOURCE IN ENERGY (N+1)
+  // CALCULATE DENOMINATOR: INTEGRATED FISSION SOURCE IN ENERGY (N)
+
+  double *fission_src_prev = calculate_fission_src(
+    numRegions, eneG, nuFiss_i, eq_reg_list, mainRegions_vol, phi_prev
+  );
+  
+  double *fission_src_new = calculate_fission_src(
+    numRegions, eneG, nuFiss_i, eq_reg_list, mainRegions_vol, phi_new
+  );
+
+
+  double new_dot_prod = 0.0;
+  double prev_dot_prod = 0.0;
+  for (int j = 0; j < numRegions; j++) {
+    // printf("%.8f\n", fission_src_new[j]);
+    new_dot_prod += fission_src_new[j] * fission_src_new[j];
+    prev_dot_prod += fission_src_prev[j] * fission_src_prev[j];
   }
-  // }
 
-  double keff_new = keff_prev * new_dot_prod / prev_dot_prod;
+  double keff_new = keff_prev * sqrt(new_dot_prod / prev_dot_prod);
 
-  free(numerator);
-  free(denominator);
+  free(fission_src_new);
+  free(fission_src_prev);
   return keff_new;
 }
 

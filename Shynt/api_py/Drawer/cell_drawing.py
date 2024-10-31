@@ -67,19 +67,25 @@ class PlotLattice:
     
   
   def __get_surfaces_and_colors_from_lattice(self, lattice):
-    # void = Material("void", color=(0,0,0)) # default void
-    void = Material("void", color=(255, 100, 100))
-    expanded_wrapper = self.__mainCell.region.surface.expand(self.__scaleF)
+    void = Material("void", color=(0,0,0)) # default void
+    # void = Material("void", color=(255, 100, 100))
+    print("Translation vector", self.__transVector)
 
+    expanded_wrapper = self.__mainCell.region.surface.expand(self.__scaleF)
     surfaces_to_draw = [
       (expanded_wrapper, void)
     ]
+    self.__transVector = self.__calculate_dxdy(self.__mainCell)
+    print("Translation vector", self.__transVector)
+
+    print("wrapper center ",expanded_wrapper.center)
+    
     # return surfaces_to_draw
     
     print("Getting surfaces to draw ....")
 
     new_centers = lattice.recalculate_element_centers(
-      self.__scaleF, expanded_wrapper.center
+      self.__scaleF
     )
     
     if isinstance(lattice, HexagonalLattice):
@@ -98,14 +104,89 @@ class PlotLattice:
     
     return surfaces_to_draw
   
+
   def __get_pin_surfaces_square_lattice(self, new_centers, lattice):
+    surfaces_to_draw = []
+    lattice_array = lattice.array
+    num_rows = len(lattice_array)
+    
+    first_element = lattice_array[0][0]
+
+    if isinstance(first_element, Pin):
+      coolant_of_center = first_element.pin_levels[-1].material
+      print(coolant_of_center)
+      closing_hexagon = None
+      cx, cy = first_element.center
+      expanded_wrapper = self.__mainCell.region.surface.expand(self.__scaleF)
+
+      surfaces_to_draw.append(
+        (expanded_wrapper, coolant_of_center)
+      )
+      surfaces_to_draw += self.__get_elements_surfaces_hex_lattice_of_pins(
+        new_centers, lattice
+      )
+    elif isinstance(first_element, SquareLattice):
+      # this element should have pins and not other lattice
+      for r in range(num_rows):
+        row = lattice_array[r]
+        num_elements = len(row)
+        
+        for p in range(num_elements):
+          element = lattice_array[r][p]
+          lb = element.left_bottom
+
+          coolant_first_element = element.array[0][0].pin_levels[-1].material
+          # print(new_centers[r][p])
+          closing_square = InfiniteSquareCylinderZ(
+            new_centers[r][p][0], 
+            new_centers[r][p][1], 
+            half_width=lattice.pitch* self.__scaleF /2
+          )    
+          surfaces_to_draw.append(
+            (closing_square, coolant_first_element)
+          )
+
+      for r in range(num_rows):
+        row = lattice_array[r]
+        num_elements = len(row)
+        
+        for p in range(num_elements):
+
+          element = lattice_array[r][p]
+          print(element.name)
+          cx, cy = new_centers[r][p]
+          # print(cx,cy)
+          # print(lattice.pitch)
+          lbx = cx-lattice.pitch*self.__scaleF/2
+          lby = cy-lattice.pitch*self.__scaleF/2
+          print(lbx, lby)
+          new_assembly_centers = element.recalculate_element_centers(
+            self.__scaleF, left_bottom=(lbx, lby)
+          )
+          print(new_assembly_centers[0][0])
+
+          
+          
+          surfaces_from_assem = self.__get_elements_surfaces_sqr_lattice_of_pins(
+            new_assembly_centers, element
+          )
+          
+          surfaces_to_draw += surfaces_from_assem
+        
+        
+          
+        # return surfaces_to_draw
+
+    return surfaces_to_draw
+
+  def __get_pin_surfaces_square_lattice__(self, new_centers, lattice):
     surfaces_to_draw = []
     array_pins = lattice.array
     for i, row in enumerate(array_pins):
-      for j, pin in enumerate(row):
-        if isinstance(pin, Pin):
+      for j, element in enumerate(row):
+        if isinstance(element, Pin):
           cx, cy = new_centers[i][j]
-          pin_levels = pin.pin_levels
+          pin_levels = element.pin_levels
           num_levels = len(pin_levels)
           
           for l in range(-2,-num_levels-1, -1): 
@@ -113,14 +194,27 @@ class PlotLattice:
             cyl = InfiniteCylinderZ(cx, cy, level.radius*self.__scaleF)
             # print(cx, cy, level.radius*self.__scaleF)
             surfaces_to_draw.append((cyl, level.material))
-        elif isinstance(pin, SquareLattice):
-          new_assembly_centers = pin.recalculate_element_centers(self.__scaleF)
-
-          surfaces_from_assem = self.__get_pin_surfaces_square_lattice(
-            new_assembly_centers, pin
+        elif isinstance(element, SquareLattice):
+          print(element)
+          coolant_first_element = element.array[0][0].pin_levels[-1].material
+          lb = element.left_bottom
+          print(lb)
+          print(lattice.pitch)
+          closing_square = InfiniteSquareCylinderZ(
+            (lb[0] + lattice.pitch/2)*self.__scaleF, 
+            (lb[1] + lattice.pitch/2)*self.__scaleF, 
+            half_width=lattice.pitch* self.__scaleF /2
           )
+          surfaces_to_draw.append(
+            (closing_square, coolant_first_element)
+          )
+          # new_assembly_centers = element.recalculate_element_centers(self.__scaleF)
+
+          # surfaces_from_assem = self.__get_pin_surfaces_square_lattice(
+          #   new_assembly_centers, element
+          # )
           
-          surfaces_to_draw += surfaces_from_assem
+          # surfaces_to_draw += surfaces_from_assem
     # print(surfaces_to_draw)
     return surfaces_to_draw
     
@@ -197,7 +291,7 @@ class PlotLattice:
         # return surfaces_to_draw
 
     return surfaces_to_draw
-  
+
   def __get_elements_surfaces_hex_lattice_of_pins(self, new_centers, lattice):
     surfaces_to_draw = []
     lattice_rings = lattice.rings
@@ -223,24 +317,59 @@ class PlotLattice:
   
     return surfaces_to_draw
 
+  def __get_elements_surfaces_sqr_lattice_of_pins(self, new_centers, lattice):
+    surfaces_to_draw = []
+    lattice_array = lattice.array
+    num_rows = len(lattice_array)
+    
+    for r in range(num_rows):
+      row = lattice_array[r]
+      num_pins = len(row)
+      
+      for p in range(num_pins):
+        element = lattice_array[r][p]
+        cx, cy = new_centers[r][p]
+        
+        if isinstance(element, Pin):
+          pin_levels = element.pin_levels
+          num_levels = len(pin_levels)
+          for l in range(-2,-num_levels-1, -1): 
+            level = pin_levels[l]
+            cyl = InfiniteCylinderZ(cx, cy, level.radius*self.__scaleF)
+            # cyl = InfiniteCylinderZ(
+            #   29.41176470588235, 2970.5882352941176, 
+            #   level.radius*self.__scaleF
+            # )
+            
+            surfaces_to_draw.append((cyl, level.material))
+  
+  
+    return surfaces_to_draw
 
   def plot_assembly(self):
     x_max, y_max = self.__imageDimensions
+    print("YMAX",y_max)
 
     # plot surfaces ---------------------------------------------
     num_surfaces_to_plot = len(self.__surfacesToDraw)
     print(f"plotting {num_surfaces_to_plot} surfaces")
     for s in range(num_surfaces_to_plot):
+      # print(s)
       surf, material = self.__surfacesToDraw[s]
       # print(s, surf, material)
+      # print(surf.center)
       surf.translate(self.__transVector)
+      # print(surf.center)
+
       color = material.color
       self.__img = draw_surface(surf, self.__img, y_max, fill=color)
   
   def __transform_points(self, points):
     import numpy as np
     x_max, y_max = self.__imageDimensions
+    # print("YMAX",y_max)
     dx, dy = self.__transVector
+    dy = y_max -dy
     points = np.array(points)
 
     num_points = points.shape[0]
@@ -363,8 +492,7 @@ class PlotLattice:
       
         if node_centroid is None:
           node_centroid = self.__calc_centroid(node_points_transformed[n])
-        print(surfaces)
-        print(nodes_surfaces[nid])
+        
         for s_id, surf_points in nodes_surfaces[nid].items():
           points = self.__transform_points(surf_points)
 
@@ -463,15 +591,17 @@ class PlotLattice:
         raise SystemExit
     
   def __calculate_dxdy(self, cell):
-    enclosing_surf = cell.region.surface
+    # enclosing_surf = cell.region.surface for Hexagonal lattices, why??
+    enclosing_surf = cell.region.surface.expand(self.__scaleF)
+    
     center_x = enclosing_surf.center_x
     center_y = enclosing_surf.center_y
-    
+    print(center_x, center_y)
     xt, yt = self.__imageDimensions
     new_center = (xt/2, yt/2)
     fig_center_x = self.__imageDimensions[0]/2
 
-    dy = new_center[0] - center_y   # assuming it is a square
+    dy = new_center[1] - center_y   # assuming it is a square
     dx = new_center[0] - center_x
 
     return dx, dy
@@ -486,3 +616,9 @@ class PlotLattice:
   @property
   def img(self):
     return self.__img
+
+
+class PlotFlux(PlotLattice):
+
+  def __init__(self, cell, dimensions=(2000, 2000), name="", mesh={}):
+    super().__init__(cell, dimensions, name, mesh)

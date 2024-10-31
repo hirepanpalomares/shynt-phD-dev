@@ -133,6 +133,22 @@ class Mesh():
           )
           coarse_node.fine_mesh = fine_mesh_of_node
   
+  def get_pin_regions_points(self, theta_points=10):
+    regions_points = {}
+    for n, coarse_node in self.coarse_mesh.coarse_nodes.items():
+      node_regs_points = coarse_node.fine_mesh.get_pin_regions_points(theta_points=theta_points)
+      regions_points.update(node_regs_points)
+
+    return regions_points
+  
+  def get_coolant_regions_points(self):
+    regions_points = {}
+    for n, coarse_node in self.coarse_mesh.coarse_nodes.items():
+      node_regs_points = coarse_node.fine_mesh.get_coolant_regions_points()
+      regions_points.update(node_regs_points)
+
+    return regions_points
+
   def create_regions_to_coarse_node_rel(self):
     rel = {}
     for n_id, c_node in self.coarse_mesh.coarse_nodes.items():

@@ -50,7 +50,7 @@ class SerpentInputFile():
       self.__write_title()
       self.__write_material()
       self.__write_libraries()
-      self.__file.write("\n\nset bc 2\n")
+      # self.__file.write("\n\nset bc 2\n")
       self.__write_mc_params(cell, type_calculation)
       self.__write_energy_grid()
       if xs_generation:

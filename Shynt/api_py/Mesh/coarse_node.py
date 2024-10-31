@@ -1205,6 +1205,7 @@ class CoarseNodeTriangularMesh(CoarseNode):
     
     self.surfaces = surfaces
 
+
     return surfaces, s_id
 
   def calculate_node_volume(self):
@@ -1231,9 +1232,60 @@ class CoarseNodeTriangularMesh_InnerTriangle(
     self.center = center
     self.regions_points_relation = {}
     self.pins_in_node = []
+    self.triangle_orientation = None 
+    self.points_position = []
+    self.theta_corners = []
     # print(node_pin_levels)
     super().__init__(id_, hex_assembly, surface_points)
+    self.get_triangle_orientation()
 
+  def get_triangle_orientation(self):
+
+    p1, p2, p3 = self.surf_points
+    
+     # Create a list of points with their corresponding y-coordinates
+    points = [("p1", p1), ("p2", p2), ("p3", p3)]
+    # Extract the y-coordinates
+    y_coords = [p[1][1] for p in points]  # Get the y-values from p1, p2, p3
+    
+    # Find the maximum y-coordinate
+    max_y = max(y_coords)
+
+    
+    # Find points that have the maximum y-coordinate
+    max_number = 0
+    points_position = []
+
+    for point, y in zip(points, y_coords):
+      if y >= (max_y - 1e-6) and y <= (max_y + 1e-6): 
+        points_position.append("up")
+        max_number += 1
+      else:
+        points_position.append("down")
+        
+    self.points_position = points_position
+    theta_corners = []
+    xc, yc = self.center
+    # print(xc, yc)
+    for point, y in zip(points, y_coords):
+      # print(point)
+      x, y = point[1]
+      if max_number == 1: # triangle is up
+        if y > yc:
+          theta_corners.append((240,300))
+        else:
+          if x < xc: theta_corners.append((0,60))
+          elif x > xc: theta_corners.append((120,180))
+      elif max_number == 2: # triangle is down
+        if y > yc:
+          if x < xc: theta_corners.append((300,360))
+          elif x > xc: theta_corners.append((180,240))
+        else:
+          theta_corners.append((60,120))
+    self.theta_corners = theta_corners
+
+    
+    
   def get_serpent_geometry(self):
     serpent_syntax, regions = self.get_surfaces_serpent_syntax()
     self.regions_surfaces = regions
@@ -1710,6 +1762,8 @@ class CoarseNodeTriangularMesh_SquareSubChanell(
     )
     self.regions_points_relation = {}
     self.pins_in_node = []
+    self.theta_corners = []
+
 
   def get_serpent_geometry(self):
     serpent_syntax, regions = self.get_surfaces_serpent_syntax()
@@ -2065,6 +2119,8 @@ class CoarseNodeTriangularMesh_TriangleCorner(
     self.node_pin_levels = node_pin_levels
     self.regions_points_relation = {}
     self.pins_in_node = []
+    self.theta_corners = []
+
     
 
     self.height_triangle = calculate_euclidean_distance(

@@ -950,8 +950,8 @@ class RmmSolution_inverse_operator(RmmSolution):
         print('beta:', beta)
         # Calculation of the flux ----------------------------------
         for g in range(self.energy_g):
-          phi_AQ = np.matmul(mA_bg[g],source_Q_vectors[g])
-          phi_g = alpha * phi_AQ + (1 - alpha + beta)*phi_array[-1][g] - beta*phi_array[-2][g]
+          phi_AQ = np.matmul(mA_bg[g],source_Q_vectors[g]) # calculation for this iteration
+          phi_g = alpha * phi_AQ + (1 - alpha + beta)*phi_array[-1][g] - beta*phi_array[-2][g] # correction
           phi_new[g] = phi_g
         
         chev_prev_prev = chev_prev

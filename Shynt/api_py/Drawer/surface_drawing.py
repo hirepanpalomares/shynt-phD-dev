@@ -54,11 +54,13 @@ def draw_line(points, img, width=2, fill=(0,0,0)):
 
 
 def draw_circle(surf, img, y_max, fill=(254,254,254)):
+  print("drawing circle")
   draw = ImageDraw.Draw(img)
 
   radius = surf.radius
   center_x, center_y = surf.center
   distance_to_max = y_max - center_y
+  # print(distance_to_max)
   translated_center = (center_x, distance_to_max)
 
   box_top_left_x = translated_center[0] - radius
@@ -67,14 +69,18 @@ def draw_circle(surf, img, y_max, fill=(254,254,254)):
   box_bottom_right_x = translated_center[0] + radius
   box_bottom_right_y = translated_center[1] - radius
 
-  box_top_left_y = y_max - box_top_left_y
-  box_bottom_right_y = y_max - box_bottom_right_y
+  # box_top_left_y = y_max - box_top_left_y
+  # box_bottom_right_y = y_max - box_bottom_right_y
 
+  # box = [
+  #   (box_top_left_x, box_top_left_y),
+  #   (box_bottom_right_x, box_bottom_right_y)
+  # ]
   box = [
-    (box_top_left_x,box_top_left_y),
-    (box_bottom_right_x, box_bottom_right_y)
+    (box_top_left_x, box_bottom_right_y),
+    (box_bottom_right_x, box_top_left_y)
   ]
-
+  print(box)
   draw.ellipse(box, outline=(0,0,0), fill=fill)
   return img
 
@@ -84,7 +90,9 @@ def draw_square(surf, img, y_max, fill=(254,254,254)):
   square_points = surf.vertex_points
   new_square_points = []
   for point in square_points:
-    new_square_points.append((point[0],y_max - point[1]))
+    new_square_points.append((point[0], point[1]))
+    # new_square_points.append((point[0],y_max - point[1]))
+
   draw.polygon(new_square_points, outline=(0,0,0), fill=fill)
   return img
 
